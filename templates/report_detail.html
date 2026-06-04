@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}報告 — Stocker{% endblock %}
+
+{% block content %}
+<div class="report-detail">
+    <!-- Back Button + Header -->
+    <div class="detail-header">
+        <a href="/" class="btn-pill btn-back">← 返回</a>
+        <div class="detail-title">
+            <h1 id="report-title">Loading...</h1>
+            <span class="report-date" id="report-date"></span>
+        </div>
+    </div>
+
+    <!-- Split View -->
+    <div class="split-view">
+        <!-- Left: Original Content -->
+        <div class="split-left">
+            <div class="split-header">
+                <h3>原文內容</h3>
+            </div>
+            <div class="split-body" id="report-content">
+                <div class="loading-cell"><div class="spinner-sm"></div> Loading...</div>
+            </div>
+        </div>
+
+        <!-- Right: AI Analysis -->
+        <div class="split-right">
+            <div class="split-header">
+                <h3>AI 綜合分析</h3>
+            </div>
+            <div class="split-body" id="report-analysis">
+                <div class="loading-cell"><div class="spinner-sm"></div> Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const REPORT_ID = window.location.pathname.split('/').pop();
+
+    async function loadReport() {
+        try {
+            const res = await fetch('/api/reports/' + REPORT_ID);
+            if (!res.ok) throw new Error('Failed to fetch report');
+            const data = await res.json();
+
+            // Header
+            document.getElementById('report-title').textContent = data.title || 'Untitled';
+            document.getElementById('report-title').title = data.title || '';
+            if (data.published_at) {
+                document.getElementById('report-date').textContent = new Date(data.published_at).toLocaleDateString('zh-TW');
+            }
+
+            // Left: Original Content
+            const contentEl = document.getElementById('report-content');
+            if (data.content) {
+                contentEl.innerHTML = '<div class="report-prose">' + escapeHtml(data.content).replace(/\n/g, '<br>') + '</div>';
+            } else if (data.url) {
+                contentEl.innerHTML = '<div class="empty-cell"><p>原文儲存於外部連結</p><a href="' + data.url + '" target="_blank" class="btn-pill btn-primary">查看原文</a></div>';
+            } else {
+                contentEl.innerHTML = '<div class="empty-cell">暫無原文內容</div>';
+            }
+
+            // Right: AI Analysis
+            const analysisEl = document.getElementById('report-analysis');
+            if (data.analysis) {
+                analysisEl.innerHTML = '<div class="report-prose">' + formatAnalysis(data.analysis) + '</div>';
+            } else {
+                analysisEl.innerHTML = '<div class="empty-cell">AI 分析尚未生成</div>';
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('report-content').innerHTML = '<div class="error-cell">⚠️ 載入失敗</div>';
+            document.getElementById('report-analysis').innerHTML = '<div class="error-cell">⚠️ 載入失敗</div>';
+            showToast('載入報告失敗', 'error');
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatAnalysis(text) {
+        // Basic markdown-like formatting
+        let html = escapeHtml(text);
+        // Bold: **text**
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Bullet points: lines starting with - or •
+        html = html.replace(/^[-•]\s+(.*)/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+        // Line breaks
+        html = html.replace(/\n/g, '<br>');
+        // Clean up nested <ul> from regex
+        html = html.replace(/<\/ul><br><ul>/g, '');
+        return html;
+    }
+
+    // Init
+    loadReport();
+</script>
+{% endblock %}

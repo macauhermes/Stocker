@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+data/stocker.db
+data/files/
+*.db
+.DS_Store

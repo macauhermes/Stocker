@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stocker{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">Stocker</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Dashboard</a>
+                <a href="/files" class="nav-link {% if request.path == '/files' %}active{% endif %}">Files</a>
+            </div>
+        </div>
+    </nav>
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    <div id="loading-overlay" class="loading-overlay" style="display:none;">
+        <div class="spinner"></div>
+    </div>
+    <div id="toast-container" class="toast-container"></div>
+    <script>
+        function showLoading() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+        function hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('show'); }, 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

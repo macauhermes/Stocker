@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Files — Stocker{% endblock %}
+
+{% block content %}
+<div class="files-page">
+    <div class="page-header">
+        <h1>檔案管理</h1>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="filter-tabs" id="filter-tabs">
+        <button class="btn-pill btn-filter active" data-category="all">全部</button>
+        <button class="btn-pill btn-filter" data-category="earnings">Earnings</button>
+        <button class="btn-pill btn-filter" data-category="analyst_report">Analyst Report</button>
+        <button class="btn-pill btn-filter" data-category="news">News</button>
+        <button class="btn-pill btn-filter" data-category="sec_filing">SEC Filing</button>
+    </div>
+
+    <!-- File Table -->
+    <div class="table-container">
+        <table class="file-table">
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Category</th>
+                    <th>Size</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="file-table-body">
+                <tr><td colspan="5" class="loading-cell"><div class="spinner-sm"></div> Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allFiles = [];
+    let activeCategory = 'all';
+
+    // Category filter buttons
+    document.querySelectorAll('.btn-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCategory = btn.dataset.category;
+            renderFiles();
+        });
+    });
+
+    // Load files
+    async function loadFiles() {
+        try {
+            const res = await fetch('/api/files');
+            if (!res.ok) throw new Error('Failed to fetch files');
+            allFiles = await res.json();
+            renderFiles();
+        } catch (err) {
+            console.error(err);
+            document.getElementById('file-table-body').innerHTML =
+                '<tr><td colspan="5" class="error-cell">⚠️ 載入檔案列表失敗</td></tr>';
+        }
+    }
+
+    function renderFiles() {
+        const tbody = document.getElementById('file-table-body');
+        const filtered = activeCategory === 'all'
+            ? allFiles
+            : allFiles.filter(f => f.category === activeCategory);
+
+        if (!filtered || filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">此分類下暫無檔案</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        filtered.forEach(f => {
+            const date = f.created_at ? new Date(f.created_at).toLocaleDateString('zh-TW') : '—';
+            const size = formatFileSize(f.file_size);
+            const categoryLabel = formatCategory(f.category);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="file-name">
+                    <span class="file-icon">${getFileIcon(f.category)}</span>
+                    ${f.filename || '—'}
+                </td>
+                <td><span class="category-badge badge-${f.category || 'default'}">${categoryLabel}</span></td>
+                <td class="file-size">${size}</td>
+                <td class="file-date">${date}</td>
+                <td>
+                    <a href="/api/files/${f.id}/download" class="btn-pill btn-pill-sm btn-download" download>下載</a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes == null || bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+    }
+
+    function formatCategory(cat) {
+        const map = {
+            'earnings': 'Earnings',
+            'analyst_report': 'Analyst',
+            'news': 'News',
+            'sec_filing': 'SEC Filing'
+        };
+        return map[cat] || cat || '—';
+    }
+
+    function getFileIcon(category) {
+        const map = {
+            'earnings': '📊',
+            'analyst_report': '📈',
+            'news': '📰',
+            'sec_filing': '📋'
+        };
+        return map[category] || '📄';
+    }
+
+    // Init
+    loadFiles();
+</script>
+{% endblock %}

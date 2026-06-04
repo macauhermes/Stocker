@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% block title %}{{ symbol }} — Stocker{% endblock %}
+
+{% block content %}
+<div class="detail-page" id="detail-page">
+    <!-- Back Button + Header -->
+    <div class="detail-header">
+        <a href="/" class="btn-pill btn-back">← 返回</a>
+        <div class="detail-title">
+            <h1 id="stock-symbol">{{ symbol }}</h1>
+            <span class="stock-name" id="stock-name">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Event Banner -->
+    <div id="event-banner" class="event-banner" style="display:none;">
+        <span class="event-icon">⚠️</span>
+        <span id="event-banner-text"></span>
+        <button class="btn-pill btn-pill-sm btn-dismiss" id="btn-dismiss-event" onclick="dismissEvent()">已知悉</button>
+    </div>
+
+    <!-- Time Range Buttons -->
+    <div class="range-buttons">
+        <button class="btn-pill btn-range active" data-range="1m">1M</button>
+        <button class="btn-pill btn-range" data-range="3m">3M</button>
+        <button class="btn-pill btn-range" data-range="6m">6M</button>
+        <button class="btn-pill btn-range" data-range="1y">1Y</button>
+    </div>
+
+    <!-- Price Chart -->
+    <div class="chart-container">
+        <canvas id="price-chart"></canvas>
+        <div class="chart-loading" id="chart-loading"><div class="spinner-sm"></div> Loading chart...</div>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="info-grid" id="info-grid">
+        <div class="info-card">
+            <span class="info-label">Market Cap</span>
+            <span class="info-value" id="val-market-cap">—</span>
+        </div>
+        <div class="info-card">
+            <span class="info-label">P/E Ratio</span>
+            <span class="info-value" id="val-pe-ratio">—</span>
+        </div>
+        <div class="info-card">
+            <span class="info-label">EPS</span>
+            <span class="info-value" id="val-eps">—</span>
+        </div>
+        <div class="info-card">
+            <span class="info-label">52W High</span>
+            <span class="info-value" id="val-52w-high">—</span>
+        </div>
+        <div class="info-card">
+            <span class="info-label">52W Low</span>
+            <span class="info-value" id="val-52w-low">—</span>
+        </div>
+    </div>
+
+    <!-- News List -->
+    <div class="section">
+        <h3 class="section-title">最近新聞</h3>
+        <div class="news-list" id="news-list">
+            <div class="loading-cell"><div class="spinner-sm"></div> Loading...</div>
+        </div>
+    </div>
+
+    <!-- Holdings -->
+    <div class="section">
+        <h3 class="section-title">持倉資訊</h3>
+        <div class="holdings-form">
+            <div class="form-group">
+                <label for="input-shares">持倉數量</label>
+                <input type="number" id="input-shares" class="input-field" placeholder="0" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label for="input-cost-basis">成本價</label>
+                <input type="number" id="input-cost-basis" class="input-field" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <button class="btn-pill btn-primary" id="btn-save-holdings" onclick="saveHoldings()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const SYMBOL = '{{ symbol }}';
+    let currentRange = '1m';
+    let priceChart = null;
+    let currentEventId = null;
+
+    // Range button switching
+    document.querySelectorAll('.btn-range').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.btn-range').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentRange = btn.dataset.range;
+            loadChartData();
+        });
+    });
+
+    // Load stock detail
+    async function loadDetail() {
+        try {
+            const res = await fetch('/api/stock/' + SYMBOL + '/detail');
+            if (!res.ok) throw new Error('Failed to fetch detail');
+            const data = await res.json();
+
+            // Header
+            document.getElementById('stock-name').textContent = data.name || SYMBOL;
+            document.getElementById('stock-symbol').textContent = SYMBOL;
+
+            // Info grid
+            if (data.market_cap != null) {
+                document.getElementById('val-market-cap').textContent = formatLargeNumber(data.market_cap);
+            }
+            if (data.pe_ratio != null) {
+                document.getElementById('val-pe-ratio').textContent = data.pe_ratio.toFixed(2);
+            }
+            if (data.eps != null) {
+                document.getElementById('val-eps').textContent = '$' + data.eps.toFixed(2);
+            }
+            if (data.high_52w != null) {
+                document.getElementById('val-52w-high').textContent = '$' + data.high_52w.toFixed(2);
+            }
+            if (data.low_52w != null) {
+                document.getElementById('val-52w-low').textContent = '$' + data.low_52w.toFixed(2);
+            }
+
+            // News
+            renderNews(data.news || []);
+
+            // Holdings
+            if (data.shares_held != null) {
+                document.getElementById('input-shares').value = data.shares_held;
+            }
+            if (data.cost_basis != null) {
+                document.getElementById('input-cost-basis').value = data.cost_basis;
+            }
+
+            // Events
+            if (data.events && data.events.length > 0) {
+                const evt = data.events[0];
+                currentEventId = evt.id;
+                const d = new Date(evt.event_date).toLocaleDateString('zh-TW');
+                document.getElementById('event-banner-text').textContent = evt.title + ' — ' + d;
+                document.getElementById('event-banner').style.display = 'flex';
+            }
+        } catch (err) {
+            console.error('Failed to load detail:', err);
+            showToast('載入股票資料失敗', 'error');
+        }
+    }
+
+    // Load chart data
+    async function loadChartData() {
+        const chartLoading = document.getElementById('chart-loading');
+        chartLoading.style.display = 'flex';
+        try {
+            const res = await fetch('/api/stock/' + SYMBOL + '/chart-data?range=' + currentRange);
+            if (!res.ok) throw new Error('Failed to fetch chart data');
+            const data = await res.json();
+            renderChart(data);
+        } catch (err) {
+            console.error('Failed to load chart:', err);
+            showToast('載入圖表失敗', 'error');
+        } finally {
+            chartLoading.style.display = 'none';
+        }
+    }
+
+    function renderChart(data) {
+        const ctx = document.getElementById('price-chart').getContext('2d');
+        if (priceChart) {
+            priceChart.destroy();
+        }
+
+        const labels = data.dates || [];
+        const prices = data.prices || [];
+        const ma5 = data.ma5 || [];
+        const ma20 = data.ma20 || [];
+        const ma60 = data.ma60 || [];
+
+        const datasets = [
+            {
+                label: 'Price',
+                data: prices,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            }
+        ];
+        if (ma5.length > 0) {
+            datasets.push({
+                label: 'MA5',
+                data: ma5,
+                borderColor: '#00c853',
+                borderWidth: 1,
+                pointRadius: 0,
+                tension: 0.1,
+                borderDash: [],
+                fill: false
+            });
+        }
+        if (ma20.length > 0) {
+            datasets.push({
+                label: 'MA20',
+                data: ma20,
+                borderColor: '#2979ff',
+                borderWidth: 1,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            });
+        }
+        if (ma60.length > 0) {
+            datasets.push({
+                label: 'MA60',
+                data: ma60,
+                borderColor: '#ff9100',
+                borderWidth: 1,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            });
+        }
+
+        priceChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#999', font: { family: 'Inter', size: 11 } }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e1e24',
+                        titleColor: '#fff',
+                        bodyColor: '#ccc',
+                        borderColor: '#333',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#666', maxTicksLimit: 10, font: { family: 'Inter', size: 10 } },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        ticks: { color: '#666', font: { family: 'Inter', size: 10 }, callback: v => '$' + v.toFixed(2) },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Render news
+    function renderNews(news) {
+        const list = document.getElementById('news-list');
+        if (!news || news.length === 0) {
+            list.innerHTML = '<div class="empty-cell">暫無新聞</div>';
+            return;
+        }
+        list.innerHTML = '';
+        news.forEach(n => {
+            const date = n.publishedAt ? new Date(n.publishedAt).toLocaleDateString('zh-TW') : '—';
+            const item = document.createElement('div');
+            item.className = 'news-item';
+            item.innerHTML = `
+                <div class="news-content">
+                    ${n.link ? '<a href="' + n.link + '" target="_blank" class="news-title">' + (n.title || 'Untitled') + '</a>' : '<span class="news-title">' + (n.title || 'Untitled') + '</span>'}
+                    <span class="news-source">${n.publisher || n.source || '—'}</span>
+                </div>
+                <span class="news-date">${date}</span>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    // Save holdings
+    async function saveHoldings() {
+        const shares = document.getElementById('input-shares').value;
+        const costBasis = document.getElementById('input-cost-basis').value;
+        const btn = document.getElementById('btn-save-holdings');
+        btn.disabled = true;
+        btn.textContent = '保存中...';
+        try {
+            const res = await fetch('/api/tickers/' + SYMBOL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    shares_held: shares ? parseFloat(shares) : null,
+                    cost_basis: costBasis ? parseFloat(costBasis) : null
+                })
+            });
+            if (!res.ok) throw new Error('保存失敗');
+            showToast('持倉已更新', 'success');
+        } catch (err) {
+            console.error(err);
+            showToast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '保存';
+        }
+    }
+
+    // Dismiss event
+    async function dismissEvent() {
+        if (!currentEventId) return;
+        try {
+            const res = await fetch('/api/events/' + currentEventId + '/dismiss', { method: 'POST' });
+            if (!res.ok) throw new Error('Dismiss failed');
+            document.getElementById('event-banner').style.display = 'none';
+            showToast('已標記已知悉', 'success');
+        } catch (err) {
+            console.error(err);
+            showToast('操作失敗', 'error');
+        }
+    }
+
+    // Format large numbers
+    function formatLargeNumber(n) {
+        if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+        if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+        if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+        return '$' + n.toLocaleString();
+    }
+
+    // Init
+    loadDetail();
+    loadChartData();
+</script>
+{% endblock %}

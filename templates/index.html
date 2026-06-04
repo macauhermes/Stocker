@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Stocker — Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Event Reminder Banner -->
+    <div id="event-banner" class="event-banner" style="display:none;">
+        <span class="event-icon">⚠️</span>
+        <span id="event-banner-text"></span>
+        <button class="btn-pill btn-pill-sm btn-dismiss" onclick="dismissBanner()">已知悉</button>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-header">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="stocks">股票</button>
+            <button class="tab-btn" data-tab="reports">報告</button>
+        </div>
+        <button class="btn-pill btn-primary" id="btn-add-ticker" onclick="openAddModal()">+ 新增</button>
+    </div>
+
+    <!-- Stocks Tab -->
+    <div class="tab-content active" id="tab-stocks">
+        <div class="table-container">
+            <table class="stock-table" id="stock-table">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Name</th>
+                        <th>Price</th>
+                        <th>Change%</th>
+                        <th>Prev Close</th>
+                        <th>Mini Chart</th>
+                        <th>Shares</th>
+                        <th>P&L</th>
+                        <th>P&L%</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                    <tr><td colspan="9" class="loading-cell"><div class="spinner-sm"></div> Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Reports Tab -->
+    <div class="tab-content" id="tab-reports">
+        <div class="report-list" id="report-list">
+            <div class="loading-cell"><div class="spinner-sm"></div> Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Ticker Modal -->
+<div class="modal-overlay" id="add-modal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>新增追蹤股票</h3>
+            <button class="modal-close" onclick="closeAddModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="input-symbol" class="input-field" placeholder="輸入股票代碼 (e.g. AAPL)" autocomplete="off">
+            <div id="add-error" class="error-text" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-pill btn-secondary" onclick="closeAddModal()">取消</button>
+            <button class="btn-pill btn-primary" id="btn-confirm-add" onclick="addTicker()">確認新增</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const miniCharts = {};
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // Load active events
+    async function loadEvents() {
+        try {
+            const res = await fetch('/api/events/active');
+            if (!res.ok) return;
+            const events = await res.json();
+            if (events && events.length > 0) {
+                const banner = document.getElementById('event-banner');
+                const text = events.map(e => {
+                    const d = new Date(e.event_date).toLocaleDateString('zh-TW');
+                    return `${e.title} — ${d}`;
+                }).join('  |  ');
+                document.getElementById('event-banner-text').textContent = text;
+                banner.style.display = 'flex';
+            }
+        } catch (err) {
+            console.error('Failed to load events:', err);
+        }
+    }
+
+    // Load stock tickers
+    async function loadStocks() {
+        try {
+            const res = await fetch('/api/tickers');
+            if (!res.ok) throw new Error('Failed to fetch tickers');
+            const tickers = await res.json();
+            renderStocks(tickers);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('stock-table-body').innerHTML =
+                '<tr><td colspan="9" class="error-cell">⚠️ 載入失敗，請稍後重試</td></tr>';
+        }
+    }
+
+    function renderStocks(tickers) {
+        const tbody = document.getElementById('stock-table-body');
+        if (!tickers || tickers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">尚無追蹤股票，點擊「+ 新增」開始</td></tr>';
+            return;
+        }
+        // Destroy old mini charts
+        Object.values(miniCharts).forEach(c => c.destroy());
+        Object.keys(miniCharts).forEach(k => delete miniCharts[k]);
+
+        tbody.innerHTML = '';
+        tickers.forEach(t => {
+            const price = t.current_price;
+            const changePct = t.change_percent;
+            const shares = t.shares_held;
+            const costBasis = t.cost_basis;
+            const pnl = (price && shares && costBasis) ? (price - costBasis) * shares : null;
+            const pnlPct = (price && costBasis && costBasis > 0) ? ((price - costBasis) / costBasis * 100) : null;
+            const changeClass = changePct >= 0 ? 'text-green' : 'text-red';
+            const pnlClass = (pnl && pnl >= 0) ? 'text-green' : 'text-red';
+            const sign = v => v > 0 ? '+' : '';
+
+            const tr = document.createElement('tr');
+            tr.className = 'stock-row';
+            tr.onclick = () => window.location.href = '/stock/' + t.symbol;
+            tr.innerHTML = `
+                <td class="ticker-symbol">${t.symbol}</td>
+                <td class="ticker-name">${t.name || '—'}</td>
+                <td class="price">${price != null ? '$' + price.toFixed(2) : '—'}</td>
+                <td class="${changeClass}">${changePct != null ? sign(changePct) + changePct.toFixed(2) + '%' : '—'}</td>
+                <td>${t.prev_close != null ? '$' + t.prev_close.toFixed(2) : '—'}</td>
+                <td><canvas class="mini-chart" id="mini-${t.symbol}" width="100" height="32"></canvas></td>
+                <td>${shares > 0 ? shares : '—'}</td>
+                <td class="${pnlClass}">${pnl != null ? (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2) : '—'}</td>
+                <td class="${pnlClass}">${pnlPct != null ? sign(pnlPct) + pnlPct.toFixed(2) + '%' : '—'}</td>
+            `;
+            tbody.appendChild(tr);
+
+            // Draw mini chart
+            if (t.mini_chart_data && t.mini_chart_data.length > 0) {
+                drawMiniChart(t.symbol, t.mini_chart_data);
+            }
+        });
+    }
+
+    function drawMiniChart(symbol, data) {
+        const canvas = document.getElementById('mini-' + symbol);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const isUp = data[data.length - 1] >= data[0];
+        const color = isUp ? '#00c853' : '#ff1744';
+        miniCharts[symbol] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map((_, i) => i),
+                datasets: [{
+                    data: data,
+                    borderColor: color,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.3,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { line: { borderJoinStyle: 'round' } }
+            }
+        });
+    }
+
+    // Load reports
+    async function loadReports() {
+        try {
+            const res = await fetch('/api/reports');
+            if (!res.ok) throw new Error('Failed to fetch reports');
+            const reports = await res.json();
+            renderReports(reports);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('report-list').innerHTML =
+                '<div class="error-cell">⚠️ 載入報告失敗</div>';
+        }
+    }
+
+    function renderReports(reports) {
+        const list = document.getElementById('report-list');
+        if (!reports || reports.length === 0) {
+            list.innerHTML = '<div class="empty-cell">尚無報告</div>';
+            return;
+        }
+        list.innerHTML = '';
+        reports.forEach(r => {
+            const summary = r.summary ? r.summary.substring(0, 50) + (r.summary.length > 50 ? '...' : '') : '—';
+            const date = r.published_at ? new Date(r.published_at).toLocaleDateString('zh-TW') : '—';
+            const card = document.createElement('a');
+            card.href = '/report/' + r.id;
+            card.className = 'report-card';
+            card.innerHTML = `
+                <div class="report-card-body">
+                    <h4 class="report-title">${r.title || 'Untitled'}</h4>
+                    <p class="report-summary">${summary}</p>
+                </div>
+                <div class="report-card-meta">
+                    <span class="report-source">${r.source || '—'}</span>
+                    <span class="report-date">${date}</span>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // Add Ticker Modal
+    function openAddModal() {
+        document.getElementById('add-modal').style.display = 'flex';
+        document.getElementById('input-symbol').value = '';
+        document.getElementById('add-error').style.display = 'none';
+        document.getElementById('input-symbol').focus();
+    }
+
+    function closeAddModal() {
+        document.getElementById('add-modal').style.display = 'none';
+    }
+
+    async function addTicker() {
+        const symbol = document.getElementById('input-symbol').value.trim().toUpperCase();
+        const errEl = document.getElementById('add-error');
+        if (!symbol) {
+            errEl.textContent = '請輸入股票代碼';
+            errEl.style.display = 'block';
+            return;
+        }
+        errEl.style.display = 'none';
+        const btn = document.getElementById('btn-confirm-add');
+        btn.disabled = true;
+        btn.textContent = '新增中...';
+        try {
+            const res = await fetch('/api/tickers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: symbol })
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || '新增失敗');
+            }
+            closeAddModal();
+            showToast(symbol + ' 已新增', 'success');
+            loadStocks();
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '確認新增';
+        }
+    }
+
+    function dismissBanner() {
+        document.getElementById('event-banner').style.display = 'none';
+    }
+
+    // Enter key in modal
+    document.getElementById('input-symbol').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTicker();
+    });
+
+    // Close modal on overlay click
+    document.getElementById('add-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('add-modal')) closeAddModal();
+    });
+
+    // Init
+    loadEvents();
+    loadStocks();
+    loadReports();
+</script>
+{% endblock %}
