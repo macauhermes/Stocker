@@ -60,7 +60,7 @@ chmod +x run.sh
 - 本機: http://localhost:5000
 - 區域網絡: http://192.168.31.230:5000
 
-## 每晚自動排程
+## 每晚自動排程（必須設定）
 
 每晚 20:00 自動執行 `nightly_tasks.py`，依序完成三項任務：
 
@@ -70,13 +70,44 @@ chmod +x run.sh
 | 2 | 行業新聞收集 | Yahoo Finance | 收集各行業板塊新聞及分析 |
 | 3 | 金融機構分析報告 | yfinance + Yahoo | 收集分析師評級、目標價、盈利預測 |
 
-手動執行：
+### 手動執行
 
 ```bash
 cd ~/repos/Stocker
 source .venv/bin/activate
 python nightly_tasks.py
 ```
+
+### 設定 Cron 排程（必要步驟）
+
+系統依賴 AI Agent 的排程功能來自動執行每晚任務。部署後必須建立以下排程工作：
+
+**排程設定：**
+- **時間：** 每天 20:00 (`0 20 * * *`)
+- **腳本：** `~/repos/Stocker/nightly_tasks.py`
+- **執行方式：** `cd ~/repos/Stocker && source .venv/bin/activate && python nightly_tasks.py`
+
+**AI Agent Prompt（排程任務提示詞）：**
+
+```
+執行 Stocker 每晚排程任務。運行 `cd ~/repos/Stocker && source .venv/bin/activate && python nightly_tasks.py`。
+
+這個腳本會依序執行三個任務：
+1. SEC 財報 PDF 下載 (10-K / 10-Q)
+2. 行業新聞收集 (Yahoo Finance)
+3. 金融機構分析報告 (分析師評級 + 預測)
+
+完成後回報每個任務的結果摘要，包括總共收集了多少份新報告，以及各 ticker/行業的分佈。
+```
+
+> **注意：** 如果使用 Hermes Agent，可直接建立 cron job：
+> ```
+> cronjob create --schedule "0 20 * * *" --prompt "上述提示詞"
+> ```
+> 若使用其他排程系統（如 Linux crontab），直接執行：
+> ```
+> 0 20 * * * cd ~/repos/Stocker && .venv/bin/python nightly_tasks.py >> /tmp/stocker_nightly.log 2>&1
+> ```
 
 ## 項目結構
 
