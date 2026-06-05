@@ -1,4 +1,4 @@
-# Stocker — AI 美股分析器 SPEC (v3)
+# Stocker — AI 美股分析器 SPEC (v3.1)
 
 ## 1. 概覽
 
@@ -14,6 +14,7 @@ Stocker 是一個本地部署的 AI 美股追蹤與分析工具，提供 Web 介
 - **股票數據:** yfinance
 - **財報來源:** SEC EDGAR (10-K / 10-Q)
 - **行業新聞:** Yahoo Finance 行業頁面
+- **分析報告:** yfinance analyst + Yahoo Finance Analysis
 - **AI 分析:** OpenAI API
 - **設計風格:** 深色 fintech dashboard
 
@@ -24,7 +25,7 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 
 ## 2. 功能模組
 
-### 2.1 股票追蹤管理 — 歸檔機制 ⭐
+### 2.1 股票追蹤管理 — 歸檔機制
 - 新增追蹤的美股 ticker
 - **歸檔（軟刪除）：** 刪除時自動歸檔，停止追蹤新聞及財報，但保留所有已下載資料
 - **歸檔區域：** 主頁「歸檔」頁籤顯示所有已歸檔的 ticker
@@ -32,13 +33,12 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - **自動恢復：** 重新新增相同 ticker 時自動恢復，保留 shares_held 和 cost_basis
 - 每個 ticker 自動記錄：名稱、產業（yfinance 自動分類）、加入日期
 
-### 2.2 行業分類與行業新聞 ⭐
+### 2.2 行業分類與行業新聞
 - 每個追蹤中的 ticker 自動從 yfinance 取得行業分類 (sector)
 - **行業新聞頁面：** 獨立 `/industry` 頁面，按行業分類顯示報告
 - **行業卡片：** 顯示每個行業的 ticker 數量及報告數量
 - **行業篩選：** 點擊行業卡片查看該行業的所有相關報告
 - **報告篩選：** 主頁報告標籤可按行業 pill 按鈕篩選
-- **每日自動收集：** 每天晚上 8:00 自動從 Yahoo Finance 收集行業新聞
 
 ### 2.3 股票列表主頁 — 即時串流
 每個 ticker 顯示：
@@ -70,9 +70,10 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - 每次進入詳情頁如未查看仍會提醒
 - 提醒類型：財報發布、除息日
 
-### 2.6 金融報告系統 — PDF + AI 聯動 ⭐
+### 2.6 金融報告系統 — PDF + AI 聯動
 - **報告收集:** 定期從公開來源抓取金融機構報告
 - **SEC EDGAR 財報下載:** 自動下載最新的 10-K / 10-Q 財報 PDF/HTML
+- **金融機構分析報告:** 收集各大銀行及投行的分析師評級及預測
 - **AI 摘要:** 每份報告生成 ~50字中文摘要
 - **AI 分析結構化:** 分析結果包含多個標題 + 內容段落
 - **報告列表:** 顯示摘要、來源、日期、關聯 ticker
@@ -86,7 +87,14 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - 按分類存放下載的報告 PDF/文件
 - 檔案列表顯示：檔名、分類、大小、日期
 - 提供直接下載按鈕
-- 分類：earnings, analyst_report, news, sec_filing
+- 分類：earnings, analyst_report, news, sec_filing, industry
+
+### 2.8 多語言支援
+- **繁體中文 (預設)** / English 雙語切換
+- 導航欄語言切換按鈕 (中/EN)
+- 所有頁面文字支援 data-i18n 屬性
+- 語言偏好保存在 localStorage
+- 動態內容切換語言時自動重新渲染
 
 ---
 
@@ -112,13 +120,13 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 |------|------|------|
 | id | INTEGER PK | 自增ID |
 | title | TEXT | 報告標題 |
-| source | TEXT | 來源 (SEC EDGAR, Industry News, etc.) |
+| source | TEXT | 來源 (SEC EDGAR, Industry News, Analyst 等) |
 | url | TEXT | 原文連結 |
 | summary | TEXT | AI 摘要 (~50字) |
 | analysis | TEXT | AI 分析 (JSON: [{title, content, page}]) |
 | content | TEXT | 原文內容 |
 | file_path | TEXT | 本地 PDF/HTML 檔案路徑 |
-| category | TEXT | 分類 (earnings, news, analyst_report, industry) |
+| category | TEXT | 分類 (earnings, news, analyst_report, industry, sec_filing) |
 | published_at | DATETIME | 發布時間 |
 | created_at | DATETIME | 收集時間 |
 
@@ -176,23 +184,23 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - `GET /` — 主頁 (股票列表 + 報告列表 + 歸檔 tabs)
 - `GET /stock/<symbol>` — 股票詳情頁
 - `GET /report/<id>` — 報告詳情頁 (PDF + AI split view)
-- `GET /industry` — 行業新聞頁面 ⭐
+- `GET /industry` — 行業新聞頁面
 - `GET /files` — 檔案管理頁面
 
 ### API 路由 (JSON)
 - `GET /api/tickers` — 取得所有活躍 ticker (含即時價格)
 - `POST /api/tickers` — 新增 ticker (已歸檔的自動恢復)
 - `DELETE /api/tickers/<symbol>` — **歸檔** ticker (軟刪除)
-- `POST /api/tickers/<symbol>/restore` — **恢復**歸檔的 ticker ⭐
-- `GET /api/tickers/archived` — 取得所有歸檔的 ticker ⭐
+- `POST /api/tickers/<symbol>/restore` — **恢復**歸檔的 ticker
+- `GET /api/tickers/archived` — 取得所有歸檔的 ticker
 - `PUT /api/tickers/<symbol>` — 更新持倉/成本
 - `GET /api/tickers/stream` — **即時價格流** (每5秒輪詢端點)
 - `GET /api/stock/<symbol>/detail` — 取得詳細資訊
 - `GET /api/stock/<symbol>/chart-data?range=...&indicators=...` — 圖表數據
 - `POST /api/stock/<symbol>/refresh` — 強制刷新數據
-- `GET /api/sectors` — 取得所有行業分類 ⭐
-- `GET /api/sectors/<sector>/reports` — 取得指定行業的報告 ⭐
-- `GET /api/industry/data` — 行業統計數據 (ticker數+報告數) ⭐
+- `GET /api/sectors` — 取得所有行業分類
+- `GET /api/sectors/<sector>/reports` — 取得指定行業的報告
+- `GET /api/industry/data` — 行業統計數據 (ticker數+報告數)
 - `GET /api/reports` — 取得報告列表
 - `POST /api/reports/collect` — 觸發報告收集
 - `GET /api/reports/<id>` — 取得報告詳情 (含 PDF 路徑)
@@ -206,19 +214,19 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 
 ## 5. 頁面設計
 
-### 5.1 主頁面 — 即時串流 + 歸檔
+### 5.1 主頁面 — 即時串流 + 歸檔 + 多語言
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Stocker          [股票] [報告] [歸檔] [行業]       [+新增] │
+│  Stocker     [主頁] [行業] [檔案]              [中] [EN] │
 ├─────────────────────────────────────────────────────────┤
 │ ⚠️ 提醒 banner (如有未處理事件)                             │
 ├─────────────────────────────────────────────────────────┤
 │ [股票 tab]                                               │
 │ ┌─────────┬────────┬────────┬─────┬───────┬──────┬────┐ │
-│ │ Ticker  │ 即時價  │ T-1    │ 持倉│ 損益  │ 週圖 │ 歸檔│ │
+│ │ Ticker  │ 即時價  │ 漲跌%  │ 持倉│ 損益  │ 週圖 │ 歸檔│ │
 │ ├─────────┼────────┼────────┼─────┼───────┼──────┼────┤ │
-│ │ TSLA    │$419.20 │$423.70 │ 100 │+$1234 │ ~~~  │ 🗑 │ │
-│ │ Tech    │ -1.06% │        │     │ +5.2% │      │    │ │
+│ │ TSLA    │$419.20 │ -1.06% │ 100 │+$1234 │ ~~~  │ 🗑 │ │
+│ │ Tech    │        │        │     │ +5.2% │      │    │ │
 │ └─────────┴────────┴────────┴─────┴───────┴──────┴────┘ │
 │                                                          │
 │ [報告 tab]  篩選: [全部] [Technology] [Consumer] [金融]    │
@@ -235,23 +243,22 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 行業新聞頁面 ⭐
+### 5.2 行業新聞頁面
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Stocker     [Dashboard] [Industry] [Files]              │
+│  Stocker     [主頁] [行業] [檔案]              [中] [EN] │
 ├─────────────────────────────────────────────────────────┤
-│ 行業新聞                                                  │
+│ 行業新聞與報告                              [收集行業新聞] │
 │ ┌───────────────┬───────────────┬───────────────┐       │
 │ │ Technology    │ Consumer      │ Industrials   │       │
-│ │ 3 tickers     │ 1 ticker      │ 1 ticker      │       │
-│ │ 9 reports     │ 3 reports     │ 15 reports    │       │
+│ │ 3 追蹤標的    │ 1 追蹤標的     │ 1 追蹤標的     │       │
+│ │ 9 報告        │ 3 報告        │ 15 報告       │       │
 │ └───────────────┴───────────────┴───────────────┘       │
 │                                                          │
 │ [已選擇: Technology]                                      │
 │ ┌────────────────────────────────────────────────────┐  │
 │ │ 📄 NVDA 10-Q (2026-05-20)                         │  │
 │ │ 📄 NVDA 10-K (2026-02-25)                         │  │
-│ │ 📄 TSLA 10-Q (2026-04-23)                         │  │
 │ └────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -264,7 +271,6 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 │ [1M] [3M] [6M] [1Y]   指標: ☑MA ☑RSI ☑MACD ☑Volume │
 │ ┌─────────────────────────────────────────────────┐  │
 │ │          大型走勢圖 (含可選指標)                   │  │
-│ │  ──── MA5  ──── MA20  ──── MA60                │  │
 │ ├─────────────────────────────────────────────────┤  │
 │ │ ▊▊ ▊  ▊▊▊  ▊  ▊▊▊▊ ▊▊  ▊▊ (交易量副圖)        │  │
 │ └─────────────────────────────────────────────────┘  │
@@ -278,7 +284,7 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 └─────────────────────────────────────────────────────┘
 ```
 
-### 5.4 報告詳情頁 — PDF + AI 聯動 ⭐
+### 5.4 報告詳情頁 — PDF + AI 聯動
 ```
 ┌─────────────────────────────────────────────────────┐
 │ ← 返回   報告標題                            2026-06 │
@@ -290,12 +296,6 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 │  │  [PDF 原文]      │  │                            │
 │  │  支援滾動/翻頁   │  │  ▶ 2. 關聯股票分析          │
 │  │                  │  │    TSLA, NVDA...           │
-│  │                  │  │                            │
-│  │                  │  │  ▶ 3. 關鍵財務數據          │
-│  │                  │  │    營收增長...              │
-│  │                  │  │                            │
-│  │                  │  │  ▶ 4. 投資建議要點          │
-│  │                  │  │    建議買入...              │
 │  └──────────────────┘  │                            │
 │  [◀ 上一頁] [3/12] [下一頁 ▶] │                       │
 └────────────────────────┴────────────────────────────┘
@@ -303,14 +303,20 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 
 ---
 
-## 6. 數據更新策略
+## 6. 數據更新策略 — 每晚統一排程 ⭐
 
-- **即時價格:** 前端每 5 秒輪詢 `/api/tickers/stream`，後端從 yfinance 取最新價
+所有資料收集統一在每晚 20:00 由 `nightly_tasks.py` 執行：
+
+| 任務 | 說明 | 來源 |
+|------|------|------|
+| **SEC 財報下載** | 追蹤 ticker 的最新 10-K / 10-Q 年報/季報 | SEC EDGAR |
+| **行業新聞收集** | 各行業板塊的新聞及分析 | Yahoo Finance |
+| **金融機構分析報告** | 分析師評級、目標價、盈利預測 | yfinance + Yahoo Finance |
+
+其他即時更新：
+- **即時價格:** 前端每 5 秒輪詢 `/api/tickers/stream`
 - **歷史數據:** 每日首次訪問時更新，存入時序數據庫
-- **新聞/事件:** 每次訪問詳情頁時更新
-- **SEC 財報:** 每天晚上 8:00 自動從 SEC EDGAR 下載最新 10-K / 10-Q
-- **行業新聞:** 每天晚上 8:00 自動從 Yahoo Finance 收集行業新聞
-- **AI 分析:** 收集到新報告後自動觸發，結構化為標題+內容+頁碼
+- **AI 分析:** 收集到新報告後自動觸發
 
 ---
 
@@ -323,28 +329,33 @@ Stocker/
 ├── app.py              # Flask 主應用
 ├── models.py           # 核心數據庫 models (含歸檔機制)
 ├── tsdb.py             # 時序數據庫操作
+├── nightly_tasks.py    # 每晚排程統一入口 ⭐
 ├── services/
 │   ├── stock_data.py   # yfinance 數據服務
 │   ├── report_collector.py  # 報告收集
-│   ├── earnings_downloader.py  # SEC EDGAR 財報下載 ⭐
-│   ├── industry_collector.py   # 行業新聞收集 ⭐
+│   ├── earnings_downloader.py  # SEC EDGAR 財報下載
+│   ├── industry_collector.py   # 行業新聞收集
+│   ├── analyst_collector.py    # 金融機構分析報告 ⭐
 │   └── ai_analyzer.py  # AI 分析服務
 ├── static/
-│   └── css/
-│       └── style.css
+│   ├── css/
+│   │   ├── style.css
+│   │   └── i18n.css    # 語言切換器樣式
+│   └── js/
+│       └── i18n.js     # 多語言翻譯系統
 ├── templates/
-│   ├── base.html       # 基礎模板 (PDF.js CDN)
+│   ├── base.html       # 基礎模板 (PDF.js CDN + i18n)
 │   ├── index.html      # 主頁 (股票+報告+歸檔)
 │   ├── stock_detail.html
 │   ├── report_detail.html  # PDF viewer + AI 聯動
-│   ├── industry.html   # 行業新聞頁面 ⭐
+│   ├── industry.html   # 行業新聞頁面
 │   └── files.html
 ├── data/
 │   ├── stocker.db      # 核心 SQLite
 │   ├── timeseries.db   # 時序 SQLite (分離)
 │   └── files/          # 檔案儲存
 │       ├── earnings/   # SEC 財報
-│       ├── analyst_report/
+│       ├── analyst_report/  # 分析師報告
 │       ├── news/       # 行業新聞
 │       └── sec_filing/
 ├── requirements.txt
@@ -361,13 +372,27 @@ Stocker/
 - **按鈕:** 圓角藥丸形 (9999px radius)
 - **卡片:** 12px 圓角，無陰影
 - **即時更新:** 綠色閃爍動畫表示價格上漲，紅色閃爍表示下跌
+- **多語言:** 繁體中文 (預設) / English，導航欄切換
 
 ---
 
-## 9. 自動化排程
+## 9. 自動化排程 — 每晚統一執行
 
-| 時間 | 任務 | 說明 |
-|------|------|------|
-| 每天 20:00 | SEC 財報下載 | 下載所有追蹤 ticker 的最新 10-K / 10-Q |
-| 每天 20:00 | 行業新聞收集 | 從 Yahoo Finance 收集各行業新聞 |
-| 每 5 秒 | 即時價格更新 | 前端輪詢更新價格顯示 |
+| 時間 | 任務 | 腳本 | 說明 |
+|------|------|------|------|
+| 每天 20:00 | **統一排程** | `nightly_tasks.py` | 依序執行以下三項任務 |
+| | 1. SEC 財報下載 | `earnings_downloader.py` | 下載追蹤 ticker 的最新 10-K / 10-Q |
+| | 2. 行業新聞收集 | `industry_collector.py` | 從 Yahoo Finance 收集各行業新聞 |
+| | 3. 金融機構分析報告 | `analyst_collector.py` | 收集分析師評級及預測 |
+| 每 5 秒 | 即時價格更新 | 前端輪詢 | 更新價格顯示 |
+
+### 排程執行流程
+```
+nightly_tasks.py
+├── [1/3] earnings_downloader.py
+│   └── 為每個追蹤 ticker 下載 SEC 10-K / 10-Q
+├── [2/3] industry_collector.py
+│   └── 為每個行業板塊收集 Yahoo Finance 新聞
+└── [3/3] analyst_collector.py
+    └── 為每個追蹤 ticker 收集分析師評級及預測
+```
