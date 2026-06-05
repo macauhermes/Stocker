@@ -111,6 +111,15 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_events_ticker ON events(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_files_report  ON files(report_id)")
 
+        # Backward-compatible migration: add archived columns if missing
+        for col, ddl in [
+            ("archived",    "ALTER TABLE tickers ADD COLUMN archived INTEGER DEFAULT 0"),
+            ("archived_at", "ALTER TABLE tickers ADD COLUMN archived_at TEXT"),
+        ]:
+            cur.execute("SELECT * FROM pragma_table_info('tickers') WHERE name = ?", (col,))
+            if cur.fetchone() is None:
+                cur.execute(ddl)
+
         conn.commit()
     finally:
         conn.close()
@@ -121,9 +130,22 @@ def init_db():
 # ---------------------------------------------------------------------------
 
 def add_ticker(symbol: str, name: str, sector: str = None):
-    """Insert a new ticker. Returns the ticker row as dict-like."""
+    """Insert a new ticker or restore an archived one. Returns the ticker row."""
     conn = get_db()
     try:
+        existing = conn.execute(
+            "SELECT * FROM tickers WHERE UPPER(symbol) = ?", (symbol.upper(),)
+        ).fetchone()
+        if existing and existing["archived"]:
+            # Restore archived ticker, preserving shares_held and cost_basis
+            conn.execute(
+                "UPDATE tickers SET archived = 0, archived_at = NULL, name = ?, sector = ? WHERE UPPER(symbol) = ?",
+                (name, sector, symbol.upper()),
+            )
+            conn.commit()
+            return conn.execute(
+                "SELECT * FROM tickers WHERE UPPER(symbol) = ?", (symbol.upper(),)
+            ).fetchone()
         cur = conn.execute(
             "INSERT INTO tickers (symbol, name, sector) VALUES (?, ?, ?)",
             (symbol.upper(), name, sector),
@@ -135,10 +157,12 @@ def add_ticker(symbol: str, name: str, sector: str = None):
 
 
 def get_all_tickers():
-    """Return every ticker, ordered by symbol."""
+    """Return every active (non-archived) ticker, ordered by symbol."""
     conn = get_db()
     try:
-        return conn.execute("SELECT * FROM tickers ORDER BY symbol").fetchall()
+        return conn.execute(
+            "SELECT * FROM tickers WHERE archived = 0 ORDER BY symbol"
+        ).fetchall()
     finally:
         conn.close()
 
@@ -180,15 +204,65 @@ def update_ticker(symbol: str, kwargs: dict):
         conn.close()
 
 
-def delete_ticker(symbol: str):
-    """Delete a ticker by symbol. Returns True if a row was removed."""
+def archive_ticker(symbol: str):
+    """Soft-delete a ticker by setting archived=1. Returns True if updated."""
     conn = get_db()
     try:
         cur = conn.execute(
-            "DELETE FROM tickers WHERE UPPER(symbol) = ?", (symbol.upper(),)
+            "UPDATE tickers SET archived = 1, archived_at = datetime('now') WHERE UPPER(symbol) = ? AND archived = 0",
+            (symbol.upper(),),
         )
         conn.commit()
         return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def restore_ticker(symbol: str):
+    """Restore an archived ticker. Returns True if updated."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "UPDATE tickers SET archived = 0, archived_at = NULL WHERE UPPER(symbol) = ? AND archived = 1",
+            (symbol.upper(),),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def get_archived_tickers():
+    """Return every archived ticker, ordered by symbol."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM tickers WHERE archived = 1 ORDER BY symbol"
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_sectors():
+    """Return distinct sector values from active (non-archived) tickers."""
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT sector FROM tickers WHERE archived = 0 AND sector IS NOT NULL ORDER BY sector"
+        ).fetchall()
+        return [row["sector"] for row in rows]
+    finally:
+        conn.close()
+
+
+def get_tickers_by_sector(sector: str):
+    """Return active tickers in a given sector, ordered by symbol."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM tickers WHERE archived = 0 AND UPPER(sector) = UPPER(?) ORDER BY symbol",
+            (sector,),
+        ).fetchall()
     finally:
         conn.close()
 

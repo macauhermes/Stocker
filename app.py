@@ -80,6 +80,11 @@ def files_page():
     return render_template('files.html')
 
 
+@app.route('/industry')
+def industry_page():
+    return render_template('industry.html')
+
+
 # ── API: Tickers ───────────────────────────────────────────────────────
 
 @app.route('/api/tickers', methods=['GET'])
@@ -184,11 +189,112 @@ def api_update_ticker(symbol):
 
 @app.route('/api/tickers/<symbol>', methods=['DELETE'])
 def api_delete_ticker(symbol):
-    """Delete a tracked ticker."""
-    deleted = models.delete_ticker(symbol.upper())
+    """Archive a tracked ticker (soft delete)."""
+    deleted = models.archive_ticker(symbol.upper())
     if not deleted:
         return jsonify({'error': f'Ticker {symbol} not found'}), 404
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'action': 'archived'})
+
+
+@app.route('/api/tickers/<symbol>/restore', methods=['POST'])
+def api_restore_ticker(symbol):
+    """Restore an archived ticker."""
+    restored = models.restore_ticker(symbol.upper())
+    if not restored:
+        return jsonify({'error': f'Archived ticker {symbol} not found'}), 404
+    return jsonify({'success': True, 'action': 'restored'})
+
+
+@app.route('/api/tickers/archived', methods=['GET'])
+def api_get_archived_tickers():
+    """Return all archived tickers."""
+    tickers = models.get_archived_tickers()
+    return jsonify([dict(t) for t in tickers])
+
+
+# ── API: Sectors ───────────────────────────────────────────────────────
+
+@app.route('/api/sectors', methods=['GET'])
+def api_get_sectors():
+    """Return distinct sectors from active tickers."""
+    sectors = models.get_sectors()
+    return jsonify(sectors)
+
+
+@app.route('/api/sectors/<sector>/reports', methods=['GET'])
+def api_sector_reports(sector):
+    """Return reports relevant to tickers in a given sector."""
+    tickers = models.get_tickers_by_sector(sector)
+    if not tickers:
+        return jsonify([])
+
+    symbols = [t['symbol'] for t in tickers]
+
+    # Search reports whose title or content mentions any of the sector's ticker symbols
+    from models import get_db
+    conn = get_db()
+    try:
+        # Build WHERE clauses for each symbol
+        conditions = []
+        params = []
+        for sym in symbols:
+            conditions.append("(r.title LIKE ? OR r.content LIKE ?)")
+            params.extend([f'%{sym}%', f'%{sym}%'])
+
+        where_clause = " OR ".join(conditions)
+        query = f"""
+            SELECT DISTINCT r.* FROM reports r
+            WHERE ({where_clause})
+            AND r.category IN ('news', 'analyst_report', 'earnings')
+            ORDER BY r.created_at DESC
+            LIMIT 50
+        """
+        reports = conn.execute(query, params).fetchall()
+        return jsonify([dict(r) for r in reports])
+    finally:
+        conn.close()
+
+
+@app.route('/api/industry/<sector>/news', methods=['GET'])
+def api_industry_news(sector):
+    """Return industry-level news for a sector. (Stub — returns empty list for now.)"""
+    return jsonify([])
+
+
+@app.route('/api/industry/data', methods=['GET'])
+def api_industry_data():
+    """Return sector summary with ticker and report counts."""
+    sectors = models.get_sectors()
+    result = []
+    for sector in sectors:
+        tickers = models.get_tickers_by_sector(sector)
+        ticker_count = len(tickers)
+        # Count reports mentioning any ticker in this sector
+        symbols = [t['symbol'] for t in tickers]
+        report_count = 0
+        if symbols:
+            from models import get_db
+            conn = get_db()
+            try:
+                conditions = []
+                params = []
+                for sym in symbols:
+                    conditions.append("(r.title LIKE ? OR r.content LIKE ?)")
+                    params.extend([f'%{sym}%', f'%{sym}%'])
+                where_clause = " OR ".join(conditions)
+                row = conn.execute(
+                    f"SELECT COUNT(DISTINCT r.id) as cnt FROM reports r WHERE ({where_clause})",
+                    params
+                ).fetchone()
+                report_count = row['cnt'] if row else 0
+            finally:
+                conn.close()
+        result.append({
+            'name': sector,
+            'ticker_count': ticker_count,
+            'report_count': report_count,
+        })
+    return jsonify({'sectors': result})
 
 
 # ── API: Stock Data ────────────────────────────────────────────────────

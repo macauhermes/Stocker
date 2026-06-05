@@ -27,10 +27,25 @@
         <button class="btn-pill btn-range" data-range="1y">1Y</button>
     </div>
 
+    <!-- Indicator Toggle Panel -->
+    <div class="indicator-panel" id="indicator-panel">
+        <label class="indicator-toggle"><input type="checkbox" data-indicator="ma5" checked> MA5</label>
+        <label class="indicator-toggle"><input type="checkbox" data-indicator="ma20" checked> MA20</label>
+        <label class="indicator-toggle"><input type="checkbox" data-indicator="ma60" checked> MA60</label>
+        <label class="indicator-toggle"><input type="checkbox" data-indicator="rsi"> RSI</label>
+        <label class="indicator-toggle"><input type="checkbox" data-indicator="macd"> MACD</label>
+        <label class="indicator-toggle"><input type="checkbox" data-indicator="volume"> Volume</label>
+    </div>
+
     <!-- Price Chart -->
     <div class="chart-container">
         <canvas id="price-chart"></canvas>
         <div class="chart-loading" id="chart-loading"><div class="spinner-sm"></div> Loading chart...</div>
+    </div>
+
+    <!-- Volume Chart -->
+    <div class="chart-container chart-container-volume" id="volume-chart-container" style="display:none;">
+        <canvas id="volume-chart"></canvas>
     </div>
 
     <!-- Info Grid -->
