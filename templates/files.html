@@ -9,11 +9,11 @@
 
     <!-- Category Filter Tabs -->
     <div class="filter-tabs" id="filter-tabs">
-        <button class="btn-pill btn-filter active" data-category="all">全部</button>
-        <button class="btn-pill btn-filter" data-category="earnings">Earnings</button>
-        <button class="btn-pill btn-filter" data-category="analyst_report">Analyst Report</button>
-        <button class="btn-pill btn-filter" data-category="news">News</button>
-        <button class="btn-pill btn-filter" data-category="sec_filing">SEC Filing</button>
+        <button class="btn-pill btn-filter active" data-category="all" data-i18n="files.cat.all">全部</button>
+        <button class="btn-pill btn-filter" data-category="earnings" data-i18n="files.cat.earnings">Earnings</button>
+        <button class="btn-pill btn-filter" data-category="analyst_report" data-i18n="files.cat.analyst_report">Analyst Report</button>
+        <button class="btn-pill btn-filter" data-category="news" data-i18n="files.cat.news">News</button>
+        <button class="btn-pill btn-filter" data-category="sec_filing" data-i18n="files.cat.sec_filing">SEC Filing</button>
     </div>
 
     <!-- File Table -->
@@ -21,15 +21,15 @@
         <table class="file-table">
             <thead>
                 <tr>
-                    <th>Filename</th>
-                    <th>Category</th>
-                    <th>Size</th>
-                    <th>Date</th>
-                    <th>Action</th>
+                    <th data-i18n="files.filename">Filename</th>
+                    <th data-i18n="common.category">Category</th>
+                    <th data-i18n="common.size">Size</th>
+                    <th data-i18n="common.date">Date</th>
+                    <th data-i18n="common.action">Action</th>
                 </tr>
             </thead>
             <tbody id="file-table-body">
-                <tr><td colspan="5" class="loading-cell"><div class="spinner-sm"></div> Loading...</td></tr>
+                <tr><td colspan="5" class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></td></tr>
             </tbody>
         </table>
     </div>
@@ -61,7 +61,7 @@
         } catch (err) {
             console.error(err);
             document.getElementById('file-table-body').innerHTML =
-                '<tr><td colspan="5" class="error-cell">⚠️ 載入檔案列表失敗</td></tr>';
+                '<tr><td colspan="5" class="error-cell">⚠️ ' + (typeof t !== 'undefined' ? t('files.load_error') : '載入檔案列表失敗') + '</td></tr>';
         }
     }
 
@@ -92,7 +92,7 @@
                 <td class="file-size">${size}</td>
                 <td class="file-date">${date}</td>
                 <td>
-                    <a href="/api/files/${f.id}/download" class="btn-pill btn-pill-sm btn-download" download>下載</a>
+                    <a href="/api/files/${f.id}/download" class="btn-pill btn-pill-sm btn-download" download data-i18n="files.download">下載</a>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -108,10 +108,10 @@
 
     function formatCategory(cat) {
         const map = {
-            'earnings': 'Earnings',
-            'analyst_report': 'Analyst',
-            'news': 'News',
-            'sec_filing': 'SEC Filing'
+            'earnings': typeof t !== 'undefined' ? t('files.cat.earnings') : 'Earnings',
+            'analyst_report': typeof t !== 'undefined' ? t('files.cat.analyst_report') : 'Analyst',
+            'news': typeof t !== 'undefined' ? t('files.cat.news') : 'News',
+            'sec_filing': typeof t !== 'undefined' ? t('files.cat.sec_filing') : 'SEC Filing'
         };
         return map[cat] || cat || '—';
     }

@@ -5,10 +5,10 @@
 <div class="detail-page" id="detail-page">
     <!-- Back Button + Header -->
     <div class="detail-header">
-        <a href="/" class="btn-pill btn-back">← 返回</a>
+        <a href="/" class="btn-pill btn-back" data-i18n="detail.back">← 返回</a>
         <div class="detail-title">
             <h1 id="stock-symbol">{{ symbol }}</h1>
-            <span class="stock-name" id="stock-name">Loading...</span>
+            <span class="stock-name" id="stock-name" data-i18n="common.loading">Loading...</span>
         </div>
     </div>
 
@@ -16,7 +16,7 @@
     <div id="event-banner" class="event-banner" style="display:none;">
         <span class="event-icon">⚠️</span>
         <span id="event-banner-text"></span>
-        <button class="btn-pill btn-pill-sm btn-dismiss" id="btn-dismiss-event" onclick="dismissEvent()">已知悉</button>
+        <button class="btn-pill btn-pill-sm btn-dismiss" id="btn-dismiss-event" onclick="dismissEvent()" data-i18n="detail.event_dismiss">已知悉</button>
     </div>
 
     <!-- Time Range Buttons -->
@@ -40,7 +40,7 @@
     <!-- Price Chart -->
     <div class="chart-container">
         <canvas id="price-chart"></canvas>
-        <div class="chart-loading" id="chart-loading"><div class="spinner-sm"></div> Loading chart...</div>
+        <div class="chart-loading" id="chart-loading"><div class="spinner-sm"></div> <span data-i18n="detail.chart_loading">Loading chart...</span></div>
     </div>
 
     <!-- Volume Chart -->
@@ -74,9 +74,9 @@
 
     <!-- News List -->
     <div class="section">
-        <h3 class="section-title">最近新聞</h3>
+        <h3 class="section-title" data-i18n="detail.news_title">最近新聞</h3>
         <div class="news-list" id="news-list">
-            <div class="loading-cell"><div class="spinner-sm"></div> Loading...</div>
+            <div class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></div>
         </div>
     </div>
 
@@ -85,14 +85,14 @@
         <h3 class="section-title">持倉資訊</h3>
         <div class="holdings-form">
             <div class="form-group">
-                <label for="input-shares">持倉數量</label>
+                <label for="input-shares" data-i18n="detail.shares_label">持倉數量</label>
                 <input type="number" id="input-shares" class="input-field" placeholder="0" min="0" step="1">
             </div>
             <div class="form-group">
-                <label for="input-cost-basis">成本價</label>
+                <label for="input-cost-basis" data-i18n="detail.cost_label">成本價</label>
                 <input type="number" id="input-cost-basis" class="input-field" placeholder="0.00" min="0" step="0.01">
             </div>
-            <button class="btn-pill btn-primary" id="btn-save-holdings" onclick="saveHoldings()">保存</button>
+            <button class="btn-pill btn-primary" id="btn-save-holdings" onclick="saveHoldings()" data-i18n="detail.save_holdings">保存</button>
         </div>
     </div>
 </div>
@@ -292,7 +292,7 @@
             item.className = 'news-item';
             item.innerHTML = `
                 <div class="news-content">
-                    ${n.link ? '<a href="' + n.link + '" target="_blank" class="news-title">' + (n.title || 'Untitled') + '</a>' : '<span class="news-title">' + (n.title || 'Untitled') + '</span>'}
+                    ${n.link ? '<a href="' + n.link + '" target="_blank" class="news-title">' + (n.title || (typeof t !== 'undefined' ? t('common.untitled') : 'Untitled')) + '</a>' : '<span class="news-title">' + (n.title || (typeof t !== 'undefined' ? t('common.untitled') : 'Untitled')) + '</span>'}
                     <span class="news-source">${n.publisher || n.source || '—'}</span>
                 </div>
                 <span class="news-date">${date}</span>
@@ -353,5 +353,8 @@
     // Init
     loadDetail();
     loadChartData();
+
+    // Re-render on language change
+    window.addEventListener('langchange', () => loadDetail());
 </script>
 {% endblock %}

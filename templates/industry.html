@@ -4,23 +4,23 @@
 
 {% block content %}
 <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-    <h1 style="color:var(--text); font-size:1.6rem; font-weight:600;">Industry News &amp; Reports</h1>
+    <h1 style="color:var(--text); font-size:1.6rem; font-weight:600;" data-i18n='industry.title'>Industry News &amp; Reports</h1>
     <button id="btn-collect" class="btn btn-primary" onclick="collectNews()">
         <span id="collect-spinner" class="spinner-sm" style="display:none;"></span>
-        Collect Industry News
+        <span id="collect-label" data-i18n='industry.collect'>Collect Industry News</span>
     </button>
 </div>
 
 <!-- Sector cards grid -->
 <div id="sectors-grid" class="sectors-grid">
-    <div class="empty-state">Loading sectors…</div>
+        <div class="empty-state" data-i18n='common.loading'>Loading sectors…</div>
 </div>
 
 <!-- Reports panel (hidden until a sector is selected) -->
 <div id="reports-panel" class="reports-panel" style="display:none;">
     <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h2 id="reports-title" style="color:var(--text); font-size:1.2rem; font-weight:600;"></h2>
-        <button class="btn btn-secondary" onclick="closeReports()">✕ Close</button>
+        <button class="btn btn-secondary" onclick="closeReports()" data-i18n='industry.close'>✕ Close</button>
     </div>
     <div id="reports-list" class="reports-list"></div>
 </div>
@@ -196,6 +196,12 @@
     // ── Load sector data on page load ──────────────────────────────────
     document.addEventListener('DOMContentLoaded', loadSectors);
 
+    // ── Reload on language change ──────────────────────────────────
+    document.addEventListener('langchange', () => {
+        loadSectors();
+        if (activeSector) selectSector(activeSector);
+    });
+
     async function loadSectors() {
         try {
             const res = await fetch('/api/industry/data');
@@ -205,14 +211,14 @@
         } catch (e) {
             console.error('Failed to load sectors:', e);
             document.getElementById('sectors-grid').innerHTML =
-                '<div class="empty-state">Failed to load sectors.</div>';
+                '<div class="empty-state">' + t('industry.load_error') + '</div>';
         }
     }
 
     function renderSectors() {
         const grid = document.getElementById('sectors-grid');
         if (!allSectors.length) {
-            grid.innerHTML = '<div class="empty-state">No sectors found. Add some tickers first.</div>';
+            grid.innerHTML = '<div class="empty-state">' + t('industry.no_sectors') + '</div>';
             return;
         }
         grid.innerHTML = allSectors.map(s => `
@@ -220,8 +226,8 @@
                  onclick="selectSector('${escHtml(s.name)}')">
                 <div class="sector-name" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
                 <div class="sector-meta">
-                    <span>📊 <span class="badge">${s.ticker_count} ticker${s.ticker_count !== 1 ? 's' : ''}</span></span>
-                    <span>📰 <span class="badge">${s.report_count} report${s.report_count !== 1 ? 's' : ''}</span></span>
+                    <span>📊 <span class="badge">${s.ticker_count} ${t('industry.tickers')}</span></span>
+                    <span>📰 <span class="badge">${s.report_count} ${t('industry.reports')}</span></span>
                 </div>
             </div>
         `).join('');
@@ -236,8 +242,8 @@
         const title = document.getElementById('reports-title');
         const list = document.getElementById('reports-list');
 
-        title.textContent = sectorName + ' — Reports';
-        list.innerHTML = '<div class="empty-state">Loading reports…</div>';
+        title.textContent = sectorName + ' — ' + t('industry.reports');
+        list.innerHTML = '<div class="empty-state">' + t('common.loading') + '</div>';
         panel.style.display = 'block';
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -247,14 +253,14 @@
             renderReports(reports);
         } catch (e) {
             console.error('Failed to load reports:', e);
-            list.innerHTML = '<div class="empty-state">Failed to load reports.</div>';
+            list.innerHTML = '<div class="empty-state">' + t('industry.report_error') + '</div>';
         }
     }
 
     function renderReports(reports) {
         const list = document.getElementById('reports-list');
         if (!reports.length) {
-            list.innerHTML = '<div class="empty-state">No reports found for this sector yet.</div>';
+            list.innerHTML = '<div class="empty-state">' + t('industry.no_reports') + '</div>';
             return;
         }
 
@@ -291,6 +297,7 @@
         const spinner = document.getElementById('collect-spinner');
         btn.disabled = true;
         spinner.style.display = 'inline-block';
+        document.getElementById('collect-label').textContent = t('industry.collecting');
 
         try {
             const res = await fetch('/api/reports/collect', { method: 'POST' });
@@ -307,6 +314,7 @@
         } finally {
             btn.disabled = false;
             spinner.style.display = 'none';
+            document.getElementById('collect-label').textContent = t('industry.collect');
         }
     }
 
