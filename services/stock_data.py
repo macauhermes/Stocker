@@ -17,11 +17,10 @@ from models import (
     get_db,
     get_ticker_by_symbol,
     create_ticker,
-    get_daily_prices,
-    save_daily_prices,
     get_events_by_ticker,
     create_event,
 )
+import tsdb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -378,16 +377,11 @@ def refresh_ticker_data(symbol: str) -> dict:
         # ── Fetch & save daily prices (1 year) ────────────────────────
         historical = fetch_historical_prices(symbol, period="1y")
         if historical:
-            existing = get_daily_prices(ticker_id)
-            existing_dates = set()
-            if existing:
-                for row in existing:
-                    d = row["date"] if isinstance(row, dict) else row.date
-                    existing_dates.add(str(d))
+            existing_dates = tsdb.get_existing_dates(ticker_id)
 
             new_rows = [r for r in historical if r["date"] not in existing_dates]
             if new_rows:
-                save_daily_prices(ticker_id, new_rows)
+                tsdb.save_daily_prices(ticker_id, new_rows)
                 summary["prices_saved"] = len(new_rows)
                 logger.info(
                     "refresh_ticker_data(%s): saved %d new price rows", symbol, len(new_rows)

@@ -20,6 +20,7 @@ from flask import (
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import models
+import tsdb
 from services.stock_data import (
     fetch_stock_info, fetch_historical_prices, fetch_chart_data,
     fetch_news, fetch_next_earnings, refresh_ticker_data
@@ -56,6 +57,7 @@ def cache_set(key, value):
 
 # ── Initialize DB on startup ──────────────────────────────────────────
 models.init_db()
+tsdb.init_tsdb()
 
 
 # ── Page Routes ────────────────────────────────────────────────────────
