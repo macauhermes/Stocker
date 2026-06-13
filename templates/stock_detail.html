@@ -37,11 +37,21 @@
                 <span class="material-icons-outlined">candlestick_chart</span>
                 <span data-i18n="detail.indicators">技術指標</span>
             </div>
-            <div class="chart-range-btns">
-                <button class="chart-range-btn active" data-range="1m" onclick="setRange('1m')">1M</button>
-                <button class="chart-range-btn" data-range="3m" onclick="setRange('3m')">3M</button>
-                <button class="chart-range-btn" data-range="6m" onclick="setRange('6m')">6M</button>
-                <button class="chart-range-btn" data-range="1y" onclick="setRange('1y')">1Y</button>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div class="chart-type-btns" style="display:flex; gap:2px; background:var(--bg); border-radius:6px; padding:2px;">
+                    <button class="chart-type-btn active" data-type="line" onclick="setChartType('line')" title="折線圖" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
+                        <span class="material-icons-outlined" style="font-size:16px;">show_chart</span>
+                    </button>
+                    <button class="chart-type-btn" data-type="candlestick" onclick="setChartType('candlestick')" title="陰陽燭" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
+                        <span class="material-icons-outlined" style="font-size:16px;">candlestick_chart</span>
+                    </button>
+                </div>
+                <div class="chart-range-btns">
+                    <button class="chart-range-btn active" data-range="1m" onclick="setRange('1m')">1M</button>
+                    <button class="chart-range-btn" data-range="3m" onclick="setRange('3m')">3M</button>
+                    <button class="chart-range-btn" data-range="6m" onclick="setRange('6m')">6M</button>
+                    <button class="chart-range-btn" data-range="1y" onclick="setRange('1y')">1Y</button>
+                </div>
             </div>
         </div>
         
@@ -150,6 +160,18 @@
     let currentEventId = null;
     let chartData = null;
     let chartZoom = { startIdx: 0, endIdx: 0, isDragging: false, dragStartX: 0, panStartIdx: 0 };
+    let chartType = 'line';  // 'line' or 'candlestick'
+
+    // Chart type switching
+    function setChartType(type) {
+        chartType = type;
+        document.querySelectorAll('.chart-type-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.type === type);
+            b.style.background = b.dataset.type === type ? 'var(--card)' : 'transparent';
+            b.style.color = b.dataset.type === type ? 'var(--text)' : 'var(--text-muted)';
+        });
+        if (chartData) renderChart(chartData);
+    }
 
     // ── Lightweight crosshair plugin (replaces chartjs-plugin-zoom + hammerjs) ──
     const crosshairPlugin = {
@@ -176,6 +198,42 @@
                 ctx.stroke();
             }
             ctx.restore();
+        }
+    };
+
+    // ── Custom candlestick plugin (draws OHLC candles on bar chart) ──
+    const candlestickPlugin = {
+        id: 'candlestick',
+        afterDatasetDraw(chart, args) {
+            const meta = args.meta;
+            if (chart.data.datasets[args.index]?.label !== '__candle_body__') return;
+            const ctx = chart.ctx;
+            const dataset = chart.data.datasets[args.index];
+            const ohlcData = dataset._ohlc;
+            if (!ohlcData) return;
+            const yScale = chart.scales.y;
+            meta.data.forEach((bar, i) => {
+                const d = ohlcData[i];
+                if (!d || d.h == null || d.l == null) return;
+                const x = bar.x;
+                const yHigh = yScale.getPixelForValue(d.h);
+                const yLow = yScale.getPixelForValue(d.l);
+                const bullish = d.c >= d.o;
+                ctx.save();
+                ctx.strokeStyle = bullish ? '#00c853' : '#ff1744';
+                ctx.lineWidth = 1;
+                // Upper wick
+                ctx.beginPath();
+                ctx.moveTo(x, yHigh);
+                ctx.lineTo(x, Math.min(bar.y, bar.base));
+                ctx.stroke();
+                // Lower wick
+                ctx.beginPath();
+                ctx.moveTo(x, Math.max(bar.y, bar.base));
+                ctx.lineTo(x, yLow);
+                ctx.stroke();
+                ctx.restore();
+            });
         }
     };
 
@@ -312,57 +370,103 @@
         const ma20 = getVisibleSlice(data.ma20 || []);
         const ma60 = getVisibleSlice(data.ma60 || []);
 
-        const datasets = [
-            {
-                label: 'Price',
-                data: prices,
-                borderColor: '#ffffff',
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.1,
-                fill: false
-            }
-        ];
-
-        // Check indicator toggles
+        // Build indicator datasets (shared by both modes)
+        const indicatorDatasets = [];
         if (document.querySelector('[data-indicator="ma5"]').checked && ma5.length > 0) {
-            datasets.push({
-                label: 'MA5',
-                data: ma5,
-                borderColor: '#00c853',
-                borderWidth: 1,
-                pointRadius: 0,
-                tension: 0.1,
-                fill: false
+            indicatorDatasets.push({
+                label: 'MA5', data: ma5, type: 'line',
+                borderColor: '#00c853', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false
             });
         }
         if (document.querySelector('[data-indicator="ma20"]').checked && ma20.length > 0) {
-            datasets.push({
-                label: 'MA20',
-                data: ma20,
-                borderColor: '#2979ff',
-                borderWidth: 1,
-                pointRadius: 0,
-                tension: 0.1,
-                fill: false
+            indicatorDatasets.push({
+                label: 'MA20', data: ma20, type: 'line',
+                borderColor: '#2979ff', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false
             });
         }
         if (document.querySelector('[data-indicator="ma60"]').checked && ma60.length > 0) {
-            datasets.push({
-                label: 'MA60',
-                data: ma60,
-                borderColor: '#ff9100',
-                borderWidth: 1,
-                pointRadius: 0,
-                tension: 0.1,
-                fill: false
+            indicatorDatasets.push({
+                label: 'MA60', data: ma60, type: 'line',
+                borderColor: '#ff9100', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false
             });
         }
 
+        let datasets, chartJsType, chartPlugins, tooltipCallback;
+
+        if (chartType === 'candlestick' && data.prices_full) {
+            // ── Candlestick mode ──
+            const pf = data.prices_full;
+            const openArr = getVisibleSlice(pf.open || pf.close || []);
+            const highArr = getVisibleSlice(pf.high || pf.close || []);
+            const lowArr = getVisibleSlice(pf.low || pf.close || []);
+            const closeArr = getVisibleSlice(pf.close || []);
+
+            // Floating bar data: [min(open,close), max(open,close)] per candle
+            const candleData = openArr.map((o, i) => {
+                const c = closeArr[i];
+                if (o == null || c == null) return null;
+                return [Math.min(o, c), Math.max(o, c)];
+            });
+
+            // Color per candle: green if close >= open, red otherwise
+            const bgColors = openArr.map((o, i) => {
+                const c = closeArr[i];
+                return (c >= o) ? 'rgba(0,200,83,0.7)' : 'rgba(255,23,68,0.7)';
+            });
+            const borderColors = openArr.map((o, i) => {
+                const c = closeArr[i];
+                return (c >= o) ? '#00c853' : '#ff1744';
+            });
+
+            // OHLC data for wick plugin
+            const ohlcData = labels.map((_, i) => ({
+                o: openArr[i], h: highArr[i], l: lowArr[i], c: closeArr[i]
+            }));
+
+            datasets = [
+                {
+                    label: '__candle_body__', data: candleData, _ohlc: ohlcData,
+                    backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1,
+                    barPercentage: 0.6, categoryPercentage: 0.8,
+                    hidden: false
+                },
+                ...indicatorDatasets
+            ];
+            chartJsType = 'bar';
+            chartPlugins = [crosshairPlugin, candlestickPlugin];
+            tooltipCallback = {
+                label: (ctx) => {
+                    if (ctx.dataset.label === '__candle_body__') {
+                        const d = ohlcData[ctx.dataIndex];
+                        if (!d) return '';
+                        return [
+                            `開: $${d.o?.toFixed(2)}`, `高: $${d.h?.toFixed(2)}`,
+                            `低: $${d.l?.toFixed(2)}`, `收: $${d.c?.toFixed(2)}`
+                        ];
+                    }
+                    return `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`;
+                }
+            };
+        } else {
+            // ── Line mode (default) ──
+            datasets = [
+                {
+                    label: 'Price', data: prices,
+                    borderColor: '#ffffff', borderWidth: 2, pointRadius: 0, tension: 0.1, fill: false
+                },
+                ...indicatorDatasets
+            ];
+            chartJsType = 'line';
+            chartPlugins = [crosshairPlugin];
+            tooltipCallback = {
+                label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`
+            };
+        }
+
         priceChart = new Chart(ctx, {
-            type: 'line',
+            type: chartJsType,
             data: { labels: labels, datasets: datasets },
-            plugins: [crosshairPlugin],
+            plugins: chartPlugins,
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -375,7 +479,8 @@
                             color: '#8888a0',
                             font: { family: 'Inter', size: 10 },
                             boxWidth: 12,
-                            padding: 8
+                            padding: 8,
+                            filter: (item) => item.text !== '__candle_body__'
                         }
                     },
                     tooltip: {
@@ -388,7 +493,7 @@
                         bodyFont: { family: 'JetBrains Mono', size: 11 },
                         callbacks: {
                             title: (items) => items[0]?.label || '',
-                            label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`
+                            ...tooltipCallback
                         }
                     },
                 },
