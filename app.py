@@ -825,6 +825,21 @@ def api_refresh_interval():
     return jsonify({'interval': interval, 'reason': reason, 'et_time': et.strftime('%H:%M ET')})
 
 
+# ── API: Nightly historical price refresh ──────────────────────────────
+
+@app.route('/api/nightly-refresh', methods=['POST'])
+def api_nightly_refresh():
+    """Trigger 5-year historical price refresh for all tickers (manual)."""
+    try:
+        from services.nightly_refresher import refresh_all_tickers
+        period = request.json.get('period', '5y') if request.is_json else '5y'
+        result = refresh_all_tickers(period=period, sleep_between=1.0)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Nightly refresh failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # ── API: SSE stream of live prices (for future SSE client) ────────────
 
 @app.route('/api/stream/tickers')

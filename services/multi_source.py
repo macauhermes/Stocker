@@ -376,9 +376,11 @@ def fetch_with_fallback(symbol, period="1y"):
     """
     # Map period to yfinance/yahoo range string
     range_map = {"1mo": "1mo", "3mo": "3mo", "6mo": "6mo", "1y": "1y",
+                 "2y": "2y", "5y": "5y", "10y": "10y", "max": "max",
                  "5d": "5d", "1m": "1mo", "3m": "3mo", "6m": "6mo"}
     yf_period = range_map.get(period, period)
-    days_map = {"5d": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365}
+    days_map = {"5d": 7, "1mo": 30, "3mo": 90, "6mo": 180, "1y": 365,
+                "2y": 730, "5y": 1825, "10y": 3650, "max": 36500}
     days = days_map.get(yf_period, 365)
 
     # 0. Custom sources first

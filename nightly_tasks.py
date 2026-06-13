@@ -70,6 +70,19 @@ def run_nightly():
         results["tasks"]["analyst"] = {"error": str(e)}
         logger.error("[3/3] 分析報告收集失敗: %s", e)
 
+    # ── Task 4: Nightly Historical Price Refresh (5y) ────────────
+    logger.info("=" * 50)
+    logger.info("[4/4] 開始刷新 5 年歷史價格...")
+    logger.info("=" * 50)
+    try:
+        from services.nightly_refresher import refresh_all_tickers
+        r4 = refresh_all_tickers(period="5y", sleep_between=2.0)
+        results["tasks"]["refresher"] = r4
+        logger.info("[4/4] 歷史價格刷新完成: %d 行新增, %d 錯誤", r4.get("total_new", 0), r4.get("errors", 0))
+    except Exception as e:
+        results["tasks"]["refresher"] = {"error": str(e)}
+        logger.error("[4/4] 歷史價格刷新失敗: %s", e)
+
     # ── Summary ────────────────────────────────────────────────
     results["finished_at"] = datetime.now().isoformat()
 
