@@ -111,10 +111,23 @@ def _detect_date(s):
 # ──────────────────────────────────────────────────────────────────────
 
 def from_yfinance(symbol, period="1y"):
-    """Wrap the existing yfinance-based fetchers."""
+    """Direct yfinance call — bypasses fetch_historical_prices to avoid recursion."""
     try:
-        from services.stock_data import fetch_historical_prices
-        rows = fetch_historical_prices(symbol, period=period)
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period, auto_adjust=True)
+        if df.empty:
+            return None
+        rows = []
+        for idx, row in df.iterrows():
+            rows.append({
+                "date": idx.strftime("%Y-%m-%d"),
+                "open": _round_safe(row.get("Open")),
+                "high": _round_safe(row.get("High")),
+                "low": _round_safe(row.get("Low")),
+                "close": _round_safe(row.get("Close")),
+                "volume": int(row.get("Volume", 0)) if pd.notna(row.get("Volume")) else 0,
+            })
         if rows:
             return {"source": "yfinance", "rows": rows}
     except Exception as exc:
