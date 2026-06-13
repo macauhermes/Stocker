@@ -3,7 +3,7 @@
 ## 當前狀態（截至最後一次手動執行 2026-06-13）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e406d8 (v3.2)
-**Latest commit**: a16585a [P1] nightly_refresher — auto-refresh 5y historical prices
+**Latest commit**: f0e4b2a [P2] i18n 補完 — 全部頁面支援中英翻譯
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -40,7 +40,7 @@
 - [x] 將 stock_detail.html chart 改用線上 plugin zoom + crosshair plugin (而非 chartjs-plugin-zoom) (commit 895af1c)
 - [x] Add `candlestick` toggle (陰陽燭 vs 折線) (commit 19e2f12)
 - [x] Add `compare` mode (兩股疊加圖) (commit f2a302b)
-- [ ] Add i18n 補完 (en 翻譯)
+- [x] Add i18n 補完 (en 翻譯) (commit f0e4b2a)
 - [ ] 加 unit tests (pytest) for multi_source.py
 
 ### P3 - 優化
