@@ -355,9 +355,16 @@ def api_stock_chart(symbol):
         # Flatten the structure for the template
         prices_dict = raw.get('prices', {})
         indicators = raw.get('indicators', {})
+        # Support both dict (from multi_source) and legacy list
+        if isinstance(prices_dict, list):
+            # Legacy flat list — treat as close prices
+            close_prices = prices_dict
+        else:
+            close_prices = prices_dict.get('close', [])
         return jsonify({
             'dates': raw.get('dates', []),
-            'prices': prices_dict.get('close', []),
+            'prices': close_prices,
+            'prices_full': prices_dict,  # {open, high, low, close, volume} if available
             'ma5': indicators.get('ma5', []),
             'ma20': indicators.get('ma20', []),
             'ma60': indicators.get('ma60', []),
@@ -365,6 +372,7 @@ def api_stock_chart(symbol):
             'macd': indicators.get('macd', []),
             'macd_signal': indicators.get('macd_signal', []),
             'macd_hist': indicators.get('macd_hist', []),
+            'source': raw.get('source'),  # data source indicator
         })
     except Exception as e:
         logger.error(f"Error fetching chart data for {symbol}: {e}")

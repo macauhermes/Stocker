@@ -143,31 +143,17 @@ def fetch_historical_prices(symbol: str, period: str = "1mo") -> list[dict]:
     """
     Return a list of dicts with keys:
       date, open, high, low, close, volume
+    Uses multi-source fallback chain (yfinance → Yahoo → Stooq → CoinGecko → custom).
     """
+    from services.multi_source import fetch_with_fallback
     try:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, auto_adjust=True)
-
-        if df.empty:
-            logger.warning("fetch_historical_prices(%s) — no data returned", symbol)
-            return []
-
-        records = []
-        for idx, row in df.iterrows():
-            records.append(
-                {
-                    "date": idx.strftime("%Y-%m-%d"),
-                    "open": _round_safe(row.get("Open")),
-                    "high": _round_safe(row.get("High")),
-                    "low": _round_safe(row.get("Low")),
-                    "close": _round_safe(row.get("Close")),
-                    "volume": int(row.get("Volume", 0)) if pd.notna(row.get("Volume")) else 0,
-                }
-            )
-
-        logger.info("fetch_historical_prices(%s, %s) -> %d rows", symbol, period, len(records))
-        return records
-
+        result = fetch_with_fallback(symbol, period)
+        if result and result.get("rows"):
+            logger.info("fetch_historical_prices(%s, %s) -> %d rows [%s]",
+                        symbol, period, len(result["rows"]), result.get("source", "?"))
+            return result["rows"]
+        logger.warning("fetch_historical_prices(%s, %s) — all sources returned empty", symbol, period)
+        return []
     except Exception as exc:
         logger.error("fetch_historical_prices(%s) failed: %s", symbol, exc)
         return []
@@ -193,23 +179,39 @@ def fetch_chart_data(symbol: str, range: str = "3m") -> dict:
       {
         "dates": [...],
         "prices": {"open":[], "high":[], "low":[], "close":[], "volume":[]},
-        "indicators": {"ma5":[], "ma20":[], "ma60":[], "rsi14":[], "macd":[], "macd_signal":[], "macd_hist":[]}
+        "indicators": {"ma5":[], "ma20":[], "ma60":[], "rsi14":[], "macd":[], "macd_signal":[], "macd_hist":[]},
+        "source": "yfinance|yahoo_direct|stooq|coingecko|custom:..."
       }
     """
     try:
         period = _RANGE_MAP.get(range, range)
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, auto_adjust=True)
+        # Use multi-source fallback instead of direct yfinance call
+        from services.multi_source import fetch_with_fallback
+        result = fetch_with_fallback(symbol, period)
+        if not result or not result.get("rows"):
+            logger.warning("fetch_chart_data(%s) — all sources empty", symbol)
+            return {"dates": [], "prices": {}, "indicators": {}, "source": None}
 
-        if df.empty:
-            logger.warning("fetch_chart_data(%s) — empty dataframe", symbol)
-            return {"dates": [], "prices": {}, "indicators": {}}
+        rows = result["rows"]
+        source = result.get("source", "unknown")
+
+        # Build DataFrame for technical indicators
+        df = pd.DataFrame(rows)
+        # Ensure correct column order
+        for col in ("open", "high", "low", "close"):
+            if col not in df.columns:
+                df[col] = df.get("close")  # fallback
+        df["Volume"] = df.get("volume", 0)
+        df = df.sort_values("date").reset_index(drop=True)
+        df.index = pd.to_datetime(df["date"])
 
         df = calculate_indicators(df)
 
-        dates = [idx.strftime("%Y-%m-%d") for idx in df.index]
+        dates = df["date"].tolist() if "date" in df.columns else [d.strftime("%Y-%m-%d") for d in df.index]
 
         def _col(col):
+            if col not in df.columns:
+                return [None] * len(df)
             return [None if pd.isna(v) else _round_safe(v) for v in df[col]]
 
         prices = {
