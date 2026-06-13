@@ -25,7 +25,7 @@
  [x] 將 `fetch_chart_data` 改用 multi_source.fetch_with_fallback()（commit a8d9115）
  [x] 將 `fetch_stock_info` 改用 multi_source.get_current_price() + yfinance 補完 PE/EPS/market_cap（commit f4e2251）
  [x] 將 `refresh_ticker_data` 入面嘅 `fetch_historical_prices` 改用 multi_source（commit a8d9115）
- [ ] 加 staging area git commit workflow 改進
+ [x] 加 staging area git commit workflow 改進 (scripts/stage_commit.py, commit c78d5ee)
 
 ### P1 - 重要
 - [x] Add SSE client in index.html (用 EventSource 取代 setInterval 輪詢) (commit 56776e8)
