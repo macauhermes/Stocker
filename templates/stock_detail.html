@@ -149,6 +149,51 @@
     let priceChart = null;
     let currentEventId = null;
     let chartData = null;
+    let chartZoom = { startIdx: 0, endIdx: 0, isDragging: false, dragStartX: 0, panStartIdx: 0 };
+
+    // ── Lightweight crosshair plugin (replaces chartjs-plugin-zoom + hammerjs) ──
+    const crosshairPlugin = {
+        id: 'crosshair',
+        afterDraw(chart) {
+            if (chart._crosshairX == null) return;
+            const { ctx, chartArea: { top, bottom } } = chart;
+            const x = chart._crosshairX;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(x, top);
+            ctx.lineTo(x, bottom);
+            ctx.stroke();
+            // horizontal line
+            if (chart._crosshairY != null) {
+                const y = chart._crosshairY;
+                const { chartArea: { left, right } } = chart;
+                ctx.beginPath();
+                ctx.moveTo(left, y);
+                ctx.lineTo(right, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+    };
+
+    // ── Zoom: keep a virtual window [startIdx..endIdx] over the full data ──
+    function getVisibleSlice(fullArr) {
+        if (!fullArr || fullArr.length === 0) return [];
+        const s = Math.max(0, chartZoom.startIdx);
+        const e = Math.min(fullArr.length - 1, chartZoom.endIdx);
+        return fullArr.slice(s, e + 1);
+    }
+
+    function resetZoom() {
+        if (!chartData) return;
+        const len = (chartData.dates || []).length;
+        chartZoom.startIdx = 0;
+        chartZoom.endIdx = len - 1;
+        renderChart(chartData);
+    }
 
     // Range switching
     function setRange(range) {
@@ -248,16 +293,24 @@
     }
 
     function renderChart(data) {
-        const ctx = document.getElementById('price-chart').getContext('2d');
+        const canvas = document.getElementById('price-chart');
+        const ctx = canvas.getContext('2d');
         if (priceChart) {
             priceChart.destroy();
         }
 
-        const labels = data.dates || [];
-        const prices = data.prices || [];
-        const ma5 = data.ma5 || [];
-        const ma20 = data.ma20 || [];
-        const ma60 = data.ma60 || [];
+        // Init zoom window on first render or range change
+        const fullLen = (data.dates || []).length;
+        if (chartZoom.endIdx === 0 || chartZoom.endIdx >= fullLen) {
+            chartZoom.startIdx = 0;
+            chartZoom.endIdx = fullLen - 1;
+        }
+
+        const labels = getVisibleSlice(data.dates || []);
+        const prices = getVisibleSlice(data.prices || []);
+        const ma5 = getVisibleSlice(data.ma5 || []);
+        const ma20 = getVisibleSlice(data.ma20 || []);
+        const ma60 = getVisibleSlice(data.ma60 || []);
 
         const datasets = [
             {
@@ -309,6 +362,7 @@
         priceChart = new Chart(ctx, {
             type: 'line',
             data: { labels: labels, datasets: datasets },
+            plugins: [crosshairPlugin],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -332,22 +386,10 @@
                         borderWidth: 1,
                         titleFont: { family: 'JetBrains Mono', size: 11 },
                         bodyFont: { family: 'JetBrains Mono', size: 11 },
-                        // External crosshair label (rendered on canvas)
                         callbacks: {
                             title: (items) => items[0]?.label || '',
                             label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`
                         }
-                    },
-                    // ── Touch gestures (wealthlens-style) ─────────────
-                    zoom: {
-                        pan: { enabled: true, mode: 'x', modifierKey: null },
-                        zoom: {
-                            wheel: { enabled: true, modifierKey: null },
-                            pinch: { enabled: true },       // mobile pinch
-                            drag: { enabled: false },
-                            mode: 'x',
-                        },
-                        limits: { x: { minRange: 5 } },
                     },
                 },
                 scales: {
@@ -359,13 +401,126 @@
                         ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 10 }, callback: v => '$' + v.toFixed(2) },
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     }
-                },
-                onClick: (e, activeElements) => {
-                    // Reset zoom on double-click (chartjs-plugin-zoom exposes chart.resetZoom)
-                    if (e.native && e.native.detail === 2) priceChart.resetZoom();
                 }
             }
         });
+
+        // ── Native crosshair + wheel-zoom + drag-to-pan (lightweight replacement) ──
+        // Attach listeners only once per canvas to avoid duplication on zoom re-render
+        if (!canvas._zoomListenersAttached) {
+        canvas._zoomListenersAttached = true;
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            priceChart._crosshairX = e.clientX - rect.left;
+            priceChart._crosshairY = e.clientY - rect.top;
+            priceChart.draw();
+        });
+        canvas.addEventListener('mouseleave', () => {
+            priceChart._crosshairX = null;
+            priceChart._crosshairY = null;
+            priceChart.draw();
+        });
+
+        // Wheel zoom: zoom in/out centered on cursor position
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (!chartData || !priceChart) return;
+            const totalLen = (chartData.dates || []).length;
+            let windowSize = chartZoom.endIdx - chartZoom.startIdx + 1;
+            const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8; // scroll down = zoom out
+            let newWindow = Math.max(5, Math.min(totalLen, Math.round(windowSize * zoomFactor)));
+            // Center on cursor
+            const chartArea = priceChart.chartArea;
+            const ratio = Math.max(0, Math.min(1, (e.clientX - chartArea.left) / (chartArea.right - chartArea.left)));
+            const centerIdx = chartZoom.startIdx + Math.round(ratio * windowSize);
+            let newStart = Math.round(centerIdx - newWindow * ratio);
+            newStart = Math.max(0, Math.min(totalLen - newWindow, newStart));
+            chartZoom.startIdx = newStart;
+            chartZoom.endIdx = newStart + newWindow - 1;
+            renderChart(chartData);
+        }, { passive: false });
+
+        // Drag to pan
+        canvas.addEventListener('mousedown', (e) => {
+            chartZoom.isDragging = true;
+            chartZoom.dragStartX = e.clientX;
+            chartZoom.panStartIdx = chartZoom.startIdx;
+            canvas.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!chartZoom.isDragging || !chartData || !priceChart) return;
+            const dx = e.clientX - chartZoom.dragStartX;
+            const chartArea = priceChart.chartArea;
+            const pixelRange = chartArea.right - chartArea.left;
+            const windowSize = chartZoom.endIdx - chartZoom.startIdx + 1;
+            const idxShift = Math.round(-dx / pixelRange * windowSize);
+            const totalLen = (chartData.dates || []).length;
+            let newStart = chartZoom.panStartIdx + idxShift;
+            newStart = Math.max(0, Math.min(totalLen - windowSize, newStart));
+            chartZoom.startIdx = newStart;
+            chartZoom.endIdx = newStart + windowSize - 1;
+            renderChart(chartData);
+        });
+        window.addEventListener('mouseup', () => {
+            if (chartZoom.isDragging) {
+                chartZoom.isDragging = false;
+                canvas.style.cursor = 'default';
+            }
+        });
+
+        // Double-click to reset zoom
+        canvas.addEventListener('dblclick', () => resetZoom());
+
+        // Touch: pinch-to-zoom (two-finger) + single-finger drag
+        let lastTouchDist = null;
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+            } else if (e.touches.length === 1) {
+                chartZoom.isDragging = true;
+                chartZoom.dragStartX = e.touches[0].clientX;
+                chartZoom.panStartIdx = chartZoom.startIdx;
+            }
+        }, { passive: true });
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && lastTouchDist != null) {
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const scale = lastTouchDist / dist;
+                lastTouchDist = dist;
+                if (!chartData) return;
+                const totalLen = (chartData.dates || []).length;
+                let windowSize = chartZoom.endIdx - chartZoom.startIdx + 1;
+                let newWindow = Math.max(5, Math.min(totalLen, Math.round(windowSize * scale)));
+                const center = chartZoom.startIdx + Math.round(windowSize / 2);
+                let newStart = Math.round(center - newWindow / 2);
+                newStart = Math.max(0, Math.min(totalLen - newWindow, newStart));
+                chartZoom.startIdx = newStart;
+                chartZoom.endIdx = newStart + newWindow - 1;
+                renderChart(chartData);
+            } else if (e.touches.length === 1 && chartZoom.isDragging && priceChart) {
+                const dx = e.touches[0].clientX - chartZoom.dragStartX;
+                const chartArea = priceChart.chartArea;
+                const pixelRange = chartArea.right - chartArea.left;
+                const windowSize = chartZoom.endIdx - chartZoom.startIdx + 1;
+                const idxShift = Math.round(-dx / pixelRange * windowSize);
+                const totalLen = (chartData.dates || []).length;
+                let newStart = chartZoom.panStartIdx + idxShift;
+                newStart = Math.max(0, Math.min(totalLen - windowSize, newStart));
+                chartZoom.startIdx = newStart;
+                chartZoom.endIdx = newStart + windowSize - 1;
+                renderChart(chartData);
+            }
+        }, { passive: false });
+        canvas.addEventListener('touchend', () => {
+            lastTouchDist = null;
+            chartZoom.isDragging = false;
+        });
+        } // end _zoomListenersAttached guard
     }
 
     // Render news
