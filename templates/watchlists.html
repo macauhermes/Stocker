@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+{% block title %}Stocker — 追蹤分組{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="container">
+        <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h1 style="font-size:1.3rem; margin:0;">
+                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">bookmark</span>
+                追蹤分組
+            </h1>
+            <button class="btn btn-primary" onclick="openGroupModal()">
+                <span class="material-icons-outlined">add</span>
+                <span>新增分組</span>
+            </button>
+        </div>
+
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">
+            將追蹤嘅股票分組管理（例如：科技股、金融股、我嘅持倉）。
+        </p>
+
+        <div id="groups-list"></div>
+    </div>
+</main>
+
+<!-- Create/Edit Group Modal -->
+<div id="group-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="group-modal-title">新增分組</h2>
+            <button class="modal-close" onclick="closeGroupModal()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="input-group">
+                <label class="input-label">分組名稱 *</label>
+                <input type="text" id="grp-name" class="input" placeholder="例：科技股">
+            </div>
+            <div class="input-group">
+                <label class="input-label">說明</label>
+                <input type="text" id="grp-desc" class="input" placeholder="（選填）">
+            </div>
+            <div class="input-group">
+                <label class="input-label">顏色</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;" id="color-picker">
+                    <button class="color-swatch" data-color="#4fc3f7" style="background:#4fc3f7;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#81c784" style="background:#81c784;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#ffb74d" style="background:#ffb74d;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#e57373" style="background:#e57373;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#ba68c8" style="background:#ba68c8;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#4db6ac" style="background:#4db6ac;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#fff176" style="background:#fff176;" onclick="pickColor(this)"></button>
+                    <button class="color-swatch" data-color="#90a4ae" style="background:#90a4ae;" onclick="pickColor(this)"></button>
+                </div>
+            </div>
+            <input type="hidden" id="grp-color" value="#4fc3f7">
+            <input type="hidden" id="grp-id" value="">
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeGroupModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveGroup()">儲存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Ticker to Group Modal -->
+<div id="ticker-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>加入股票</h2>
+            <button class="modal-close" onclick="closeTickerModal()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="input-group">
+                <label class="input-label">股票代碼</label>
+                <input type="text" id="ticker-symbol" class="input" placeholder="TSLA" style="text-transform:uppercase;">
+            </div>
+            <div id="available-tickers" style="margin-top:12px;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeTickerModal()">取消</button>
+            <button class="btn btn-primary" onclick="addTickerToGroup()">加入</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.group-card {
+    background: var(--card-bg, #1a1a2e);
+    border: 1px solid var(--border, #2a2a3e);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+.group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.group-header:hover {
+    background: var(--hover-bg, rgba(255,255,255,0.03));
+}
+.group-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+.group-name {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1;
+}
+.group-count {
+    color: var(--text-muted, #888);
+    font-size: 0.8rem;
+    margin-right: 12px;
+}
+.group-actions {
+    display: flex;
+    gap: 4px;
+}
+.group-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+.group-actions button:hover {
+    color: var(--text, #fff);
+    background: var(--hover-bg, rgba(255,255,255,0.08));
+}
+.group-body {
+    padding: 0 16px 12px;
+    display: none;
+}
+.group-body.open {
+    display: block;
+}
+.ticker-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--chip-bg, rgba(255,255,255,0.06));
+    border: 1px solid var(--border, #2a2a3e);
+    border-radius: 20px;
+    padding: 6px 12px;
+    margin: 4px;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+}
+.ticker-chip:hover {
+    border-color: var(--accent, #4fc3f7);
+}
+.ticker-chip .remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    line-height: 1;
+}
+.ticker-chip .remove-btn:hover {
+    color: #e57373;
+}
+.color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.color-swatch.selected {
+    border-color: #fff;
+    transform: scale(1.2);
+}
+.add-ticker-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px dashed var(--border, #2a2a3e);
+    border-radius: 20px;
+    padding: 6px 12px;
+    margin: 4px;
+    color: var(--text-muted, #888);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.add-ticker-btn:hover {
+    border-color: var(--accent, #4fc3f7);
+    color: var(--accent, #4fc3f7);
+}
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted, #888);
+}
+.empty-state .material-icons-outlined {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+</style>
+
+<script>
+let _groups = [];
+let _currentGroupId = null;
+
+// Load groups on page load
+document.addEventListener('DOMContentLoaded', loadGroups);
+
+async function loadGroups() {
+    try {
+        const res = await fetch('/api/watchlist-groups');
+        _groups = await res.json();
+        renderGroups();
+    } catch (e) {
+        console.error('Load groups failed:', e);
+    }
+}
+
+function renderGroups() {
+    const el = document.getElementById('groups-list');
+    if (!_groups.length) {
+        el.innerHTML = `
+            <div class="empty-state">
+                <span class="material-icons-outlined">bookmark_border</span>
+                <p>尚未建立任何追蹤分組</p>
+                <p style="font-size:0.8rem;">點擊「新增分組」開始</p>
+            </div>`;
+        return;
+    }
+    el.innerHTML = _groups.map(g => `
+        <div class="group-card" data-id="${g.id}">
+            <div class="group-header" onclick="toggleGroup(${g.id})">
+                <span class="group-color-dot" style="background:${g.color}"></span>
+                <span class="group-name">${esc(g.name)}</span>
+                <span class="group-count">${g.ticker_count} 股</span>
+                <div class="group-actions">
+                    <button onclick="event.stopPropagation(); editGroup(${g.id})" title="編輯">
+                        <span class="material-icons-outlined" style="font-size:18px;">edit</span>
+                    </button>
+                    <button onclick="event.stopPropagation(); deleteGroup(${g.id})" title="刪除">
+                        <span class="material-icons-outlined" style="font-size:18px;">delete</span>
+                    </button>
+                </div>
+            </div>
+            <div class="group-body" id="group-body-${g.id}">
+                <div class="group-tickers">
+                    ${(g.tickers || []).map(t => `
+                        <span class="ticker-chip">
+                            <a href="/stock/${t.symbol}" style="color:inherit; text-decoration:none;">${t.symbol}</a>
+                            <button class="remove-btn" onclick="removeTicker(${g.id}, '${t.symbol}')">&times;</button>
+                        </span>
+                    `).join('')}
+                    <button class="add-ticker-btn" onclick="openTickerModal(${g.id})">
+                        <span class="material-icons-outlined" style="font-size:16px;">add</span>
+                        加入股票
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleGroup(id) {
+    const body = document.getElementById(`group-body-${id}`);
+    if (body) body.classList.toggle('open');
+}
+
+// --- Group CRUD ---
+
+function openGroupModal(id) {
+    _currentGroupId = id || null;
+    const modal = document.getElementById('group-modal');
+    document.getElementById('group-modal-title').textContent = id ? '編輯分組' : '新增分組';
+    if (id) {
+        const g = _groups.find(x => x.id === id);
+        if (g) {
+            document.getElementById('grp-name').value = g.name;
+            document.getElementById('grp-desc').value = g.description || '';
+            document.getElementById('grp-color').value = g.color;
+            document.getElementById('grp-id').value = g.id;
+            selectColorSwatch(g.color);
+        }
+    } else {
+        document.getElementById('grp-name').value = '';
+        document.getElementById('grp-desc').value = '';
+        document.getElementById('grp-color').value = '#4fc3f7';
+        document.getElementById('grp-id').value = '';
+        selectColorSwatch('#4fc3f7');
+    }
+    modal.style.display = 'flex';
+}
+
+function closeGroupModal() {
+    document.getElementById('group-modal').style.display = 'none';
+    _currentGroupId = null;
+}
+
+async function saveGroup() {
+    const name = document.getElementById('grp-name').value.trim();
+    if (!name) { alert('請輸入分組名稱'); return; }
+    const body = {
+        name,
+        description: document.getElementById('grp-desc').value.trim(),
+        color: document.getElementById('grp-color').value,
+    };
+    const id = document.getElementById('grp-id').value;
+    const url = id ? `/api/watchlist-groups/${id}` : '/api/watchlist-groups';
+    const method = id ? 'PUT' : 'POST';
+    try {
+        const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Error'); return; }
+        closeGroupModal();
+        loadGroups();
+    } catch (e) { alert('Network error'); }
+}
+
+function editGroup(id) {
+    openGroupModal(id);
+}
+
+async function deleteGroup(id) {
+    const g = _groups.find(x => x.id === id);
+    if (!confirm(`刪除「${g ? g.name : id}」？股票唔會被刪除。`)) return;
+    try {
+        await fetch(`/api/watchlist-groups/${id}`, { method: 'DELETE' });
+        loadGroups();
+    } catch (e) { alert('Network error'); }
+}
+
+// --- Color picker ---
+function pickColor(el) {
+    document.getElementById('grp-color').value = el.dataset.color;
+    selectColorSwatch(el.dataset.color);
+}
+function selectColorSwatch(color) {
+    document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('selected', s.dataset.color === color);
+    });
+}
+
+// --- Ticker management ---
+function openTickerModal(groupId) {
+    _currentGroupId = groupId;
+    document.getElementById('ticker-symbol').value = '';
+    // Show available tickers (tickers not yet in this group)
+    loadAvailableTickers(groupId);
+    document.getElementById('ticker-modal').style.display = 'flex';
+}
+
+function closeTickerModal() {
+    document.getElementById('ticker-modal').style.display = 'none';
+    _currentGroupId = null;
+}
+
+async function loadAvailableTickers(groupId) {
+    try {
+        const [allRes, groupRes] = await Promise.all([
+            fetch('/api/tickers'),
+            fetch(`/api/watchlist-groups/${groupId}/tickers`)
+        ]);
+        const all = await allRes.json();
+        const inGroup = await groupRes.json();
+        const inGroupIds = new Set(inGroup.map(t => t.symbol));
+        const available = all.filter(t => !inGroupIds.has(t.symbol));
+        document.getElementById('available-tickers').innerHTML = available.length
+            ? `<div style="display:flex; flex-wrap:wrap; gap:6px;">${available.map(t => `
+                <button class="ticker-chip" style="cursor:pointer;" onclick="quickAddTicker('${t.symbol}')">
+                    ${t.symbol}
+                </button>`).join('')}</div>`
+            : '<p style="color:var(--text-muted); font-size:0.85rem;">所有股票都已經加入咗</p>';
+    } catch (e) {
+        document.getElementById('available-tickers').innerHTML = '';
+    }
+}
+
+async function addTickerToGroup() {
+    const symbol = document.getElementById('ticker-symbol').value.trim().toUpperCase();
+    if (!symbol) { alert('請輸入股票代碼'); return; }
+    await quickAddTicker(symbol);
+}
+
+async function quickAddTicker(symbol) {
+    try {
+        const res = await fetch(`/api/watchlist-groups/${_currentGroupId}/tickers`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({symbol})
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Error'); return; }
+        closeTickerModal();
+        loadGroups();
+    } catch (e) { alert('Network error'); }
+}
+
+async function removeTicker(groupId, symbol) {
+    try {
+        await fetch(`/api/watchlist-groups/${groupId}/tickers/${symbol}`, { method: 'DELETE' });
+        loadGroups();
+    } catch (e) { alert('Network error'); }
+}
+
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+</script>
+{% endblock %}

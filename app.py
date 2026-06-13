@@ -840,6 +840,113 @@ def api_nightly_refresh():
         return jsonify({'error': str(e)}), 500
 
 
+# ── API: Watchlist Groups (v3.3) ────────────────────────────────────────
+
+@app.route('/api/watchlist-groups', methods=['GET'])
+def api_get_watchlist_groups():
+    """List all watchlist groups with ticker count."""
+    try:
+        groups = models.get_all_watchlist_groups()
+        result = []
+        for g in groups:
+            gd = dict(g)
+            gd['tickers'] = [dict(t) for t in models.get_watchlist_group_tickers(g['id'])]
+            result.append(gd)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/watchlist-groups', methods=['POST'])
+def api_create_watchlist_group():
+    """Create a new watchlist group."""
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'error': 'Name required'}), 400
+        group = models.create_watchlist_group(
+            name=name,
+            description=data.get('description'),
+            color=data.get('color', '#4fc3f7'),
+            sort_order=data.get('sort_order', 0),
+        )
+        return jsonify(dict(group)), 201
+    except Exception as e:
+        if 'UNIQUE' in str(e):
+            return jsonify({'error': 'Group name already exists'}), 409
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/watchlist-groups/<int:group_id>', methods=['PUT'])
+def api_update_watchlist_group(group_id):
+    """Update a watchlist group."""
+    try:
+        data = request.get_json() or {}
+        group = models.update_watchlist_group(group_id, data)
+        if group is None:
+            return jsonify({'error': 'Group not found'}), 404
+        return jsonify(dict(group))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/watchlist-groups/<int:group_id>', methods=['DELETE'])
+def api_delete_watchlist_group(group_id):
+    """Delete a watchlist group."""
+    try:
+        models.delete_watchlist_group(group_id)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/watchlist-groups/<int:group_id>/tickers', methods=['GET'])
+def api_get_group_tickers(group_id):
+    """List tickers in a group."""
+    try:
+        tickers = models.get_watchlist_group_tickers(group_id)
+        return jsonify([dict(t) for t in tickers])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/watchlist-groups/<int:group_id>/tickers', methods=['POST'])
+def api_add_ticker_to_group(group_id):
+    """Add a ticker to a group."""
+    try:
+        data = request.get_json() or {}
+        symbol = data.get('symbol', '').strip().upper()
+        if not symbol:
+            return jsonify({'error': 'symbol required'}), 400
+        ticker = models.get_ticker(symbol)
+        if ticker is None:
+            return jsonify({'error': f'Ticker {symbol} not found'}), 404
+        models.add_ticker_to_group(group_id, ticker['id'])
+        return jsonify({'ok': True, 'symbol': symbol})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/watchlist-groups/<int:group_id>/tickers/<symbol>', methods=['DELETE'])
+def api_remove_ticker_from_group(group_id, symbol):
+    """Remove a ticker from a group."""
+    try:
+        ticker = models.get_ticker(symbol.upper())
+        if ticker is None:
+            return jsonify({'error': f'Ticker {symbol} not found'}), 404
+        models.remove_ticker_from_group(group_id, ticker['id'])
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/watchlists')
+def watchlists_page():
+    """Watchlist groups management page."""
+    return render_template('watchlists.html')
+
+
 # ── API: SSE stream of live prices (for future SSE client) ────────────
 
 @app.route('/api/stream/tickers')

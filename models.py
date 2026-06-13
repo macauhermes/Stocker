@@ -127,11 +127,35 @@ def init_db():
             )
         """)
 
+        # Watchlist groups (v3.3 — user-defined ticker groupings)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS watchlist_groups (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL UNIQUE,
+                description TEXT,
+                color       TEXT    DEFAULT '#4fc3f7',
+                sort_order  INTEGER DEFAULT 0,
+                created_at  TEXT    DEFAULT (datetime('now'))
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS watchlist_group_tickers (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id    INTEGER NOT NULL REFERENCES watchlist_groups(id) ON DELETE CASCADE,
+                ticker_id   INTEGER NOT NULL REFERENCES tickers(id) ON DELETE CASCADE,
+                sort_order  INTEGER DEFAULT 0,
+                UNIQUE(group_id, ticker_id)
+            )
+        """)
+
         # Helpful indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_ticker ON daily_prices(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_date   ON daily_prices(date)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_events_ticker ON events(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_files_report  ON files(report_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_wgt_group     ON watchlist_group_tickers(group_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_wgt_ticker    ON watchlist_group_tickers(ticker_id)")
 
         # Backward-compatible migration: add archived columns if missing
         for col, ddl in [
@@ -745,5 +769,130 @@ def get_all_bank_reports(limit: int = 100):
             "SELECT br.*, ib.name as bank_name, ib.short_name as bank_short_name FROM bank_reports br JOIN investment_banks ib ON br.bank_id = ib.id ORDER BY br.created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Watchlist Groups CRUD  (v3.3)
+# ---------------------------------------------------------------------------
+
+def create_watchlist_group(name: str, description: str = None, color: str = '#4fc3f7', sort_order: int = 0):
+    """Create a new watchlist group and return it."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "INSERT INTO watchlist_groups (name, description, color, sort_order) VALUES (?, ?, ?, ?)",
+            (name, description, color, sort_order),
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM watchlist_groups WHERE id = ?", (cur.lastrowid,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_all_watchlist_groups():
+    """Return all watchlist groups with ticker count, ordered by sort_order."""
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT wg.*, COUNT(wgt.id) as ticker_count
+            FROM watchlist_groups wg
+            LEFT JOIN watchlist_group_tickers wgt ON wgt.group_id = wg.id
+            GROUP BY wg.id
+            ORDER BY wg.sort_order, wg.name
+        """).fetchall()
+    finally:
+        conn.close()
+
+
+def get_watchlist_group(group_id: int):
+    """Return a single watchlist group by id."""
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM watchlist_groups WHERE id = ?", (group_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_watchlist_group_tickers(group_id: int):
+    """Return all tickers in a group, with ticker details, ordered by sort_order."""
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT t.*, wgt.sort_order, wgt.id as membership_id
+            FROM watchlist_group_tickers wgt
+            JOIN tickers t ON t.id = wgt.ticker_id
+            WHERE wgt.group_id = ?
+            ORDER BY wgt.sort_order, t.symbol
+        """, (group_id,)).fetchall()
+    finally:
+        conn.close()
+
+
+def update_watchlist_group(group_id: int, kwargs: dict):
+    """Update a watchlist group's fields."""
+    allowed = {'name', 'description', 'color', 'sort_order'}
+    fields = {k: v for k, v in kwargs.items() if k in allowed}
+    if not fields:
+        return get_watchlist_group(group_id)
+    set_clause = ', '.join(f"{k} = ?" for k in fields)
+    values = list(fields.values()) + [group_id]
+    conn = get_db()
+    try:
+        conn.execute(f"UPDATE watchlist_groups SET {set_clause} WHERE id = ?", values)
+        conn.commit()
+        return get_watchlist_group(group_id)
+    finally:
+        conn.close()
+
+
+def delete_watchlist_group(group_id: int):
+    """Delete a watchlist group (cascade removes memberships)."""
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM watchlist_groups WHERE id = ?", (group_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def add_ticker_to_group(group_id: int, ticker_id: int, sort_order: int = 0):
+    """Add a ticker to a watchlist group."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO watchlist_group_tickers (group_id, ticker_id, sort_order) VALUES (?, ?, ?)",
+            (group_id, ticker_id, sort_order),
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def remove_ticker_from_group(group_id: int, ticker_id: int):
+    """Remove a ticker from a watchlist group."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM watchlist_group_tickers WHERE group_id = ? AND ticker_id = ?",
+            (group_id, ticker_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_groups_for_ticker(ticker_id: int):
+    """Return all groups that contain a given ticker."""
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT wg.* FROM watchlist_groups wg
+            JOIN watchlist_group_tickers wgt ON wgt.group_id = wg.id
+            WHERE wgt.ticker_id = ?
+            ORDER BY wg.sort_order, wg.name
+        """, (ticker_id,)).fetchall()
     finally:
         conn.close()

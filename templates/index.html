@@ -23,6 +23,10 @@
         <span class="material-icons-outlined">archive</span>
         <span data-i18n="index.tab.archived">歸檔</span>
     </button>
+    <button class="tab-btn" data-tab="groups" onclick="switchTab('groups')">
+        <span class="material-icons-outlined">bookmark</span>
+        <span>分組</span>
+    </button>
 </div>
 
 <!-- Stocks Tab -->
@@ -77,6 +81,17 @@
     </div>
 </div>
 
+<!-- Groups Tab -->
+<div class="tab-content" id="tab-groups">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+        <a href="/watchlists" class="btn btn-primary" style="font-size:0.85rem; text-decoration:none;">
+            <span class="material-icons-outlined" style="font-size:16px;">settings</span>
+            管理分組
+        </a>
+    </div>
+    <div id="groups-dashboard"></div>
+</div>
+
 <!-- FAB (Floating Action Button) -->
 <button class="fab" onclick="openAddModal()">
     <span class="material-icons-outlined">add</span>
@@ -126,6 +141,7 @@
     let currentType = 'all';
     let allReports = [];
     let archivedLoaded = false;
+    let groupsLoaded = false;
 
     // Tab switching
     function switchTab(tab) {
@@ -138,6 +154,10 @@
         if (tab === 'archived' && !archivedLoaded) {
             archivedLoaded = true;
             loadArchived();
+        }
+        if (tab === 'groups' && !groupsLoaded) {
+            groupsLoaded = true;
+            loadGroupsDashboard();
         }
     }
 
@@ -591,6 +611,48 @@
         } catch (err) {
             showToast(err.message, 'error');
         }
+    }
+
+    // Groups dashboard tab
+    async function loadGroupsDashboard() {
+        try {
+            const res = await fetch('/api/watchlist-groups');
+            if (!res.ok) throw new Error('Failed');
+            const groups = await res.json();
+            const el = document.getElementById('groups-dashboard');
+            if (!groups.length) {
+                el.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-icons-outlined empty-state-icon">bookmark_border</span>
+                        <div class="empty-state-title">尚未建立追蹤分組</div>
+                        <a href="/watchlists" class="btn btn-primary" style="margin-top:12px;">建立分組</a>
+                    </div>`;
+                return;
+            }
+            el.innerHTML = groups.map(g => {
+                const tickers = (g.tickers || []).map(t =>
+                    `<a href="/stock/${t.symbol}" style="color:var(--text); text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:var(--chip-bg, rgba(255,255,255,0.06)); border:1px solid var(--border, #2a2a3e); border-radius:20px; padding:6px 12px; margin:3px; font-size:0.85rem; transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent,#4fc3f7)'" onmouseout="this.style.borderColor='var(--border,#2a2a3e)'">${t.symbol}</a>`
+                ).join('');
+                return `
+                    <div style="background:var(--card-bg,#1a1a2e); border:1px solid var(--border,#2a2a3e); border-radius:12px; margin-bottom:10px; border-left:3px solid ${g.color};">
+                        <div style="padding:12px 16px;">
+                            <div style="font-weight:600; font-size:0.95rem;">${escHtml(g.name)} <span style="color:var(--text-muted); font-size:0.8rem;">${g.ticker_count} 股</span></div>
+                            ${g.description ? `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:2px;">${escHtml(g.description)}</div>` : ''}
+                        </div>
+                        <div style="padding:0 16px 12px;">
+                            ${tickers || '<span style="color:var(--text-muted); font-size:0.8rem;">空</span>'}
+                        </div>
+                    </div>`;
+            }).join('');
+        } catch (err) {
+            console.error('loadGroupsDashboard:', err);
+        }
+    }
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
     }
 
     function dismissBanner() {
