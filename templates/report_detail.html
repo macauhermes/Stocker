@@ -1,36 +1,52 @@
 {% extends "base.html" %}
-{% block title %}報告 — Stocker{% endblock %}
+{% block title %}Stocker — {{ 'report.title' }}{% endblock %}
 
 {% block content %}
 <div class="report-detail">
     <!-- Back Button + Header -->
     <div class="detail-header">
-        <a href="/" class="btn-pill btn-back" data-i18n="common.back">← 返回</a>
+        <a href="/" class="back-btn">
+            <span class="material-icons-outlined">arrow_back</span>
+        </a>
         <div class="detail-title">
-            <h1 id="report-title" data-i18n="common.loading">Loading...</h1>
-            <span class="report-date" id="report-date"></span>
+            <div id="report-title" style="font-size:1.2rem; font-weight:600;" data-i18n="common.loading">載入中...</div>
+            <div id="report-date" style="font-size:0.85rem; color:var(--text-muted);"></div>
+        </div>
+        <div id="report-source-badge" style="display:none;"></div>
+    </div>
+
+    <!-- Report Content -->
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">description</span>
+                <span data-i18n="report.original">原文內容</span>
+            </div>
+            <a id="report-link" href="#" target="_blank" style="display:none;" class="btn btn-ghost btn-sm">
+                <span class="material-icons-outlined" style="font-size:16px">open_in_new</span>
+                <span data-i18n="report.view_source">查看來源</span>
+            </a>
+        </div>
+        <div id="report-content">
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span data-i18n="common.loading">載入中...</span>
+            </div>
         </div>
     </div>
 
-    <!-- Split View -->
-    <div class="split-view">
-        <!-- Left: Original Content -->
-        <div class="split-left">
-            <div class="split-header">
-                <h3>原文內容</h3>
-            </div>
-            <div class="split-body" id="report-content">
-                <div class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></div>
+    <!-- AI Analysis -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">psychology</span>
+                <span data-i18n="report.analysis">AI 分析</span>
             </div>
         </div>
-
-        <!-- Right: AI Analysis -->
-        <div class="split-right">
-            <div class="split-header">
-                <h3>AI 綜合分析</h3>
-            </div>
-            <div class="split-body" id="report-analysis">
-                <div class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></div>
+        <div id="report-analysis">
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span data-i18n="common.loading">載入中...</span>
             </div>
         </div>
     </div>
@@ -49,39 +65,328 @@
 
             // Header
             document.getElementById('report-title').textContent = data.title || 'Untitled';
-            document.getElementById('report-title').title = data.title || '';
             if (data.published_at) {
                 document.getElementById('report-date').textContent = new Date(data.published_at).toLocaleDateString('zh-TW');
             }
 
-            // Left: Original Content
-            const contentEl = document.getElementById('report-content');
-            if (data.content) {
-                contentEl.innerHTML = '<div class="report-prose">' + escapeHtml(data.content).replace(/\n/g, '<br>') + '</div>';
-            } else if (data.url) {
-                contentEl.innerHTML = '<div class="empty-cell"><p>原文儲存於外部連結</p><a href="' + data.url + '" target="_blank" class="btn-pill btn-primary">查看原文</a></div>';
-            } else {
-                contentEl.innerHTML = '<div class="empty-cell">暫無原文內容</div>';
+            // Source badge
+            if (data.source) {
+                const badge = document.getElementById('report-source-badge');
+                badge.style.display = 'block';
+                badge.innerHTML = `<span class="badge" style="background:rgba(73,79,223,0.15); color:var(--blue);">${escapeHtml(data.source)}</span>`;
             }
 
-            // Right: AI Analysis
+            // Source link
+            if (data.url) {
+                const link = document.getElementById('report-link');
+                link.href = data.url;
+                link.style.display = 'inline-flex';
+            }
+
+            // Content - parse and display as structured data
+            const contentEl = document.getElementById('report-content');
+            if (data.content) {
+                // Use TextRenderer for structured display
+                renderTextContent(data.content, contentEl);
+            } else if (data.url) {
+                contentEl.innerHTML = `
+                    <div class="empty-state" style="padding:24px;">
+                        <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">link</span>
+                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="report.source_external">原文儲存於外部連結</div>
+                    </div>
+                `;
+            } else {
+                contentEl.innerHTML = `
+                    <div class="empty-state" style="padding:24px;">
+                        <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">description</span>
+                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="report.no_source">暫無原文內容</div>
+                    </div>
+                `;
+            }
+
+            // AI Analysis
             const analysisEl = document.getElementById('report-analysis');
             if (data.analysis) {
                 analysisEl.innerHTML = '<div class="report-prose">' + formatAnalysis(data.analysis) + '</div>';
             } else {
-                analysisEl.innerHTML = '<div class="empty-cell">' + (typeof t !== 'undefined' ? t('report.no_analysis') : 'AI 分析尚未生成') + '</div>';
+                analysisEl.innerHTML = `
+                    <div class="empty-state" style="padding:24px;">
+                        <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">psychology</span>
+                        <div style="margin-top:8px; color:var(--text-muted);">${t('report.no_analysis')}</div>
+                    </div>
+                `;
             }
         } catch (err) {
             console.error(err);
-            document.getElementById('report-content').innerHTML = '<div class="error-cell">⚠️ ' + (typeof t !== 'undefined' ? t('common.error') : '載入失敗') + '</div>';
-            document.getElementById('report-analysis').innerHTML = '<div class="error-cell">⚠️ ' + (typeof t !== 'undefined' ? t('common.error') : '載入失敗') + '</div>';
-            showToast('載入報告失敗', 'error');
+            document.getElementById('report-content').innerHTML = `
+                <div class="empty-state" style="padding:24px;">
+                    <span class="material-icons-outlined" style="font-size:48px; color:var(--red);">error</span>
+                    <div style="margin-top:8px; color:var(--red);">${t('common.error')}</div>
+                </div>
+            `;
+            document.getElementById('report-analysis').innerHTML = `
+                <div class="empty-state" style="padding:24px;">
+                    <span class="material-icons-outlined" style="font-size:48px; color:var(--red);">error</span>
+                    <div style="margin-top:8px; color:var(--red);">${t('common.error')}</div>
+                </div>
+            `;
+            showToast(t('report.load_error'), 'error');
         }
+    }
+
+    function formatContent(content) {
+        // Check if content contains tabular data (analyst ratings format)
+        if (content.includes('===') && content.includes('strongBuy')) {
+            return formatAnalystTable(content);
+        }
+        
+        // Check if content has pipe-separated table format
+        if (content.includes(' | ') && content.split('\n').length > 3) {
+            return formatPipeTable(content);
+        }
+        
+        // Default: display as formatted text
+        return formatPlainText(content);
+    }
+
+    function formatAnalystTable(content) {
+        const lines = content.split('\n');
+        let html = '';
+        let inTable = false;
+        let headers = [];
+        let rows = [];
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            
+            // Skip empty lines and header markers
+            if (!trimmed || trimmed.startsWith('===') || trimmed.startsWith('Collected:')) {
+                if (trimmed.startsWith('===')) {
+                    html += `<div style="font-weight:600; margin-bottom:12px; color:var(--text);">${escapeHtml(trimmed.replace(/===/g, '').trim())}</div>`;
+                }
+                continue;
+            }
+
+            // Parse table data
+            const parts = trimmed.split(/\s+/);
+            
+            // Check if this is a header row
+            if (parts.includes('strongBuy') || parts.includes('buy')) {
+                headers = parts;
+                inTable = true;
+                continue;
+            }
+
+            // Check if this is a data row (starts with number or has enough columns)
+            if (inTable && parts.length >= headers.length) {
+                rows.push(parts);
+            }
+        }
+
+        // Render as table
+        if (headers.length > 0 && rows.length > 0) {
+            html += `
+                <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr>
+                                ${headers.map(h => `
+                                    <th style="padding:10px 12px; text-align:center; background:var(--bg); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap;">
+                                        ${formatHeader(h)}
+                                    </th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => `
+                                <tr>
+                                    ${row.map((cell, i) => `
+                                        <td style="padding:10px 12px; text-align:center; border-bottom:1px solid var(--border); font-family:'JetBrains Mono', monospace; ${i === 0 ? 'color:var(--text-muted);' : ''}">
+                                            ${formatCell(cell, headers[i])}
+                                        </td>
+                                    `).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            // Add summary
+            html += `
+                <div style="margin-top:16px; padding:12px; background:var(--bg); border-radius:12px;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;" data-i18n="report.rating_summary">評級摘要</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                        ${generateRatingSummary(headers, rows)}
+                    </div>
+                </div>
+            `;
+        } else {
+            // Fallback to plain text
+            html = formatPlainText(content);
+        }
+
+        return html;
+    }
+
+    function formatHeader(header) {
+        const headerMap = {
+            'period': t('report.rating.period'),
+            'strongBuy': t('report.rating.strongBuy'),
+            'buy': t('report.rating.buy'),
+            'hold': t('report.rating.hold'),
+            'sell': t('report.rating.sell'),
+            'strongSell': t('report.rating.strongSell'),
+            '0m': t('report.rating.current'),
+            '-1m': t('report.rating.1m'),
+            '-2m': t('report.rating.2m'),
+            '-3m': t('report.rating.3m'),
+            '-4m': t('report.rating.4m'),
+            '-5m': t('report.rating.5m'),
+        };
+        return headerMap[header] || header;
+    }
+
+    function formatCell(cell, header) {
+        const num = parseInt(cell);
+        if (isNaN(num)) return escapeHtml(cell);
+        
+        // Color code based on value and header
+        let color = 'var(--text)';
+        if (header === 'strongBuy' || header === 'buy') {
+            color = 'var(--green)';
+        } else if (header === 'sell' || header === 'strongSell') {
+            color = 'var(--red)';
+        } else if (header === 'hold') {
+            color = 'var(--yellow)';
+        }
+        
+        return `<span style="color:${color}; font-weight:600;">${num}</span>`;
+    }
+
+    function generateRatingSummary(headers, rows) {
+        if (rows.length === 0) return '';
+        
+        // Use the first row (most recent)
+        const latest = rows[0];
+        const summary = {};
+        
+        headers.forEach((h, i) => {
+            if (h !== 'period' && i < latest.length) {
+                summary[h] = parseInt(latest[i]) || 0;
+            }
+        });
+        
+        const total = Object.values(summary).reduce((a, b) => a + b, 0);
+        if (total === 0) return '';
+        
+        const buyCount = (summary.strongBuy || 0) + (summary.buy || 0);
+        const holdCount = summary.hold || 0;
+        const sellCount = (summary.sell || 0) + (summary.strongSell || 0);
+        
+        const buyPct = ((buyCount / total) * 100).toFixed(0);
+        const holdPct = ((holdCount / total) * 100).toFixed(0);
+        const sellPct = ((sellCount / total) * 100).toFixed(0);
+        
+        return `
+            <div style="flex:1; min-width:80px;">
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('report.rating.buy')}</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--green);">${buyPct}%</div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">${buyCount} ${t('report.analysts')}</div>
+            </div>
+            <div style="flex:1; min-width:80px;">
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('report.rating.hold')}</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--yellow);">${holdPct}%</div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">${holdCount} ${t('report.analysts')}</div>
+            </div>
+            <div style="flex:1; min-width:80px;">
+                <div style="font-size:0.75rem; color:var(--text-muted);">${t('report.rating.sell')}</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--red);">${sellPct}%</div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">${sellCount} ${t('report.analysts')}</div>
+            </div>
+        `;
+    }
+
+    function formatPipeTable(content) {
+        const lines = content.split('\n').filter(l => l.trim());
+        let html = '';
+        let headers = [];
+        let rows = [];
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            
+            // Skip separator lines
+            if (trimmed.match(/^[-|+]+$/)) continue;
+            
+            // Parse pipe-separated values
+            const parts = trimmed.split('|').map(p => p.trim()).filter(p => p);
+            
+            if (headers.length === 0) {
+                headers = parts;
+            } else if (parts.length > 0) {
+                rows.push(parts);
+            }
+        }
+
+        if (headers.length > 0 && rows.length > 0) {
+            html = `
+                <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr>
+                                ${headers.map(h => `
+                                    <th style="padding:10px 12px; text-align:left; background:var(--bg); color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap;">
+                                        ${escapeHtml(h)}
+                                    </th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => `
+                                <tr>
+                                    ${row.map(cell => `
+                                        <td style="padding:10px 12px; border-bottom:1px solid var(--border);">
+                                            ${escapeHtml(cell)}
+                                        </td>
+                                    `).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            html = formatPlainText(content);
+        }
+
+        return html;
+    }
+
+    function formatPlainText(content) {
+        let html = escapeHtml(content);
+        
+        // Convert headers
+        html = html.replace(/^=== (.+) ===$/gm, '<div style="font-weight:600; margin:12px 0 8px; color:var(--text);">$1</div>');
+        
+        // Convert bullet points
+        html = html.replace(/^[-•]\s+(.+)$/gm, '<div style="display:flex; gap:8px; margin:4px 0;"><span style="color:var(--text-muted);">•</span><span>$1</span></div>');
+        
+        // Convert numbered lists
+        html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="display:flex; gap:8px; margin:4px 0;"><span style="color:var(--text-muted); min-width:20px;">$1.</span><span>$2</span></div>');
+        
+        // Line breaks
+        html = html.replace(/\n/g, '<br>');
+        
+        // Clean up multiple <br>
+        html = html.replace(/(<br>){3,}/g, '<br><br>');
+        
+        return `<div style="font-size:0.9rem; line-height:1.6;">${html}</div>`;
     }
 
     function escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = text || '';
         return div.innerHTML;
     }
 

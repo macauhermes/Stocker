@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Stocker — 追蹤分組{% endblock %}
+{% block title %}Stocker — {{ 'watchlists.title' }}{% endblock %}
 
 {% block content %}
 <main class="main-content">
@@ -7,16 +7,16 @@
         <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
             <h1 style="font-size:1.3rem; margin:0;">
                 <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">bookmark</span>
-                追蹤分組
+                <span data-i18n="watchlists.title">追蹤分組</span>
             </h1>
             <button class="btn btn-primary" onclick="openGroupModal()">
                 <span class="material-icons-outlined">add</span>
-                <span>新增分組</span>
+                <span data-i18n="watchlists.add_group">新增分組</span>
             </button>
         </div>
 
         <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">
-            將追蹤嘅股票分組管理（例如：科技股、金融股、我嘅持倉）。
+            <span data-i18n="watchlists.desc">將追蹤嘅股票分組管理（例如：科技股、金融股、我嘅持倉）。</span>
         </p>
 
         <div id="groups-list"></div>
@@ -27,22 +27,22 @@
 <div id="group-modal" class="modal-overlay" style="display:none;">
     <div class="modal">
         <div class="modal-header">
-            <h2 id="group-modal-title">新增分組</h2>
+            <h2 id="group-modal-title" data-i18n="watchlists.add_title">新增分組</h2>
             <button class="modal-close" onclick="closeGroupModal()">
                 <span class="material-icons-outlined">close</span>
             </button>
         </div>
         <div class="modal-body">
             <div class="input-group">
-                <label class="input-label">分組名稱 *</label>
-                <input type="text" id="grp-name" class="input" placeholder="例：科技股">
+                <label class="input-label"><span data-i18n="watchlists.group_name">分組名稱</span> *</label>
+                <input type="text" id="grp-name" class="input" data-i18n="watchlists.group_name_placeholder" placeholder="例：科技股">
             </div>
             <div class="input-group">
-                <label class="input-label">說明</label>
-                <input type="text" id="grp-desc" class="input" placeholder="（選填）">
+                <label class="input-label" data-i18n="watchlists.description">說明</label>
+                <input type="text" id="grp-desc" class="input" data-i18n="watchlists.description_placeholder" placeholder="（選填）">
             </div>
             <div class="input-group">
-                <label class="input-label">顏色</label>
+                <label class="input-label" data-i18n="watchlists.color">顏色</label>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;" id="color-picker">
                     <button class="color-swatch" data-color="#4fc3f7" style="background:#4fc3f7;" onclick="pickColor(this)"></button>
                     <button class="color-swatch" data-color="#81c784" style="background:#81c784;" onclick="pickColor(this)"></button>
@@ -58,8 +58,8 @@
             <input type="hidden" id="grp-id" value="">
         </div>
         <div class="modal-footer">
-            <button class="btn" onclick="closeGroupModal()">取消</button>
-            <button class="btn btn-primary" onclick="saveGroup()">儲存</button>
+            <button class="btn" onclick="closeGroupModal()" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-primary" onclick="saveGroup()" data-i18n="common.save">儲存</button>
         </div>
     </div>
 </div>
@@ -68,21 +68,21 @@
 <div id="ticker-modal" class="modal-overlay" style="display:none;">
     <div class="modal">
         <div class="modal-header">
-            <h2>加入股票</h2>
+            <h2 data-i18n="watchlists.add_ticker">加入股票</h2>
             <button class="modal-close" onclick="closeTickerModal()">
                 <span class="material-icons-outlined">close</span>
             </button>
         </div>
         <div class="modal-body">
             <div class="input-group">
-                <label class="input-label">股票代碼</label>
+                <label class="input-label" data-i18n="watchlists.ticker_symbol">股票代碼</label>
                 <input type="text" id="ticker-symbol" class="input" placeholder="TSLA" style="text-transform:uppercase;">
             </div>
             <div id="available-tickers" style="margin-top:12px;"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn" onclick="closeTickerModal()">取消</button>
-            <button class="btn btn-primary" onclick="addTickerToGroup()">加入</button>
+            <button class="btn" onclick="closeTickerModal()" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-primary" onclick="addTickerToGroup()" data-i18n="watchlists.add_ticker">加入</button>
         </div>
     </div>
 </div>
@@ -240,8 +240,8 @@ function renderGroups() {
         el.innerHTML = `
             <div class="empty-state">
                 <span class="material-icons-outlined">bookmark_border</span>
-                <p>尚未建立任何追蹤分組</p>
-                <p style="font-size:0.8rem;">點擊「新增分組」開始</p>
+                <p data-i18n="watchlists.empty_title">尚未建立任何追蹤分組</p>
+                <p style="font-size:0.8rem;" data-i18n="watchlists.empty_hint">點擊「新增分組」開始</p>
             </div>`;
         return;
     }
@@ -250,12 +250,12 @@ function renderGroups() {
             <div class="group-header" onclick="toggleGroup(${g.id})">
                 <span class="group-color-dot" style="background:${g.color}"></span>
                 <span class="group-name">${esc(g.name)}</span>
-                <span class="group-count">${g.ticker_count} 股</span>
+                <span class="group-count">${t('watchlists.ticker_count', {n: g.ticker_count})}</span>
                 <div class="group-actions">
-                    <button onclick="event.stopPropagation(); editGroup(${g.id})" title="編輯">
+                    <button onclick="event.stopPropagation(); editGroup(${g.id})" title="${t('common.edit')}">
                         <span class="material-icons-outlined" style="font-size:18px;">edit</span>
                     </button>
-                    <button onclick="event.stopPropagation(); deleteGroup(${g.id})" title="刪除">
+                    <button onclick="event.stopPropagation(); deleteGroup(${g.id})" title="${t('common.delete')}">
                         <span class="material-icons-outlined" style="font-size:18px;">delete</span>
                     </button>
                 </div>
@@ -270,7 +270,7 @@ function renderGroups() {
                     `).join('')}
                     <button class="add-ticker-btn" onclick="openTickerModal(${g.id})">
                         <span class="material-icons-outlined" style="font-size:16px;">add</span>
-                        加入股票
+                        ${t('watchlists.add_ticker')}
                     </button>
                 </div>
             </div>
@@ -288,7 +288,7 @@ function toggleGroup(id) {
 function openGroupModal(id) {
     _currentGroupId = id || null;
     const modal = document.getElementById('group-modal');
-    document.getElementById('group-modal-title').textContent = id ? '編輯分組' : '新增分組';
+    document.getElementById('group-modal-title').textContent = id ? t('watchlists.edit_title') : t('watchlists.add_title');
     if (id) {
         const g = _groups.find(x => x.id === id);
         if (g) {
@@ -315,7 +315,7 @@ function closeGroupModal() {
 
 async function saveGroup() {
     const name = document.getElementById('grp-name').value.trim();
-    if (!name) { alert('請輸入分組名稱'); return; }
+    if (!name) { alert(t('watchlists.name_required')); return; }
     const body = {
         name,
         description: document.getElementById('grp-desc').value.trim(),
@@ -339,7 +339,7 @@ function editGroup(id) {
 
 async function deleteGroup(id) {
     const g = _groups.find(x => x.id === id);
-    if (!confirm(`刪除「${g ? g.name : id}」？股票唔會被刪除。`)) return;
+    if (!confirm(t('watchlists.delete_confirm', {name: g ? g.name : id}))) return;
     try {
         await fetch(`/api/watchlist-groups/${id}`, { method: 'DELETE' });
         loadGroups();
@@ -386,7 +386,7 @@ async function loadAvailableTickers(groupId) {
                 <button class="ticker-chip" style="cursor:pointer;" onclick="quickAddTicker('${t.symbol}')">
                     ${t.symbol}
                 </button>`).join('')}</div>`
-            : '<p style="color:var(--text-muted); font-size:0.85rem;">所有股票都已經加入咗</p>';
+            : `<p style="color:var(--text-muted); font-size:0.85rem;">${t('watchlists.all_added')}</p>`;
     } catch (e) {
         document.getElementById('available-tickers').innerHTML = '';
     }
@@ -394,7 +394,7 @@ async function loadAvailableTickers(groupId) {
 
 async function addTickerToGroup() {
     const symbol = document.getElementById('ticker-symbol').value.trim().toUpperCase();
-    if (!symbol) { alert('請輸入股票代碼'); return; }
+    if (!symbol) { alert(t('watchlists.symbol_required')); return; }
     await quickAddTicker(symbol);
 }
 

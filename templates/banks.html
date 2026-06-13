@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block title %}Stocker — {{ 'banks.title' }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <h1 style="font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:8px;">
+        <span class="material-icons-outlined">account_balance</span>
+        <span data-i18n="banks.title">投行觀察名單</span>
+    </h1>
+    <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="checkAllBanks()">
+            <span class="material-icons-outlined" style="font-size:18px">refresh</span>
+            <span data-i18n="banks.check_all">全部檢查</span>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+            <span class="material-icons-outlined" style="font-size:18px">add</span>
+            <span data-i18n="common.add">新增</span>
+        </button>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" style="margin-bottom:16px;">
+    <button class="tab-btn active" data-tab="banks" onclick="switchTab('banks')">
+        <span class="material-icons-outlined">business</span>
+        <span data-i18n="banks.tab.list">投行列表</span>
+    </button>
+    <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">
+        <span class="material-icons-outlined">description</span>
+        <span data-i18n="banks.tab.reports">最新報告</span>
+    </button>
+</div>
+
+<!-- Banks Tab -->
+<div class="tab-content active" id="tab-banks">
+    <div id="banks-list" class="stock-list">
+        <div class="loading-cell">
+            <div class="spinner-sm"></div>
+            <span data-i18n="common.loading">載入中...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Reports Tab -->
+<div class="tab-content" id="tab-reports">
+    <div id="reports-list" class="report-list">
+        <div class="loading-cell">
+            <div class="spinner-sm"></div>
+            <span data-i18n="common.loading">載入中...</span>
+        </div>
+    </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddModal()">
+    <span class="material-icons-outlined">add</span>
+</button>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="bank-modal">
+    <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title" data-i18n="banks.add_title">新增投行</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="bank-id">
+            <div class="input-group">
+                <label class="input-label"><span data-i18n="banks.name">投行名稱</span> *</label>
+                <input type="text" id="bank-name" class="input" data-i18n="banks.name_placeholder" placeholder="例如: Goldman Sachs" required>
+            </div>
+            <div class="input-group">
+                <label class="input-label" data-i18n="banks.short_name">簡稱</label>
+                <input type="text" id="bank-short-name" class="input" data-i18n="banks.short_name_placeholder" placeholder="例如: GS">
+            </div>
+            <div class="input-group">
+                <label class="input-label" data-i18n="banks.website">網站 URL</label>
+                <input type="url" id="bank-website" class="input" placeholder="https://www.goldmansachs.com">
+            </div>
+            <div class="input-group">
+                <label class="input-label"><span data-i18n="banks.report_url">報告頁面 URL</span> *</label>
+                <input type="url" id="bank-report-url" class="input" placeholder="https://www.goldmansachs.com/insights">
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                    <span data-i18n="banks.report_url_hint">填寫投行的研究報告或 Insights 頁面 URL</span>
+                </div>
+            </div>
+            <div id="bank-error" class="error-text" style="display:none;">
+                <span class="material-icons-outlined">error</span>
+                <span id="bank-error-msg"></span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-primary" id="btn-save-bank" onclick="saveBank()">
+                <span class="material-icons-outlined">save</span>
+                <span data-i18n="common.save">保存</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentTab = 'banks';
+    let editingBankId = null;
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        
+        if (tab === 'reports') {
+            loadReports();
+        }
+    }
+
+    // Load banks
+    async function loadBanks() {
+        try {
+            const res = await fetch('/api/banks');
+            if (!res.ok) throw new Error('Failed to fetch banks');
+            const banks = await res.json();
+            renderBanks(banks);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('banks-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('common.load_error')}</div>
+                </div>
+            `;
+        }
+    }
+
+    function renderBanks(banks) {
+        const container = document.getElementById('banks-list');
+        if (!banks || banks.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">account_balance</span>
+                    <div class="empty-state-title">${t('banks.empty_title')}</div>
+                    <div class="empty-state-text">${t('banks.empty_hint')}</div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        banks.forEach(bank => {
+            const card = document.createElement('div');
+            card.className = 'stock-card';
+            card.innerHTML = `
+                <div class="stock-icon" style="background:rgba(73,79,223,0.15); color:var(--blue);">
+                    <span class="material-icons-outlined">account_balance</span>
+                </div>
+                <div class="stock-info">
+                    <div class="stock-symbol">
+                        ${escapeHtml(bank.short_name || bank.name)}
+                        <span class="stock-sector" style="background:${bank.enabled ? 'rgba(0,200,83,0.15)' : 'rgba(255,23,68,0.15)'}; color:${bank.enabled ? 'var(--green)' : 'var(--red)'};">
+                            ${bank.enabled ? t('common.enabled') : t('common.disabled')}
+                        </span>
+                    </div>
+                    <div class="stock-name">${escapeHtml(bank.name)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                        ${bank.last_check ? t('banks.last_check') + new Date(bank.last_check).toLocaleDateString() : t('banks.never_checked')}
+                    </div>
+                </div>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn btn-ghost btn-icon" onclick="checkBank(${bank.id})" title="${t('banks.action.check')}">
+                        <span class="material-icons-outlined" style="font-size:20px">refresh</span>
+                    </button>
+                    <button class="btn btn-ghost btn-icon" onclick="editBank(${bank.id})" title="${t('common.edit')}">
+                        <span class="material-icons-outlined" style="font-size:20px">edit</span>
+                    </button>
+                    <button class="btn btn-ghost btn-icon" onclick="toggleBank(${bank.id}, ${!bank.enabled})" title="${bank.enabled ? t('common.disabled') : t('common.enabled')}">
+                        <span class="material-icons-outlined" style="font-size:20px; color:${bank.enabled ? 'var(--green)' : 'var(--text-muted)'}">
+                            ${bank.enabled ? 'toggle_on' : 'toggle_off'}
+                        </span>
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Load reports
+    async function loadReports() {
+        try {
+            const res = await fetch('/api/banks/reports/all');
+            if (!res.ok) throw new Error('Failed to fetch reports');
+            const reports = await res.json();
+            renderReports(reports);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('reports-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('common.load_error')}</div>
+                </div>
+            `;
+        }
+    }
+
+    function renderReports(reports) {
+        const container = document.getElementById('reports-list');
+        if (!reports || reports.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">description</span>
+                    <div class="empty-state-title">${t('banks.reports_empty_title')}</div>
+                    <div class="empty-state-text">${t('banks.reports_empty_hint')}</div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        reports.forEach(report => {
+            const date = report.published_at || report.created_at;
+            const dateStr = date ? new Date(date).toLocaleDateString('zh-TW') : '—';
+            
+            const card = document.createElement('div');
+            card.className = 'report-card';
+            card.innerHTML = `
+                <div class="report-card-header">
+                    <div class="report-icon" style="background:rgba(73,79,223,0.15);">
+                        <span class="material-icons-outlined" style="color:var(--blue)">description</span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div class="report-title">${escapeHtml(report.title || 'Untitled')}</div>
+                        <div class="report-summary" style="color:var(--text-muted); font-size:0.8rem;">
+                            ${escapeHtml(report.bank_name || '')}
+                        </div>
+                    </div>
+                </div>
+                <div class="report-meta">
+                    <span class="report-date">
+                        <span class="material-icons-outlined" style="font-size:14px">schedule</span>
+                        ${dateStr}
+                    </span>
+                    <div style="display:flex; gap:8px;">
+                        ${report.pdf_url ? `
+                            <a href="${escapeHtml(report.pdf_url)}" target="_blank" class="btn btn-ghost btn-sm" style="padding:6px 10px;">
+                                <span class="material-icons-outlined" style="font-size:16px">open_in_new</span>
+                                <span>${t('banks.action.view')}</span>
+                            </a>
+                        ` : ''}
+                        ${!report.downloaded && report.pdf_url ? `
+                            <button class="btn btn-primary btn-sm" style="padding:6px 10px;" onclick="downloadReport(${report.id})">
+                                <span class="material-icons-outlined" style="font-size:16px">download</span>
+                                <span>${t('banks.action.download')}</span>
+                            </button>
+                        ` : ''}
+                        ${report.downloaded ? `
+                            <span class="badge" style="background:rgba(0,200,83,0.15); color:var(--green);">
+                                <span class="material-icons-outlined" style="font-size:14px">check</span>
+                                ${t('banks.downloaded')}
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Modal functions
+    function openAddModal() {
+        editingBankId = null;
+        document.getElementById('modal-title').textContent = t('banks.add_title');
+        document.getElementById('bank-id').value = '';
+        document.getElementById('bank-name').value = '';
+        document.getElementById('bank-short-name').value = '';
+        document.getElementById('bank-website').value = '';
+        document.getElementById('bank-report-url').value = '';
+        document.getElementById('bank-error').style.display = 'none';
+        document.getElementById('bank-modal').classList.add('open');
+        setTimeout(() => document.getElementById('bank-name').focus(), 300);
+    }
+
+    function editBank(bankId) {
+        // Fetch bank data and open modal
+        fetch(`/api/banks`)
+            .then(res => res.json())
+            .then(banks => {
+                const bank = banks.find(b => b.id === bankId);
+                if (bank) {
+                    editingBankId = bankId;
+                    document.getElementById('modal-title').textContent = t('banks.edit_title');
+                    document.getElementById('bank-id').value = bank.id;
+                    document.getElementById('bank-name').value = bank.name || '';
+                    document.getElementById('bank-short-name').value = bank.short_name || '';
+                    document.getElementById('bank-website').value = bank.website_url || '';
+                    document.getElementById('bank-report-url').value = bank.report_url || '';
+                    document.getElementById('bank-error').style.display = 'none';
+                    document.getElementById('bank-modal').classList.add('open');
+                }
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('bank-modal').classList.remove('open');
+    }
+
+    async function saveBank() {
+        const name = document.getElementById('bank-name').value.trim();
+        const reportUrl = document.getElementById('bank-report-url').value.trim();
+        
+        if (!name) {
+            showError(t('banks.name_required'));
+            return;
+        }
+        
+        if (!reportUrl) {
+            showError(t('banks.url_required'));
+            return;
+        }
+
+        const data = {
+            name: name,
+            short_name: document.getElementById('bank-short-name').value.trim() || null,
+            website_url: document.getElementById('bank-website').value.trim() || null,
+            report_url: reportUrl,
+        };
+
+        const btn = document.getElementById('btn-save-bank');
+        btn.disabled = true;
+        btn.innerHTML = `<div class="spinner-sm"></div> ${t('common.saving')}`;
+
+        try {
+            let res;
+            if (editingBankId) {
+                res = await fetch(`/api/banks/${editingBankId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+            } else {
+                res = await fetch('/api/banks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || t('banks.save_error'));
+            }
+
+            closeModal();
+            showToast(editingBankId ? t('common.updated') : t('index.added'), 'success');
+            loadBanks();
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<span class="material-icons-outlined">save</span><span>${t('common.save')}</span>`;
+        }
+    }
+
+    function showError(msg) {
+        const errEl = document.getElementById('bank-error');
+        document.getElementById('bank-error-msg').textContent = msg;
+        errEl.style.display = 'flex';
+    }
+
+    // Toggle bank
+    async function toggleBank(bankId, enabled) {
+        try {
+            const res = await fetch(`/api/banks/${bankId}/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled }),
+            });
+            if (!res.ok) throw new Error(t('banks.action_error'));
+            showToast(enabled ? t('common.enabled') : t('common.disabled'), 'success');
+            loadBanks();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // Check single bank
+    async function checkBank(bankId) {
+        try {
+            showToast(t('banks.checking'), 'info');
+            const res = await fetch(`/api/banks/${bankId}/check`, { method: 'POST' });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            showToast(t('banks.check_done', {n: data.new_reports}), 'success');
+            loadBanks();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // Check all banks
+    async function checkAllBanks() {
+        try {
+            showToast(t('banks.checking_all'), 'info');
+            const res = await fetch('/api/banks/check-all', { method: 'POST' });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            showToast(t('banks.check_all_done', {n: data.total_new}), 'success');
+            loadBanks();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // Download report
+    async function downloadReport(reportId) {
+        try {
+            showToast(t('banks.downloading'), 'info');
+            const res = await fetch(`/api/banks/reports/${reportId}/download`, { method: 'POST' });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            showToast(t('banks.download_done'), 'success');
+            loadReports();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    // Init
+    loadBanks();
+
+    // Close modal on overlay click
+    document.getElementById('bank-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('bank-modal')) closeModal();
+    });
+</script>
+{% endblock %}

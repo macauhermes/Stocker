@@ -40,16 +40,16 @@
             <div style="display:flex; align-items:center; gap:8px;">
                 <!-- Compare button -->
                 <div style="position:relative;" id="compare-wrapper">
-                    <button id="btn-compare" onclick="toggleCompare()" title="比較股票" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem; display:flex; align-items:center; gap:2px;">
+                    <button id="btn-compare" onclick="toggleCompare()" title="比較" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem; display:flex; align-items:center; gap:2px;">
                         <span class="material-icons-outlined" style="font-size:16px;">compare_arrows</span>
                     </button>
                     <div id="compare-dropdown" style="display:none; position:absolute; top:100%; right:0; z-index:50; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;">選擇比較股票</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;" data-i18n="stock.select_compare">選擇比較股票</div>
                         <select id="compare-select" onchange="loadCompare(this.value)" style="width:100%; padding:6px 8px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:0.75rem;">
-                            <option value="">-- 選擇 --</option>
+                            <option value="">-- <span data-i18n="common.all">選擇</span> --</option>
                         </select>
                         <div id="compare-info" style="display:none; margin-top:6px; font-size:0.65rem; color:var(--text-muted);"></div>
-                        <button id="btn-clear-compare" onclick="clearCompare()" style="display:none; margin-top:6px; width:100%; padding:4px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">清除比較</button>
+                        <button id="btn-clear-compare" onclick="clearCompare()" style="display:none; margin-top:6px; width:100%; padding:4px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;" data-i18n="stock.clear_compare">清除比較</button>
                     </div>
                 </div>
                 <div class="chart-type-btns" style="display:flex; gap:2px; background:var(--bg); border-radius:6px; padding:2px;">
@@ -209,18 +209,18 @@
         compareSymbol = sym;
         const info = document.getElementById('compare-info');
         info.style.display = 'block';
-        info.textContent = '載入 ' + sym + ' 中...';
+        info.textContent = t('common.loading') + ' ' + sym + '...';
         document.getElementById('btn-clear-compare').style.display = 'block';
         document.getElementById('btn-compare').style.color = 'var(--blue)';
         try {
             const res = await fetch('/api/stock/' + sym + '/chart-data?range=' + currentRange);
             if (!res.ok) throw new Error('Failed');
             compareData = await res.json();
-            info.textContent = sym + ' 已載入（% 變動比較）';
+            info.textContent = sym + ' ✓ (' + t('stock.compare') + '%)';
             if (chartData) renderChart(chartData);
         } catch (err) {
             console.error('Compare load failed:', err);
-            info.textContent = '載入失敗';
+            info.textContent = t('common.load_error');
             compareData = null;
         }
     }
@@ -418,7 +418,7 @@
             }
         } catch (err) {
             console.error('Failed to load detail:', err);
-            showToast('載入股票資料失敗', 'error');
+            showToast(t('detail.load_stock_error'), 'error');
         }
     }
 
@@ -433,7 +433,7 @@
             renderChart(chartData);
         } catch (err) {
             console.error('Failed to load chart:', err);
-            showToast('載入圖表失敗', 'error');
+            showToast(t('detail.load_chart_error'), 'error');
         } finally {
             chartLoading.style.display = 'none';
         }
@@ -563,8 +563,8 @@
                         const d = ohlcData[ctx.dataIndex];
                         if (!d) return '';
                         return [
-                            `開: $${d.o?.toFixed(2)}`, `高: $${d.h?.toFixed(2)}`,
-                            `低: $${d.l?.toFixed(2)}`, `收: $${d.c?.toFixed(2)}`
+                            `${t('stock.candle_open')}: $${d.o?.toFixed(2)}`, `${t('stock.candle_high')}: $${d.h?.toFixed(2)}`,
+                            `${t('stock.candle_low')}: $${d.l?.toFixed(2)}`, `${t('stock.candle_close')}: $${d.c?.toFixed(2)}`
                         ];
                     }
                     return `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`;
@@ -787,7 +787,7 @@
         const costBasis = document.getElementById('input-cost-basis').value;
         const btn = document.getElementById('btn-save-holdings');
         btn.disabled = true;
-        btn.innerHTML = '<div class="spinner-sm"></div> 保存中...';
+        btn.innerHTML = `<div class="spinner-sm"></div> ${t('common.saving')}`;
         try {
             const res = await fetch('/api/tickers/' + SYMBOL, {
                 method: 'PUT',
@@ -797,8 +797,8 @@
                     cost_basis: costBasis ? parseFloat(costBasis) : null
                 })
             });
-            if (!res.ok) throw new Error('保存失敗');
-            showToast('持倉已更新', 'success');
+            if (!res.ok) throw new Error(t('detail.holdings_update_error'));
+            showToast(t('detail.holdings_updated'), 'success');
         } catch (err) {
             console.error(err);
             showToast(err.message, 'error');
@@ -806,7 +806,7 @@
             btn.disabled = false;
             btn.innerHTML = `
                 <span class="material-icons-outlined">save</span>
-                <span>保存</span>
+                <span data-i18n="detail.save_holdings">保存</span>
             `;
         }
     }
@@ -814,10 +814,10 @@
     // Refresh stock
     async function refreshStock() {
         try {
-            showToast('更新中...', 'info');
+            showToast(t('detail.refreshing'), 'info');
             const res = await fetch('/api/stock/' + SYMBOL + '/refresh', { method: 'POST' });
-            if (!res.ok) throw new Error('更新失敗');
-            showToast('已更新', 'success');
+            if (!res.ok) throw new Error(t('detail.refresh_error'));
+            showToast(t('detail.refreshed'), 'success');
             loadDetail();
             loadChartData();
         } catch (err) {
@@ -832,10 +832,10 @@
             const res = await fetch('/api/events/' + currentEventId + '/dismiss', { method: 'POST' });
             if (!res.ok) throw new Error('Dismiss failed');
             document.getElementById('event-banner').style.display = 'none';
-            showToast('已標記已知悉', 'success');
+            showToast(t('detail.event_dismissed'), 'success');
         } catch (err) {
             console.error(err);
-            showToast('操作失敗', 'error');
+            showToast(t('detail.event_dismiss_error'), 'error');
         }
     }
 

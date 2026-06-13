@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Stocker — 事件日曆{% endblock %}
+{% block title %}Stocker — {{ t('events.title') if t is defined else '事件日曆' }}{% endblock %}
 
 {% block content %}
 <main class="main-content">
     <div class="container">
         <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-            <h1 style="font-size:1.3rem; margin:0;">📅 事件日曆</h1>
+            <h1 style="font-size:1.3rem; margin:0;" data-i18n="events.title">📅 事件日曆</h1>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button class="btn btn-sm" onclick="syncEvents()" id="sync-btn">
                     <span class="material-icons-outlined" style="font-size:18px;">sync</span>
-                    <span>同步</span>
+                    <span data-i18n="events.sync">同步</span>
                 </button>
             </div>
         </div>
@@ -30,7 +30,7 @@
 
         <!-- Upcoming Events List -->
         <div style="margin-top:24px;">
-            <h3 style="font-size:1rem; margin-bottom:12px; color:var(--text-secondary);">📋 即將到來</h3>
+            <h3 style="font-size:1rem; margin-bottom:12px; color:var(--text-secondary);" data-i18n="events.upcoming">📋 即將到來</h3>
             <div id="upcoming-list"></div>
         </div>
     </div>
@@ -143,7 +143,7 @@
 
 <script>
 let currentYear, currentMonth;
-const DAYS = ['日', '一', '二', '三', '四', '五', '六'];
+const DAYS = t('events.days') || ['日', '一', '二', '三', '四', '五', '六'];
 
 function initCalendar() {
     const now = new Date();
@@ -161,7 +161,7 @@ function changeMonth(delta) {
 }
 
 async function loadCalendar() {
-    document.getElementById('month-title').textContent = `${currentYear} 年 ${currentMonth} 月`;
+    document.getElementById('month-title').textContent = t('events.year_month', {year: currentYear, month: currentMonth});
     const resp = await fetch(`/api/events/calendar?year=${currentYear}&month=${currentMonth}`);
     const events = await resp.json();
 
@@ -219,7 +219,7 @@ async function loadUpcoming() {
     const list = document.getElementById('upcoming-list');
 
     if (events.length === 0) {
-        list.innerHTML = '<div class="empty-state">暫無即將到來嘅事件<br><small>點擊「同步」從 Yahoo Finance 獲取</small></div>';
+        list.innerHTML = `<div class="empty-state">${t('events.empty')}<br><small>${t('events.empty_hint')}</small></div>`;
         return;
     }
 
@@ -227,7 +227,7 @@ async function loadUpcoming() {
         const type = e.event_type || 'other';
         const dateStr = e.event_date ? e.event_date.substring(5) : '';
         return `<div class="upcoming-item">
-            <span class="upcoming-badge ${type}">${type === 'earnings' ? '📊 盈報' : type === 'dividend' ? '💰 派息' : type === 'sec_filing' ? '📄 SEC' : '📌 ' + type}</span>
+            <span class="upcoming-badge ${type}">${type === 'earnings' ? '📊 ' + t('events.type.earnings') : type === 'dividend' ? '💰 ' + t('events.type.dividend') : type === 'sec_filing' ? '📄 ' + t('events.type.sec_filing') : '📌 ' + type}</span>
             <span class="upcoming-date">${dateStr}</span>
             <span class="upcoming-title">${e.title || e.symbol}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${e.symbol || ''}</span>
@@ -238,18 +238,18 @@ async function loadUpcoming() {
 async function syncEvents() {
     const btn = document.getElementById('sync-btn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="material-icons-outlined" style="font-size:18px; animation:spin 1s linear infinite;">sync</span><span>同步中...</span>';
+    btn.innerHTML = `<span class="material-icons-outlined" style="font-size:18px; animation:spin 1s linear infinite;">sync</span><span>${t('events.syncing')}</span>`;
     try {
         const resp = await fetch('/api/events/sync', { method: 'POST' });
         const data = await resp.json();
         loadCalendar();
         loadUpcoming();
-        showToast(`已同步 ${data.synced} 個事件`, 'success');
+        showToast(t('events.sync_done', {n: data.synced}), 'success');
     } catch (err) {
-        showToast('同步失敗: ' + err.message, 'error');
+        showToast(t('events.sync_error') + ': ' + err.message, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span class="material-icons-outlined" style="font-size:18px;">sync</span><span>同步</span>';
+        btn.innerHTML = `<span class="material-icons-outlined" style="font-size:18px;">sync</span><span>${t('events.sync')}</span>`;
     }
 }
 
