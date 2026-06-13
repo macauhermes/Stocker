@@ -38,6 +38,20 @@
                 <span data-i18n="detail.indicators">技術指標</span>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
+                <!-- Compare button -->
+                <div style="position:relative;" id="compare-wrapper">
+                    <button id="btn-compare" onclick="toggleCompare()" title="比較股票" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem; display:flex; align-items:center; gap:2px;">
+                        <span class="material-icons-outlined" style="font-size:16px;">compare_arrows</span>
+                    </button>
+                    <div id="compare-dropdown" style="display:none; position:absolute; top:100%; right:0; z-index:50; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;">選擇比較股票</div>
+                        <select id="compare-select" onchange="loadCompare(this.value)" style="width:100%; padding:6px 8px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:0.75rem;">
+                            <option value="">-- 選擇 --</option>
+                        </select>
+                        <div id="compare-info" style="display:none; margin-top:6px; font-size:0.65rem; color:var(--text-muted);"></div>
+                        <button id="btn-clear-compare" onclick="clearCompare()" style="display:none; margin-top:6px; width:100%; padding:4px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">清除比較</button>
+                    </div>
+                </div>
                 <div class="chart-type-btns" style="display:flex; gap:2px; background:var(--bg); border-radius:6px; padding:2px;">
                     <button class="chart-type-btn active" data-type="line" onclick="setChartType('line')" title="折線圖" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
                         <span class="material-icons-outlined" style="font-size:16px;">show_chart</span>
@@ -161,6 +175,85 @@
     let chartData = null;
     let chartZoom = { startIdx: 0, endIdx: 0, isDragging: false, dragStartX: 0, panStartIdx: 0 };
     let chartType = 'line';  // 'line' or 'candlestick'
+    // Compare mode state
+    let compareData = null;     // chart data for the comparison stock
+    let compareSymbol = null;   // symbol of the comparison stock
+
+    // ── Compare mode ──
+    function toggleCompare() {
+        const dd = document.getElementById('compare-dropdown');
+        const isOpen = dd.style.display !== 'none';
+        dd.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) loadCompareDropdown();
+    }
+
+    async function loadCompareDropdown() {
+        const sel = document.getElementById('compare-select');
+        if (sel.options.length > 1) return; // already populated
+        try {
+            const res = await fetch('/api/tickers');
+            if (!res.ok) return;
+            const tickers = await res.json();
+            tickers.forEach(tk => {
+                if (tk.symbol === SYMBOL) return; // skip current
+                const opt = document.createElement('option');
+                opt.value = tk.symbol;
+                opt.textContent = tk.symbol + (tk.name ? ' — ' + tk.name : '');
+                sel.appendChild(opt);
+            });
+        } catch (err) { console.error('Failed to load tickers for compare:', err); }
+    }
+
+    async function loadCompare(sym) {
+        if (!sym) { clearCompare(); return; }
+        compareSymbol = sym;
+        const info = document.getElementById('compare-info');
+        info.style.display = 'block';
+        info.textContent = '載入 ' + sym + ' 中...';
+        document.getElementById('btn-clear-compare').style.display = 'block';
+        document.getElementById('btn-compare').style.color = 'var(--blue)';
+        try {
+            const res = await fetch('/api/stock/' + sym + '/chart-data?range=' + currentRange);
+            if (!res.ok) throw new Error('Failed');
+            compareData = await res.json();
+            info.textContent = sym + ' 已載入（% 變動比較）';
+            if (chartData) renderChart(chartData);
+        } catch (err) {
+            console.error('Compare load failed:', err);
+            info.textContent = '載入失敗';
+            compareData = null;
+        }
+    }
+
+    function clearCompare() {
+        compareData = null;
+        compareSymbol = null;
+        document.getElementById('compare-select').value = '';
+        document.getElementById('compare-info').style.display = 'none';
+        document.getElementById('btn-clear-compare').style.display = 'none';
+        document.getElementById('btn-compare').style.color = 'var(--text-muted)';
+        document.getElementById('compare-dropdown').style.display = 'none';
+        if (chartData) renderChart(chartData);
+    }
+
+    // Normalize a price array to % change from first non-null value
+    function normalizeToPct(arr) {
+        if (!arr || arr.length === 0) return [];
+        let base = null;
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i] != null) { base = arr[i]; break; }
+        }
+        if (!base || base === 0) return arr.map(() => null);
+        return arr.map(v => v != null ? ((v - base) / base) * 100 : null);
+    }
+
+    // Align two date-indexed arrays by matching dates
+    function alignByDates(datesA, valsA, datesB, valsB) {
+        const mapB = {};
+        datesB.forEach((d, i) => { mapB[d] = valsB[i]; });
+        const alignedB = datesA.map(d => mapB[d] !== undefined ? mapB[d] : null);
+        return alignedB;
+    }
 
     // Chart type switching
     function setChartType(type) {
@@ -260,6 +353,8 @@
             b.classList.toggle('active', b.dataset.range === range);
         });
         loadChartData();
+        // Also reload compare stock data for the new range
+        if (compareSymbol) loadCompare(compareSymbol);
     }
 
     // Load stock detail
@@ -392,8 +487,36 @@
         }
 
         let datasets, chartJsType, chartPlugins, tooltipCallback;
+        const isCompare = compareData && compareSymbol;
 
-        if (chartType === 'candlestick' && data.prices_full) {
+        if (isCompare) {
+            // ── Compare mode: normalized % change overlay ──
+            const compPrices = compareData.prices || [];
+            const compDates = compareData.dates || [];
+            // Align compare stock dates to primary stock dates
+            const alignedComp = alignByDates(data.dates || [], null, compDates, compPrices);
+            const fullPrimary = data.prices || [];
+            const normPrimary = normalizeToPct(fullPrimary);
+            const normCompare = normalizeToPct(alignedComp);
+            const visPrimary = getVisibleSlice(normPrimary);
+            const visCompare = getVisibleSlice(normCompare);
+
+            datasets = [
+                {
+                    label: SYMBOL, data: visPrimary,
+                    borderColor: '#ffffff', borderWidth: 2, pointRadius: 0, tension: 0.1, fill: false
+                },
+                {
+                    label: compareSymbol, data: visCompare,
+                    borderColor: '#ff9100', borderWidth: 2, pointRadius: 0, tension: 0.1, fill: false
+                }
+            ];
+            chartJsType = 'line';
+            chartPlugins = [crosshairPlugin];
+            tooltipCallback = {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)}%`
+            };
+        } else if (chartType === 'candlestick' && data.prices_full) {
             // ── Candlestick mode ──
             const pf = data.prices_full;
             const openArr = getVisibleSlice(pf.open || pf.close || []);
@@ -503,7 +626,7 @@
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     },
                     y: {
-                        ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 10 }, callback: v => '$' + v.toFixed(2) },
+                        ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 10 }, callback: v => isCompare ? v.toFixed(1) + '%' : '$' + v.toFixed(2) },
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     }
                 }
@@ -727,6 +850,15 @@
     // Init
     loadDetail();
     loadChartData();
+
+    // Close compare dropdown on outside click
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('compare-wrapper');
+        const dd = document.getElementById('compare-dropdown');
+        if (wrapper && dd && !wrapper.contains(e.target)) {
+            dd.style.display = 'none';
+        }
+    });
 
     // Re-render on language change
     window.addEventListener('langchange', () => loadDetail());
