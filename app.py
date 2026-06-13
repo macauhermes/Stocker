@@ -449,6 +449,79 @@ def api_dismiss_event(event_id):
     return jsonify({'success': True})
 
 
+@app.route('/api/events/calendar', methods=['GET'])
+def api_events_calendar():
+    """Get events for a given month. ?year=2026&month=6"""
+    from datetime import datetime
+    now = datetime.now()
+    year = request.args.get('year', now.year, type=int)
+    month = request.args.get('month', now.month, type=int)
+    events = models.get_events_for_month(year, month)
+    return jsonify([dict(e) for e in events])
+
+
+@app.route('/api/events/upcoming', methods=['GET'])
+def api_events_upcoming():
+    """Get upcoming events within N days. ?days=90"""
+    days = request.args.get('days', 90, type=int)
+    events = models.get_upcoming_events(days)
+    return jsonify([dict(e) for e in events])
+
+
+@app.route('/api/events/sync', methods=['POST'])
+def api_events_sync():
+    """Sync earnings/dividend dates from yfinance for all tracked tickers."""
+    import yfinance as yf
+    tickers = models.get_active_tickers()
+    synced = 0
+    errors = []
+    for t in tickers:
+        sym = t['symbol']
+        try:
+            stock = yf.Ticker(sym)
+            # Earnings dates
+            cal = stock.calendar
+            if cal is not None and len(cal) > 0:
+                if hasattr(cal, 'index'):
+                    # DataFrame format
+                    for idx in cal.index:
+                        row = cal.loc[idx]
+                        if 'Earnings Date' in cal.columns:
+                            ed = row.get('Earnings Date')
+                            if ed is not None:
+                                date_str = str(ed)[:10]
+                                models.upsert_event(t['id'], 'earnings', date_str, f'{sym} Earnings')
+                                synced += 1
+                elif isinstance(cal, dict):
+                    # Dict format
+                    for key in ['Earnings Date', 'earningsDate']:
+                        ed = cal.get(key)
+                        if ed:
+                            if isinstance(ed, list) and len(ed) > 0:
+                                date_str = str(ed[0])[:10]
+                            else:
+                                date_str = str(ed)[:10]
+                            models.upsert_event(t['id'], 'earnings', date_str, f'{sym} Earnings')
+                            synced += 1
+                            break
+            # Dividends
+            divs = stock.dividends
+            if divs is not None and len(divs) > 0:
+                last_div = divs.index[-1]
+                date_str = str(last_div)[:10]
+                models.upsert_event(t['id'], 'dividend', date_str, f'{sym} Dividend')
+                synced += 1
+        except Exception as e:
+            errors.append(f'{sym}: {str(e)[:80]}')
+    return jsonify({'synced': synced, 'errors': errors})
+
+
+@app.route('/events')
+def events_page():
+    """Calendar view of earnings/dividend events."""
+    return render_template('events.html')
+
+
 # ── API: Files ─────────────────────────────────────────────────────────
 
 @app.route('/api/files', methods=['GET'])

@@ -33,7 +33,7 @@
 - [x] Add `data-freshness` 顯示最後更新時間 (relative: 3s ago / 5m ago) (commit 98ed308)
 - [x] Add `nightly_refresher` 自動刷新 5 年歷史價 + 預熱 cache (commit a16585a)
 - [x] Add `watchlist_groups` (用戶分組管理追蹤股票) (commit pending)
-- [ ] Add `events_calendar` 月曆視圖顯示 earnings/dividend/events
+- [x] Add `events_calendar` 月曆視圖顯示 earnings/dividend/events
 
 ### P2 - 改進
 - [ ] 將 mobile.css 結構化 (variables + components + utilities 分檔)

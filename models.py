@@ -526,6 +526,62 @@ def create_event(kwargs: dict):
     return add_event(kwargs)
 
 
+def get_events_for_month(year: int, month: int):
+    """Return all events in a given month (including dismissed), with ticker symbol."""
+    conn = get_db()
+    try:
+        start = f"{year:04d}-{month:02d}-01"
+        if month == 12:
+            end = f"{year + 1:04d}-01-01"
+        else:
+            end = f"{year:04d}-{month + 1:02d}-01"
+        return conn.execute(
+            """SELECT e.*, t.symbol FROM events e
+               JOIN tickers t ON t.id = e.ticker_id
+               WHERE e.event_date >= ? AND e.event_date < ?
+               ORDER BY e.event_date ASC""",
+            (start, end),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_upcoming_events(days: int = 90):
+    """Return upcoming events within N days from today."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            """SELECT e.*, t.symbol FROM events e
+               JOIN tickers t ON t.id = e.ticker_id
+               WHERE e.event_date >= date('now')
+                 AND e.event_date <= date('now', ? || ' days')
+               ORDER BY e.event_date ASC""",
+            (str(days),),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def upsert_event(ticker_id: int, event_type: str, event_date: str, title: str):
+    """Insert event only if it doesn't already exist (same ticker+type+date)."""
+    conn = get_db()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM events WHERE ticker_id=? AND event_type=? AND event_date=?",
+            (ticker_id, event_type, event_date),
+        ).fetchone()
+        if existing:
+            return existing
+        cur = conn.execute(
+            "INSERT INTO events (ticker_id, event_type, event_date, title) VALUES (?, ?, ?, ?)",
+            (ticker_id, event_type, event_date, title),
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM events WHERE id = ?", (cur.lastrowid,)).fetchone()
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Custom Data Sources (JSONPath-based, wealthlens-style)
 # ---------------------------------------------------------------------------

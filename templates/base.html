@@ -88,6 +88,10 @@
             <span class="material-icons-outlined">bookmark</span>
             <span>分組</span>
         </a>
+        <a href="/events" class="bottom-nav-item {% if request.path == '/events' %}active{% endif %}">
+            <span class="material-icons-outlined">calendar_month</span>
+            <span>日曆</span>
+        </a>
         <a href="/files" class="bottom-nav-item {% if request.path == '/files' %}active{% endif %}">
             <span class="material-icons-outlined">folder</span>
             <span data-i18n="nav.files">檔案</span>
