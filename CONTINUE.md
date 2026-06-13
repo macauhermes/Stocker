@@ -45,7 +45,7 @@
 
 ### P3 - 優化
 - [ ] 將 in-memory `_cache` 改 Redis (可選)
-- [ ] 加 Prometheus metrics endpoint
+- [x] 加 Prometheus metrics endpoint (commit pending)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程

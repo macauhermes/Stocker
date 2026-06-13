@@ -28,6 +28,7 @@ from services.stock_data import (
 from services.report_collector import collect_reports, collect_ticker_reports
 from services.ai_analyzer import analyze_report
 from services import multi_source
+from services import metrics
 
 # ── App Setup ──────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -35,6 +36,9 @@ app.config['JSON_AS_ASCII'] = False
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ── Prometheus Metrics ─────────────────────────────────────────────────
+metrics.init_metrics(app)
 
 DATA_DIR = Path(os.path.expanduser("~/repos/Stocker/data"))
 FILES_DIR = DATA_DIR / "files"
@@ -48,7 +52,9 @@ def cached(key, ttl=_CACHE_TTL):
     if key in _cache:
         val, ts = _cache[key]
         if (datetime.now() - ts).total_seconds() < ttl:
+            metrics.record_cache_hit()
             return val
+    metrics.record_cache_miss()
     return None
 
 def cache_set(key, value):
@@ -318,6 +324,10 @@ def api_stock_detail(symbol):
     symbol = symbol.upper()
     try:
         info = fetch_stock_info(symbol)
+        # Track data source
+        src = info.get('source')
+        if src:
+            metrics.record_data_source(src)
         news = fetch_news(symbol)
         earnings = fetch_next_earnings(symbol)
 
@@ -362,6 +372,10 @@ def api_stock_chart(symbol):
 
     try:
         raw = fetch_chart_data(symbol, range_param)
+        # Track data source
+        src = raw.get('source')
+        if src:
+            metrics.record_data_source(src)
         # Flatten the structure for the template
         prices_dict = raw.get('prices', {})
         indicators = raw.get('indicators', {})
@@ -907,9 +921,11 @@ def api_nightly_refresh():
         from services.nightly_refresher import refresh_all_tickers
         period = request.json.get('period', '5y') if request.is_json else '5y'
         result = refresh_all_tickers(period=period, sleep_between=1.0)
+        metrics.record_nightly_refresh('success')
         return jsonify(result)
     except Exception as e:
         logger.error(f"Nightly refresh failed: {e}")
+        metrics.record_nightly_refresh('failure')
         return jsonify({'error': str(e)}), 500
 
 
@@ -1026,6 +1042,7 @@ def watchlists_page():
 def api_stream_tickers():
     """Server-Sent Events stream of current prices for tracked tickers."""
     def generate():
+        metrics.sse_connect()
         # Send one snapshot then yield updates
         try:
             while True:
@@ -1041,14 +1058,25 @@ def api_stream_tickers():
                             'source': info.get('source', 'unknown'),
                             'ts': datetime.utcnow().isoformat(),
                         })
+                        # Track data source usage
+                        src = info.get('source', 'unknown')
+                        if src:
+                            metrics.record_data_source(src)
                     except Exception as exc:
                         logger.debug("SSE snapshot %s: %s", t['symbol'], exc)
                 yield f"data: {json.dumps(snapshot)}\n\n"
                 interval = get_refresh_interval()
                 time.sleep(interval)
         except GeneratorExit:
+            metrics.sse_disconnect()
             return
     return app.response_class(generate(), mimetype='text/event-stream')
+
+
+@app.route('/metrics')
+def prometheus_metrics():
+    """Prometheus metrics endpoint."""
+    return metrics.metrics_endpoint()
 
 
 if __name__ == '__main__':

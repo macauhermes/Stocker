@@ -268,7 +268,7 @@ def fetch_chart_data(symbol: str, range: str = "3m") -> dict:
         }
 
         logger.info("fetch_chart_data(%s, %s) -> %d data points", symbol, range, len(dates))
-        return {"dates": dates, "prices": prices, "indicators": indicators}
+        return {"dates": dates, "prices": prices, "indicators": indicators, "source": source}
 
     except Exception as exc:
         logger.error("fetch_chart_data(%s) failed: %s", symbol, exc)
