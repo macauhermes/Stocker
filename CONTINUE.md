@@ -36,7 +36,7 @@
 - [x] Add `events_calendar` 月曆視圖顯示 earnings/dividend/events
 
 ### P2 - 改進
-- [ ] 將 mobile.css 結構化 (variables + components + utilities 分檔)
+- [x] 將 mobile.css 結構化 (variables + components + utilities 分檔) (commit 16264cc)
 - [ ] 將 stock_detail.html chart 改用線上 plugin zoom + crosshair plugin (而非 chartjs-plugin-zoom)
 - [ ] Add `candlestick` toggle (陰陽燭 vs 折線)
 - [ ] Add `compare` mode (兩股疊加圖)
