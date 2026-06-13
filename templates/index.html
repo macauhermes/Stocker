@@ -212,6 +212,7 @@
             
             const card = document.createElement('div');
             card.className = 'stock-card';
+            card.dataset.symbol = ticker.symbol;
             card.onclick = () => window.location.href = '/stock/' + ticker.symbol;
             card.innerHTML = `
                 <div class="stock-icon">${ticker.symbol.substring(0, 2)}</div>
@@ -226,8 +227,8 @@
                     <canvas id="mini-${ticker.symbol}" width="80" height="32"></canvas>
                 </div>
                 <div class="stock-price-section">
-                    <div class="stock-price">${price != null ? '$' + price.toFixed(2) : '—'}</div>
-                    <div class="stock-change ${changeClass}">${changePct != null ? sign(changePct) + changePct.toFixed(2) + '%' : '—'}</div>
+                    <div class="stock-price" data-price="${ticker.symbol}">${price != null ? '$' + price.toFixed(2) : '—'}</div>
+                    <div class="stock-change ${changeClass}" data-change="${ticker.symbol}">${changePct != null ? sign(changePct) + changePct.toFixed(2) + '%' : '—'}</div>
                 </div>
             `;
             container.appendChild(card);
@@ -581,13 +582,63 @@
         } catch (e) { console.debug('refresh interval fetch failed', e); }
     }
 
+    // ── SSE client for live price updates ───────────────────────
+    let sseConnection = null;
+    let sseRetryTimer = null;
+
+    function updateSSEPrices(snapshot) {
+        if (!Array.isArray(snapshot)) return;
+        snapshot.forEach(item => {
+            const sym = item.symbol;
+            const priceEl = document.querySelector(`[data-price="${sym}"]`);
+            const changeEl = document.querySelector(`[data-change="${sym}"]`);
+            if (priceEl && item.price != null) {
+                priceEl.textContent = '$' + Number(item.price).toFixed(2);
+                // Flash effect
+                priceEl.classList.add('price-flash');
+                setTimeout(() => priceEl.classList.remove('price-flash'), 600);
+            }
+            if (changeEl && item.change_pct != null) {
+                const v = Number(item.change_pct);
+                const sign = v > 0 ? '+' : '';
+                changeEl.textContent = sign + v.toFixed(2) + '%';
+                changeEl.className = 'stock-change ' + (v >= 0 ? 'text-green' : 'text-red');
+            }
+        });
+    }
+
+    function connectSSE() {
+        if (sseConnection) { sseConnection.close(); sseConnection = null; }
+        clearTimeout(sseRetryTimer);
+
+        try {
+            sseConnection = new EventSource('/api/stream/tickers');
+            sseConnection.onmessage = (e) => {
+                try {
+                    const snapshot = JSON.parse(e.data);
+                    updateSSEPrices(snapshot);
+                } catch (err) { console.debug('SSE parse error', err); }
+            };
+            sseConnection.onerror = () => {
+                console.warn('SSE connection lost, will reconnect in 30s');
+                sseConnection.close();
+                sseConnection = null;
+                sseRetryTimer = setTimeout(connectSSE, 30000);
+            };
+        } catch (err) {
+            console.warn('SSE connect failed, falling back to polling', err);
+        }
+    }
+
     function startPolling() {
+        // Full structural refresh (new tickers, removed tickers, mini-charts)
+        // at lower frequency — SSE handles live price updates
         if (pollTimer) clearInterval(pollTimer);
-        const tick = () => {
-            loadStocks();
-            pollTimer = setTimeout(tick, pollInterval * 1000);
-        };
-        tick();
+        // Structural refresh every 5 min (SSE handles price updates in between)
+        const structuralInterval = Math.max(pollInterval, 300);
+        pollTimer = setInterval(loadStocks, structuralInterval * 1000);
+        // Connect SSE for live prices
+        connectSSE();
     }
 
     refreshPolling().then(startPolling);
