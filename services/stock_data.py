@@ -92,6 +92,8 @@ def fetch_stock_info(symbol: str) -> dict:
     Return current snapshot for *symbol*:
       price, change%, name, sector, market_cap, pe_ratio, eps,
       week52_high, week52_low
+
+    Uses multi-source fallback: yfinance (full info) → Yahoo direct (price only).
     """
     try:
         ticker = yf.Ticker(symbol)
@@ -103,36 +105,69 @@ def fetch_stock_info(symbol: str) -> dict:
         if price and prev_close and prev_close != 0:
             change_pct = round((price - prev_close) / prev_close * 100, 2)
 
-        result = {
-            "symbol": symbol.upper(),
-            "price": _round_safe(price),
-            "change_pct": change_pct,
-            "name": info.get("shortName") or info.get("longName", symbol),
-            "sector": info.get("sector", "N/A"),
-            "market_cap": info.get("marketCap"),
-            "pe_ratio": _round_safe(info.get("trailingPE")),
-            "eps": _round_safe(info.get("trailingEps")),
-            "week52_high": _round_safe(info.get("fiftyTwoWeekHigh")),
-            "week52_low": _round_safe(info.get("fiftyTwoWeekLow")),
-        }
-        logger.info("fetch_stock_info(%s) -> price=%s", symbol, result["price"])
-        return result
+        # If yfinance returned a price, use full yfinance data
+        if price:
+            result = {
+                "symbol": symbol.upper(),
+                "price": _round_safe(price),
+                "change_pct": change_pct,
+                "name": info.get("shortName") or info.get("longName", symbol),
+                "sector": info.get("sector", "N/A"),
+                "market_cap": info.get("marketCap"),
+                "pe_ratio": _round_safe(info.get("trailingPE")),
+                "eps": _round_safe(info.get("trailingEps")),
+                "week52_high": _round_safe(info.get("fiftyTwoWeekHigh")),
+                "week52_low": _round_safe(info.get("fiftyTwoWeekLow")),
+                "source": "yfinance",
+            }
+            logger.info("fetch_stock_info(%s) -> price=%s [yfinance]", symbol, result["price"])
+            return result
+
+        # yfinance returned no price — try multi_source fallback
+        logger.info("fetch_stock_info(%s): yfinance returned no price, trying multi_source", symbol)
 
     except Exception as exc:
-        logger.error("fetch_stock_info(%s) failed: %s", symbol, exc)
-        return {
-            "symbol": symbol.upper(),
-            "price": None,
-            "change_pct": None,
-            "name": symbol,
-            "sector": "N/A",
-            "market_cap": None,
-            "pe_ratio": None,
-            "eps": None,
-            "week52_high": None,
-            "week52_low": None,
-            "error": str(exc),
-        }
+        logger.warning("fetch_stock_info(%s) yfinance exception: %s — trying multi_source", symbol, exc)
+
+    # Fallback: multi_source.get_current_price (Yahoo direct → yfinance lite)
+    try:
+        from services.multi_source import get_current_price
+        fallback = get_current_price(symbol)
+        if fallback and fallback.get("price"):
+            result = {
+                "symbol": symbol.upper(),
+                "price": fallback["price"],
+                "change_pct": fallback.get("change_pct"),
+                "name": fallback.get("name", symbol),
+                "sector": fallback.get("sector", "N/A"),
+                "market_cap": fallback.get("market_cap"),
+                "pe_ratio": fallback.get("pe_ratio"),
+                "eps": fallback.get("eps"),
+                "week52_high": None,
+                "week52_low": None,
+                "source": fallback.get("source", "multi_source"),
+            }
+            logger.info("fetch_stock_info(%s) -> price=%s [%s]", symbol, result["price"], result["source"])
+            return result
+    except Exception as fallback_exc:
+        logger.error("fetch_stock_info(%s) multi_source fallback also failed: %s", symbol, fallback_exc)
+
+    # All sources failed
+    return {
+        "symbol": symbol.upper(),
+        "price": None,
+        "change_pct": None,
+        "name": symbol,
+        "sector": "N/A",
+        "market_cap": None,
+        "pe_ratio": None,
+        "eps": None,
+        "week52_high": None,
+        "week52_low": None,
+        "source": None,
+        "error": "all sources failed",
+    }
+
 
 
 # ──────────────────────────────────────────────────────────────────────

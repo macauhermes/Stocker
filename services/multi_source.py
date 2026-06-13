@@ -35,6 +35,16 @@ CUSTOM_HEADERS = {
     "Accept-Encoding": "gzip, deflate",
 }
 
+
+def _round_safe(value, decimals=2):
+    """Round a value if it's numeric, otherwise return None."""
+    if value is None:
+        return None
+    try:
+        return round(float(value), decimals)
+    except (TypeError, ValueError):
+        return None
+
 # Yahoo Finance direct query (works for stocks + .HK + .SS etc)
 YAHOO_QUERY_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search?q={q}&quotesCount=10"
@@ -126,7 +136,7 @@ def from_yfinance(symbol, period="1y"):
                 "high": _round_safe(row.get("High")),
                 "low": _round_safe(row.get("Low")),
                 "close": _round_safe(row.get("Close")),
-                "volume": int(row.get("Volume", 0)) if pd.notna(row.get("Volume")) else 0,
+                "volume": int(row.get("Volume", 0)) if row.get("Volume") is not None else 0,
             })
         if rows:
             return {"source": "yfinance", "rows": rows}
@@ -407,18 +417,11 @@ def fetch_with_fallback(symbol, period="1y"):
 
 def get_current_price(symbol):
     """
-    Get real-time-ish price using the same fallback chain.
+    Get real-time-ish price using multi-source fallback.
+    Does NOT import from stock_data.py (avoids circular dependency).
+    Returns: {symbol, price, change_pct, name, source}
     """
-    # Try yfinance first (has real-time via yf.Ticker)
-    try:
-        from services.stock_data import fetch_stock_info
-        info = fetch_stock_info(symbol)
-        if info.get("price"):
-            return info
-    except Exception:
-        pass
-
-    # Yahoo direct for last price
+    # 1. Yahoo direct API (fast, reliable, no yfinance dependency)
     try:
         url = YAHOO_QUERY_URL.format(symbol=symbol)
         resp = requests.get(url, params={"range": "1d", "interval": "1m"},
@@ -443,7 +446,32 @@ def get_current_price(symbol):
     except Exception as exc:
         logger.debug("yahoo_direct price for %s failed: %s", symbol, exc)
 
-    return {"symbol": symbol.upper(), "price": None, "change_pct": None, "name": symbol}
+    # 2. yfinance (has real-time via yf.Ticker)
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        info = ticker.info or {}
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
+        prev = info.get("previousClose") or info.get("regularMarketPreviousClose")
+        change_pct = None
+        if price and prev and prev != 0:
+            change_pct = round((price - prev) / prev * 100, 2)
+        if price:
+            return {
+                "symbol": symbol.upper(),
+                "price": _round_safe(price),
+                "change_pct": change_pct,
+                "name": info.get("shortName") or info.get("longName", symbol),
+                "sector": info.get("sector", "N/A"),
+                "market_cap": info.get("marketCap"),
+                "pe_ratio": _round_safe(info.get("trailingPE")),
+                "eps": _round_safe(info.get("trailingEps")),
+                "source": "yfinance",
+            }
+    except Exception as exc:
+        logger.debug("yfinance price for %s failed: %s", symbol, exc)
+
+    return {"symbol": symbol.upper(), "price": None, "change_pct": None, "name": symbol, "source": None}
 
 
 def search_symbols(query, limit=10):
