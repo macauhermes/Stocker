@@ -3,6 +3,7 @@
 ## 當前狀態（截至最後一次手動執行 2026-06-13）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e406d8 (v3.2)
+**Latest commit**: f4e2251 [P0] fetch_stock_info multi_source fallback
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -21,10 +22,10 @@
 按以下優先級，每小時做 1-2 項，commit + push + restart server:
 
 ### P0 - 立即做
-- [ ] 將 `fetch_chart_data` 改用 multi_source.fetch_with_fallback()（現有 stock_data.py 仲係單源 yfinance）
-- [ ] 將 `fetch_stock_info` 改用 multi_source.get_current_price() + yfinance 補完 PE/EPS/market_cap
-- [ ] 將 `refresh_ticker_data` 入面嘅 `fetch_historical_prices` 改用 multi_source，俾 SPCX/港股/A股/加密都 work
-- [ ] 加 staging area git commit workflow 改進
+ [x] 將 `fetch_chart_data` 改用 multi_source.fetch_with_fallback()（commit a8d9115）
+ [x] 將 `fetch_stock_info` 改用 multi_source.get_current_price() + yfinance 補完 PE/EPS/market_cap（commit f4e2251）
+ [x] 將 `refresh_ticker_data` 入面嘅 `fetch_historical_prices` 改用 multi_source（commit a8d9115）
+ [ ] 加 staging area git commit workflow 改進
 
 ### P1 - 重要
 - [ ] Add SSE client in index.html (用 EventSource 取代 setInterval 輪詢)
