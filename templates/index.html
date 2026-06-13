@@ -221,6 +221,7 @@
                         ${ticker.symbol}
                         ${ticker.sector ? `<span class="stock-sector">${ticker.sector}</span>` : ''}
                         <span class="source-badge source-${(ticker.data_source || 'unknown').replace(/_/g, '-')}" title="${ticker.data_source || 'unknown'}">${sourceLabel(ticker.data_source)}</span>
+                        <span class="freshness-badge ${freshnessClass(ticker.last_updated)}" data-ts="${ticker.last_updated || ''}" title="Last updated: ${ticker.last_updated || 'unknown'}">${timeAgo(ticker.last_updated)}</span>
                     </div>
                     <div class="stock-name">${ticker.name || '—'}</div>
                 </div>
@@ -280,6 +281,42 @@
             'custom': '✦',
         };
         return labels[source] || '?';
+    }
+
+    // Relative time helper (e.g. "3s ago", "5m ago")
+    function timeAgo(isoString) {
+        if (!isoString) return '';
+        const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+        if (seconds < 0) return 'just now';
+        if (seconds < 10) return 'just now';
+        if (seconds < 60) return seconds + 's ago';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return minutes + 'm ago';
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + 'h ago';
+        return Math.floor(hours / 24) + 'd ago';
+    }
+
+    // Freshness CSS class based on age
+    function freshnessClass(isoString) {
+        if (!isoString) return 'fresh-unknown';
+        const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+        if (seconds < 60) return 'fresh-green';    // <1min = green
+        if (seconds < 300) return 'fresh-yellow';  // <5min = yellow
+        return 'fresh-grey';                        // >=5min = grey
+    }
+
+    // Auto-update all freshness badges every 5s
+    let freshnessTimer = null;
+    function startFreshnessUpdater() {
+        if (freshnessTimer) clearInterval(freshnessTimer);
+        freshnessTimer = setInterval(() => {
+            document.querySelectorAll('.freshness-badge[data-ts]').forEach(el => {
+                const ts = el.dataset.ts;
+                el.textContent = timeAgo(ts);
+                el.className = 'freshness-badge ' + freshnessClass(ts);
+            });
+        }, 5000);
     }
 
     // Sector filter
@@ -575,6 +612,7 @@
     loadStocks();
     loadReports();
     loadSectors();
+    startFreshnessUpdater();  // Auto-update freshness badges every 5s
 
     // ── Smart polling (wealthlens-style) ─────────────────────────────
     let pollInterval = 60;  // default 60s, will be updated by /api/refresh-interval
@@ -616,6 +654,18 @@
                 const sign = v > 0 ? '+' : '';
                 changeEl.textContent = sign + v.toFixed(2) + '%';
                 changeEl.className = 'stock-change ' + (v >= 0 ? 'text-green' : 'text-red');
+            }
+            // Update freshness badge via SSE ts
+            if (item.ts) {
+                const card = document.querySelector(`.stock-card[data-symbol="${sym}"]`);
+                if (card) {
+                    const fb = card.querySelector('.freshness-badge');
+                    if (fb) {
+                        fb.dataset.ts = item.ts;
+                        fb.textContent = timeAgo(item.ts);
+                        fb.className = 'freshness-badge ' + freshnessClass(item.ts);
+                    }
+                }
             }
         });
     }

@@ -55,6 +55,12 @@ def cache_set(key, value):
     """Store value in cache."""
     _cache[key] = (value, datetime.now())
 
+def cache_timestamp(key):
+    """Return the datetime when a cache key was last set, or None."""
+    if key in _cache:
+        return _cache[key][1]
+    return None
+
 
 # ── Initialize DB on startup ──────────────────────────────────────────
 models.init_db()
@@ -123,6 +129,9 @@ def api_get_tickers():
         ticker_data['week52_high'] = info.get('week52_high')
         ticker_data['week52_low'] = info.get('week52_low')
         ticker_data['data_source'] = info.get('source', 'unknown')
+        # Include freshness timestamp
+        ts = cache_timestamp(price_cache_key)
+        ticker_data['last_updated'] = ts.isoformat() if ts else None
         result.append(ticker_data)
 
     cache_set(cache_key, result)

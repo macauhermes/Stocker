@@ -596,6 +596,23 @@ a {
 .source-custom           { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
 .source-unknown          { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
 
+/* Data freshness badge — shows relative time since last update */
+.freshness-badge {
+  font-size: 0.55rem;
+  font-weight: 500;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  line-height: 1.4;
+  margin-left: 2px;
+  cursor: help;
+}
+.fresh-green   { background: rgba(0, 200, 83, 0.15); color: #00c853; }
+.fresh-yellow  { background: rgba(255, 193, 7, 0.15); color: #ffc107; }
+.fresh-grey    { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
+.fresh-unknown { background: rgba(107, 114, 128, 0.05); color: #4b5563; }
+
 .stock-name {
   color: var(--text-muted);
   font-size: 0.85rem;
