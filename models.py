@@ -92,6 +92,28 @@ def init_db():
             )
         """)
 
+        # Custom JSONPath data sources (wealthlens-inspired, allows plugging in
+        # any fund / bond / crypto API for which the format isn't covered by
+        # the built-in fallback chain).
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS custom_data_sources (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                name          TEXT    NOT NULL,
+                url           TEXT    NOT NULL,
+                date_path     TEXT    NOT NULL,
+                price_path    TEXT    NOT NULL,
+                open_path     TEXT,
+                high_path     TEXT,
+                low_path      TEXT,
+                volume_path   TEXT,
+                symbol_match  TEXT,
+                priority      INTEGER DEFAULT 100,
+                enabled       INTEGER DEFAULT 1,
+                notes         TEXT,
+                created_at    TEXT    DEFAULT (datetime('now'))
+            )
+        """)
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS files (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -478,3 +500,250 @@ def get_events_by_ticker(ticker_id: int):
 
 def create_event(kwargs: dict):
     return add_event(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Custom Data Sources (JSONPath-based, wealthlens-style)
+# ---------------------------------------------------------------------------
+
+def add_custom_source(kwargs: dict):
+    """Insert a new custom data source."""
+    allowed = {"name", "url", "date_path", "price_path", "open_path", "high_path",
+               "low_path", "volume_path", "symbol_match", "priority", "enabled", "notes"}
+    fields = {k: v for k, v in kwargs.items() if k in allowed}
+    if "enabled" not in fields:
+        fields["enabled"] = 1
+    cols = ", ".join(fields.keys())
+    placeholders = ", ".join("?" * len(fields))
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            f"INSERT INTO custom_data_sources ({cols}) VALUES ({placeholders})",
+            list(fields.values()),
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM custom_data_sources WHERE id=?",
+                            (cur.lastrowid,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_custom_sources(enabled_only: bool = False):
+    conn = get_db()
+    try:
+        if enabled_only:
+            rows = conn.execute(
+                "SELECT * FROM custom_data_sources WHERE enabled=1 ORDER BY priority"
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM custom_data_sources ORDER BY priority"
+            ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def update_custom_source(source_id: int, kwargs: dict):
+    allowed = {"name", "url", "date_path", "price_path", "open_path", "high_path",
+               "low_path", "volume_path", "symbol_match", "priority", "enabled", "notes"}
+    fields = {k: v for k, v in kwargs.items() if k in allowed}
+    if not fields:
+        return None
+    set_clause = ", ".join(f"{k}=?" for k in fields)
+    conn = get_db()
+    try:
+        conn.execute(
+            f"UPDATE custom_data_sources SET {set_clause} WHERE id=?",
+            list(fields.values()) + [source_id],
+        )
+        conn.commit()
+        return conn.execute(
+            "SELECT * FROM custom_data_sources WHERE id=?", (source_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def delete_custom_source(source_id: int):
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "DELETE FROM custom_data_sources WHERE id=?", (source_id,)
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Investment Banks CRUD
+# ---------------------------------------------------------------------------
+
+def add_investment_bank(name: str, short_name: str = None, website_url: str = None, report_url: str = None, logo_url: str = None):
+    """Insert a new investment bank. Returns the bank row."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "INSERT INTO investment_banks (name, short_name, website_url, report_url, logo_url) VALUES (?, ?, ?, ?, ?)",
+            (name, short_name, website_url, report_url, logo_url),
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM investment_banks WHERE id = ?", (cur.lastrowid,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_all_investment_banks():
+    """Return all investment banks, ordered by name."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM investment_banks ORDER BY name"
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_enabled_investment_banks():
+    """Return only enabled investment banks."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM investment_banks WHERE enabled = 1 ORDER BY name"
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_investment_bank(bank_id: int):
+    """Return a single investment bank by ID."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM investment_banks WHERE id = ?", (bank_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def update_investment_bank(bank_id: int, kwargs: dict):
+    """Update an investment bank."""
+    allowed = {"name", "short_name", "website_url", "report_url", "logo_url", "enabled", "last_check", "last_report"}
+    fields = {k: v for k, v in kwargs.items() if k in allowed}
+    if not fields:
+        return get_investment_bank(bank_id)
+
+    set_clause = ", ".join(f"{k} = ?" for k in fields)
+    values = list(fields.values()) + [bank_id]
+
+    conn = get_db()
+    try:
+        conn.execute(
+            f"UPDATE investment_banks SET {set_clause} WHERE id = ?", values
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM investment_banks WHERE id = ?", (bank_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def delete_investment_bank(bank_id: int):
+    """Delete an investment bank and its reports."""
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM bank_reports WHERE bank_id = ?", (bank_id,))
+        cur = conn.execute("DELETE FROM investment_banks WHERE id = ?", (bank_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def toggle_investment_bank(bank_id: int, enabled: bool):
+    """Enable or disable an investment bank."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "UPDATE investment_banks SET enabled = ? WHERE id = ?",
+            (1 if enabled else 0, bank_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Bank Reports CRUD
+# ---------------------------------------------------------------------------
+
+def add_bank_report(bank_id: int, title: str, url: str = None, pdf_url: str = None, published_at: str = None):
+    """Insert a new bank report. Returns the report row."""
+    conn = get_db()
+    try:
+        # Check if report already exists
+        existing = conn.execute(
+            "SELECT id FROM bank_reports WHERE bank_id = ? AND (url = ? OR pdf_url = ?)",
+            (bank_id, url, pdf_url),
+        ).fetchone()
+        if existing:
+            return None
+        
+        cur = conn.execute(
+            "INSERT INTO bank_reports (bank_id, title, url, pdf_url, published_at) VALUES (?, ?, ?, ?, ?)",
+            (bank_id, title, url, pdf_url, published_at),
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM bank_reports WHERE id = ?", (cur.lastrowid,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_bank_reports(bank_id: int, limit: int = 50):
+    """Return reports for a specific bank."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM bank_reports WHERE bank_id = ? ORDER BY created_at DESC LIMIT ?",
+            (bank_id, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_undownloaded_reports():
+    """Return reports that haven't been downloaded yet."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT br.*, ib.name as bank_name FROM bank_reports br JOIN investment_banks ib ON br.bank_id = ib.id WHERE br.downloaded = 0 ORDER BY br.created_at"
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def mark_report_downloaded(report_id: int, file_path: str):
+    """Mark a report as downloaded."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE bank_reports SET downloaded = 1, file_path = ? WHERE id = ?",
+            (file_path, report_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_all_bank_reports(limit: int = 100):
+    """Return all bank reports with bank name."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT br.*, ib.name as bank_name, ib.short_name as bank_short_name FROM bank_reports br JOIN investment_banks ib ON br.bank_id = ib.id ORDER BY br.created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    finally:
+        conn.close()

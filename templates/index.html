@@ -2,94 +2,117 @@
 {% block title %}Stocker — Dashboard{% endblock %}
 
 {% block content %}
-<div class="dashboard">
-    <!-- Event Reminder Banner -->
-    <div id="event-banner" class="event-banner" style="display:none;">
-        <span class="event-icon">⚠️</span>
-        <span id="event-banner-text"></span>
-        <button class="btn-pill btn-pill-sm btn-dismiss" onclick="dismissBanner()" data-i18n="index.event_dismiss">已知悉</button>
-    </div>
+<!-- Event Reminder Banner -->
+<div id="event-banner" class="event-banner" style="display:none;">
+    <span class="material-icons-outlined">warning</span>
+    <span id="event-banner-text" class="event-text"></span>
+    <button class="event-dismiss" onclick="dismissBanner()" data-i18n="index.event_dismiss">已知悉</button>
+</div>
 
-    <!-- Tab Navigation -->
-    <div class="tab-header">
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="stocks" data-i18n="index.tab.stocks">股票</button>
-            <button class="tab-btn" data-tab="reports" data-i18n="index.tab.reports">報告</button>
-            <button class="tab-btn" data-tab="archived" data-i18n="index.tab.archived">歸檔</button>
-        </div>
-        <button class="btn-pill btn-primary" id="btn-add-ticker" onclick="openAddModal()" data-i18n="index.add">+ 新增</button>
-    </div>
+<!-- Tab Navigation -->
+<div class="tabs">
+    <button class="tab-btn active" data-tab="stocks" onclick="switchTab('stocks')">
+        <span class="material-icons-outlined">show_chart</span>
+        <span data-i18n="index.tab.stocks">股票</span>
+    </button>
+    <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">
+        <span class="material-icons-outlined">description</span>
+        <span data-i18n="index.tab.reports">報告</span>
+    </button>
+    <button class="tab-btn" data-tab="archived" onclick="switchTab('archived')">
+        <span class="material-icons-outlined">archive</span>
+        <span data-i18n="index.tab.archived">歸檔</span>
+    </button>
+</div>
 
-    <!-- Stocks Tab -->
-    <div class="tab-content active" id="tab-stocks">
-        <div class="table-container">
-            <table class="stock-table" id="stock-table">
-                <thead>
-                    <tr>
-                        <th data-i18n="stock.ticker">Ticker</th>
-                        <th data-i18n="stock.name">Name</th>
-                        <th data-i18n="stock.price">Price</th>
-                        <th data-i18n="stock.change">Change%</th>
-                        <th data-i18n="stock.prev_close">Prev Close</th>
-                        <th data-i18n="stock.mini_chart">Mini Chart</th>
-                        <th data-i18n="stock.shares">Shares</th>
-                        <th data-i18n="stock.pnl">P&L</th>
-                        <th data-i18n="stock.pnl_pct">P&L%</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="stock-table-body">
-                    <tr><td colspan="10" class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Reports Tab -->
-    <div class="tab-content" id="tab-reports">
-        <div class="sector-filter-bar" id="sector-filter-bar" style="display:flex;gap:8px;padding:12px 0;flex-wrap:wrap;">
-            <button class="sector-pill active" data-sector="all" onclick="filterBySector('all')" data-i18n="common.all" style="padding:4px 14px;border-radius:20px;border:1px solid var(--border,#333);background:var(--accent,#00c853);color:#fff;cursor:pointer;font-size:0.85rem;">All</button>
-        </div>
-        <div class="report-list" id="report-list">
-            <div class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></div>
-        </div>
-    </div>
-
-    <!-- Archived Tab -->
-    <div class="tab-content" id="tab-archived">
-        <div class="table-container">
-            <table class="stock-table" id="archived-table">
-                <thead>
-                    <tr>
-                        <th data-i18n="stock.symbol">Symbol</th>
-                        <th data-i18n="stock.name">Name</th>
-                        <th data-i18n="stock.sector">Sector</th>
-                        <th data-i18n="stock.archived_date">Archived Date</th>
-                        <th data-i18n="stock.action">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="archived-table-body">
-                    <tr><td colspan="5" class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></td></tr>
-                </tbody>
-            </table>
+<!-- Stocks Tab -->
+<div class="tab-content active" id="tab-stocks">
+    <div id="stock-list" class="stock-list">
+        <div class="loading-cell">
+            <div class="spinner-sm"></div>
+            <span data-i18n="common.loading">載入中...</span>
         </div>
     </div>
 </div>
 
+<!-- Reports Tab -->
+<div class="tab-content" id="tab-reports">
+    <!-- Sector Filter -->
+    <div class="sector-pills" id="sector-pills">
+        <button class="sector-pill active" data-sector="all" onclick="filterBySector('all')" data-i18n="common.all">全部</button>
+    </div>
+    
+    <!-- Report Type Tabs -->
+    <div class="tabs" style="margin-bottom: 12px;">
+        <button class="tab-btn active" data-type="all" onclick="filterByType('all')">全部</button>
+        <button class="tab-btn" data-type="earnings" onclick="filterByType('earnings')">
+            <span class="material-icons-outlined">assessment</span>
+            財報
+        </button>
+        <button class="tab-btn" data-type="news" onclick="filterByType('news')">
+            <span class="material-icons-outlined">article</span>
+            新聞
+        </button>
+        <button class="tab-btn" data-type="analyst" onclick="filterByType('analyst')">
+            <span class="material-icons-outlined">analytics</span>
+            分析
+        </button>
+    </div>
+    
+    <div id="report-list" class="report-list">
+        <div class="loading-cell">
+            <div class="spinner-sm"></div>
+            <span data-i18n="common.loading">載入中...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Archived Tab -->
+<div class="tab-content" id="tab-archived">
+    <div id="archived-list" class="stock-list">
+        <div class="loading-cell">
+            <div class="spinner-sm"></div>
+            <span data-i18n="common.loading">載入中...</span>
+        </div>
+    </div>
+</div>
+
+<!-- FAB (Floating Action Button) -->
+<button class="fab" onclick="openAddModal()">
+    <span class="material-icons-outlined">add</span>
+</button>
+
 <!-- Add Ticker Modal -->
-<div class="modal-overlay" id="add-modal" style="display:none;">
+<div class="modal-overlay" id="add-modal">
     <div class="modal">
+        <div class="modal-handle"></div>
         <div class="modal-header">
-            <h3 data-i18n="index.add_title">新增追蹤股票</h3>
-            <button class="modal-close" onclick="closeAddModal()">&times;</button>
+            <h3 class="modal-title" data-i18n="index.add_title">新增追蹤股票</h3>
+            <button class="modal-close" onclick="closeAddModal()">
+                <span class="material-icons-outlined">close</span>
+            </button>
         </div>
         <div class="modal-body">
-            <input type="text" id="input-symbol" class="input-field" placeholder="輸入股票代碼 (e.g. AAPL)" data-i18n="index.symbol_placeholder" autocomplete="off">
-            <div id="add-error" class="error-text" style="display:none;"></div>
+            <div class="input-group">
+                <label class="input-label" data-i18n="stock.ticker">股票代碼</label>
+                <div class="input-icon">
+                    <span class="material-icons-outlined">search</span>
+                    <input type="text" id="input-symbol" class="input" placeholder="輸入股票代碼 (如 TSLA)" data-i18n="index.symbol_placeholder" autocomplete="off">
+                </div>
+                <div id="search-suggestions" class="search-suggestions" style="display:none;"></div>
+            </div>
+            <div id="add-preview" class="add-preview" style="display:none;"></div>
+            <div id="add-error" class="error-text" style="display:none;">
+                <span class="material-icons-outlined">error</span>
+                <span id="add-error-msg"></span>
+            </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-pill btn-secondary" onclick="closeAddModal()" data-i18n="common.cancel">取消</button>
-            <button class="btn-pill btn-primary" id="btn-confirm-add" onclick="addTicker()" data-i18n="index.confirm_add">確認新增</button>
+            <button class="btn btn-secondary" onclick="closeAddModal()" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-primary" id="btn-confirm-add" onclick="addTicker()">
+                <span class="material-icons-outlined">add</span>
+                <span data-i18n="index.confirm_add">確認新增</span>
+            </button>
         </div>
     </div>
 </div>
@@ -98,20 +121,25 @@
 {% block scripts %}
 <script>
     const miniCharts = {};
+    let currentTab = 'stocks';
+    let currentSector = 'all';
+    let currentType = 'all';
+    let allReports = [];
+    let archivedLoaded = false;
 
     // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-            if (btn.dataset.tab === 'archived' && !archivedLoaded) {
-                archivedLoaded = true;
-                loadArchived();
-            }
-        });
-    });
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        
+        if (tab === 'archived' && !archivedLoaded) {
+            archivedLoaded = true;
+            loadArchived();
+        }
+    }
 
     // Load active events
     async function loadEvents() {
@@ -142,50 +170,68 @@
             renderStocks(tickers);
         } catch (err) {
             console.error(err);
-            document.getElementById('stock-table-body').innerHTML =
-                '<tr><td colspan="10" class="error-cell">⚠️ ' + t('common.error') + '</td></tr>';
+            document.getElementById('stock-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('common.error')}</div>
+                    <button class="btn btn-secondary mt-16" onclick="loadStocks()">
+                        <span class="material-icons-outlined">refresh</span>
+                        ${t('common.retry')}
+                    </button>
+                </div>
+            `;
         }
     }
 
     function renderStocks(tickers) {
-        const tbody = document.getElementById('stock-table-body');
+        const container = document.getElementById('stock-list');
         if (!tickers || tickers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty-cell">' + t('index.empty_stocks') + '</td></tr>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">show_chart</span>
+                    <div class="empty-state-title">${t('index.empty_stocks')}</div>
+                    <button class="btn btn-primary mt-16" onclick="openAddModal()">
+                        <span class="material-icons-outlined">add</span>
+                        ${t('index.add')}
+                    </button>
+                </div>
+            `;
             return;
         }
+        
         // Destroy old mini charts
         Object.values(miniCharts).forEach(c => c.destroy());
         Object.keys(miniCharts).forEach(k => delete miniCharts[k]);
-
-        tbody.innerHTML = '';
+        
+        container.innerHTML = '';
         tickers.forEach(ticker => {
             const price = ticker.current_price;
             const changePct = ticker.change_percent;
-            const shares = ticker.shares_held;
-            const costBasis = ticker.cost_basis;
-            const pnl = (price && shares && costBasis) ? (price - costBasis) * shares : null;
-            const pnlPct = (price && costBasis && costBasis > 0) ? ((price - costBasis) / costBasis * 100) : null;
             const changeClass = changePct >= 0 ? 'text-green' : 'text-red';
-            const pnlClass = (pnl && pnl >= 0) ? 'text-green' : 'text-red';
             const sign = v => v > 0 ? '+' : '';
-
-            const tr = document.createElement('tr');
-            tr.className = 'stock-row';
-            tr.onclick = () => window.location.href = '/stock/' + ticker.symbol;
-            tr.innerHTML = `
-                <td class="ticker-symbol">${ticker.symbol}</td>
-                <td class="ticker-name">${ticker.name || '—'}${ticker.sector ? ' <span style="display:inline-block;padding:1px 8px;margin-left:6px;border-radius:10px;background:rgba(0,200,83,0.15);color:#00c853;font-size:0.75rem;vertical-align:middle;">' + ticker.sector + '</span>' : ''}</td>
-                <td class="price">${price != null ? '$' + price.toFixed(2) : '—'}</td>
-                <td class="${changeClass}">${changePct != null ? sign(changePct) + changePct.toFixed(2) + '%' : '—'}</td>
-                <td>${ticker.prev_close != null ? '$' + ticker.prev_close.toFixed(2) : '—'}</td>
-                <td><canvas class="mini-chart" id="mini-${ticker.symbol}" width="100" height="32"></canvas></td>
-                <td>${shares > 0 ? shares : '—'}</td>
-                <td class="${pnlClass}">${pnl != null ? (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2) : '—'}</td>
-                <td class="${pnlClass}">${pnlPct != null ? sign(pnlPct) + pnlPct.toFixed(2) + '%' : '—'}</td>
-                <td><button style="padding:2px 10px;border-radius:12px;border:1px solid #ff1744;background:transparent;color:#ff1744;cursor:pointer;font-size:0.8rem;" onclick="event.stopPropagation(); archiveTicker('${ticker.symbol}')">${t('stock.archive')}</button></td>
+            
+            const card = document.createElement('div');
+            card.className = 'stock-card';
+            card.onclick = () => window.location.href = '/stock/' + ticker.symbol;
+            card.innerHTML = `
+                <div class="stock-icon">${ticker.symbol.substring(0, 2)}</div>
+                <div class="stock-info">
+                    <div class="stock-symbol">
+                        ${ticker.symbol}
+                        ${ticker.sector ? `<span class="stock-sector">${ticker.sector}</span>` : ''}
+                    </div>
+                    <div class="stock-name">${ticker.name || '—'}</div>
+                </div>
+                <div class="stock-mini-chart">
+                    <canvas id="mini-${ticker.symbol}" width="80" height="32"></canvas>
+                </div>
+                <div class="stock-price-section">
+                    <div class="stock-price">${price != null ? '$' + price.toFixed(2) : '—'}</div>
+                    <div class="stock-change ${changeClass}">${changePct != null ? sign(changePct) + changePct.toFixed(2) + '%' : '—'}</div>
+                </div>
             `;
-            tbody.appendChild(tr);
-
+            container.appendChild(card);
+            
             // Draw mini chart
             if (ticker.mini_chart_data && ticker.mini_chart_data.length > 0) {
                 drawMiniChart(ticker.symbol, ticker.mini_chart_data);
@@ -222,57 +268,62 @@
         });
     }
 
-    // Sector filter state
-    let currentSector = 'all';
-    let allReports = [];
-
+    // Sector filter
     async function loadSectors() {
         try {
             const res = await fetch('/api/sectors');
             if (!res.ok) return;
             const sectors = await res.json();
-            const bar = document.getElementById('sector-filter-bar');
+            const container = document.getElementById('sector-pills');
             sectors.forEach(s => {
                 const pill = document.createElement('button');
                 pill.className = 'sector-pill';
                 pill.dataset.sector = s;
                 pill.textContent = s;
-                pill.style.cssText = 'padding:4px 14px;border-radius:20px;border:1px solid var(--border,#333);background:transparent;color:var(--text,#ccc);cursor:pointer;font-size:0.85rem;transition:all 0.2s;';
                 pill.onclick = () => filterBySector(s);
-                bar.appendChild(pill);
+                container.appendChild(pill);
             });
         } catch (err) {
             console.error('Failed to load sectors:', err);
         }
     }
 
-    async function filterBySector(sector) {
+    function filterBySector(sector) {
         currentSector = sector;
         document.querySelectorAll('.sector-pill').forEach(p => {
-            if (p.dataset.sector === sector) {
-                p.style.background = 'var(--accent,#00c853)';
-                p.style.color = '#fff';
-                p.classList.add('active');
-            } else {
-                p.style.background = 'transparent';
-                p.style.color = 'var(--text,#ccc)';
-                p.classList.remove('active');
-            }
+            p.classList.toggle('active', p.dataset.sector === sector);
         });
-        if (sector === 'all') {
-            renderReports(allReports);
-        } else {
-            try {
-                const res = await fetch('/api/sectors/' + encodeURIComponent(sector) + '/reports');
-                if (!res.ok) throw new Error('Failed');
-                const reports = await res.json();
-                renderReports(reports);
-            } catch (err) {
-                console.error(err);
-                document.getElementById('report-list').innerHTML =
-                    '<div class="error-cell">⚠️ ' + t('common.error') + '</div>';
+        applyFilters();
+    }
+
+    function filterByType(type) {
+        currentType = type;
+        document.querySelectorAll('[data-type]').forEach(b => {
+            b.classList.toggle('active', b.dataset.type === type);
+        });
+        applyFilters();
+    }
+
+    function applyFilters() {
+        let filtered = allReports;
+        
+        // Filter by type
+        if (currentType !== 'all') {
+            if (currentType === 'earnings') {
+                filtered = filtered.filter(r => r.category === 'earnings');
+            } else if (currentType === 'news') {
+                filtered = filtered.filter(r => r.category === 'industry' || r.category === 'news');
+            } else if (currentType === 'analyst') {
+                filtered = filtered.filter(r => r.category === 'analyst_report');
             }
         }
+        
+        // Filter by sector
+        if (currentSector !== 'all') {
+            // This would need sector info in reports, for now just show all
+        }
+        
+        renderReports(filtered);
     }
 
     // Load reports
@@ -285,32 +336,73 @@
             renderReports(reports);
         } catch (err) {
             console.error(err);
-            document.getElementById('report-list').innerHTML =
-                '<div class="error-cell">⚠️ ' + t('common.error') + '</div>';
+            document.getElementById('report-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('common.error')}</div>
+                </div>
+            `;
         }
     }
 
     function renderReports(reports) {
         const list = document.getElementById('report-list');
         if (!reports || reports.length === 0) {
-            list.innerHTML = '<div class="empty-cell">' + t('reports.empty') + '</div>';
+            list.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">description</span>
+                    <div class="empty-state-title">${t('reports.empty')}</div>
+                </div>
+            `;
             return;
         }
+        
         list.innerHTML = '';
         reports.forEach(r => {
-            const summary = r.summary ? r.summary.substring(0, 50) + (r.summary.length > 50 ? '...' : '') : '—';
+            const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '—';
             const date = r.published_at ? new Date(r.published_at).toLocaleDateString('zh-TW') : '—';
+            
+            // Determine icon based on category
+            let icon = 'description';
+            let iconBg = 'rgba(73, 79, 223, 0.15)';
+            let iconColor = 'var(--blue)';
+            
+            if (r.category === 'earnings') {
+                icon = 'assessment';
+                iconBg = 'rgba(0, 200, 83, 0.15)';
+                iconColor = 'var(--green)';
+            } else if (r.category === 'industry' || r.category === 'news') {
+                icon = 'article';
+                iconBg = 'rgba(255, 214, 0, 0.15)';
+                iconColor = 'var(--yellow)';
+            } else if (r.category === 'analyst_report') {
+                icon = 'analytics';
+                iconBg = 'rgba(73, 79, 223, 0.15)';
+                iconColor = 'var(--blue)';
+            }
+            
             const card = document.createElement('a');
             card.href = '/report/' + r.id;
             card.className = 'report-card';
             card.innerHTML = `
-                <div class="report-card-body">
-                    <h4 class="report-title">${r.title || t('common.untitled')}</h4>
-                    <p class="report-summary">${summary}</p>
+                <div class="report-card-header">
+                    <div class="report-icon" style="background:${iconBg}">
+                        <span class="material-icons-outlined" style="color:${iconColor}">${icon}</span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div class="report-title">${r.title || t('common.untitled')}</div>
+                        <div class="report-summary">${summary}</div>
+                    </div>
                 </div>
-                <div class="report-card-meta">
-                    <span class="report-source">${r.source || '—'}</span>
-                    <span class="report-date">${date}</span>
+                <div class="report-meta">
+                    <span class="report-source">
+                        <span class="material-icons-outlined" style="font-size:14px">source</span>
+                        ${r.source || '—'}
+                    </span>
+                    <span class="report-date">
+                        <span class="material-icons-outlined" style="font-size:14px">schedule</span>
+                        ${date}
+                    </span>
                 </div>
             `;
             list.appendChild(card);
@@ -319,51 +411,60 @@
 
     // Add Ticker Modal
     function openAddModal() {
-        document.getElementById('add-modal').style.display = 'flex';
+        document.getElementById('add-modal').classList.add('open');
         document.getElementById('input-symbol').value = '';
         document.getElementById('add-error').style.display = 'none';
-        document.getElementById('input-symbol').focus();
+        setTimeout(() => document.getElementById('input-symbol').focus(), 300);
     }
 
     function closeAddModal() {
-        document.getElementById('add-modal').style.display = 'none';
+        document.getElementById('add-modal').classList.remove('open');
     }
 
     async function addTicker() {
         const symbol = document.getElementById('input-symbol').value.trim().toUpperCase();
         const errEl = document.getElementById('add-error');
+        const errMsg = document.getElementById('add-error-msg');
+        
         if (!symbol) {
-            errEl.textContent = t('index.enter_symbol');
-            errEl.style.display = 'block';
+            errMsg.textContent = t('index.enter_symbol');
+            errEl.style.display = 'flex';
             return;
         }
+        
         errEl.style.display = 'none';
         const btn = document.getElementById('btn-confirm-add');
         btn.disabled = true;
-        btn.textContent = t('index.adding');
+        btn.innerHTML = '<div class="spinner-sm"></div> ' + t('index.adding');
+        
         try {
             const res = await fetch('/api/tickers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ symbol: symbol })
             });
+            
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || t('common.error'));
             }
+            
             closeAddModal();
             showToast(symbol + ' ' + t('index.added'), 'success');
             loadStocks();
         } catch (err) {
-            errEl.textContent = err.message;
-            errEl.style.display = 'block';
+            errMsg.textContent = err.message;
+            errEl.style.display = 'flex';
         } finally {
             btn.disabled = false;
-            btn.textContent = t('index.confirm_add');
+            btn.innerHTML = `
+                <span class="material-icons-outlined">add</span>
+                <span>${t('index.confirm_add')}</span>
+            `;
         }
     }
 
-    // Archive (soft delete) ticker
+    // Archive ticker
     async function archiveTicker(symbol) {
         if (!confirm(t('archive.confirm', {symbol}))) return;
         try {
@@ -377,7 +478,6 @@
     }
 
     // Load archived tickers
-    let archivedLoaded = false;
     async function loadArchived() {
         try {
             const res = await fetch('/api/tickers/archived');
@@ -386,29 +486,47 @@
             renderArchived(tickers);
         } catch (err) {
             console.error(err);
-            document.getElementById('archived-table-body').innerHTML =
-                '<tr><td colspan="5" class="error-cell">⚠️ ' + t('common.error') + '</td></tr>';
+            document.getElementById('archived-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('common.error')}</div>
+                </div>
+            `;
         }
     }
 
     function renderArchived(tickers) {
-        const tbody = document.getElementById('archived-table-body');
+        const container = document.getElementById('archived-list');
         if (!tickers || tickers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">' + t('archive.empty') + '</td></tr>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">archive</span>
+                    <div class="empty-state-title">${t('archive.empty')}</div>
+                </div>
+            `;
             return;
         }
-        tbody.innerHTML = '';
+        
+        container.innerHTML = '';
         tickers.forEach(ticker => {
             const archivedDate = ticker.archived_at ? new Date(ticker.archived_at).toLocaleDateString('zh-TW') : '—';
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="ticker-symbol">${ticker.symbol}</td>
-                <td>${ticker.name || '—'}</td>
-                <td>${ticker.sector || '—'}</td>
-                <td>${archivedDate}</td>
-                <td><button style="padding:2px 10px;border-radius:12px;border:1px solid var(--accent,#00c853);background:var(--accent,#00c853);color:#fff;cursor:pointer;font-size:0.8rem;" onclick="restoreTicker('${ticker.symbol}')">${t('stock.restore')}</button></td>
+            const card = document.createElement('div');
+            card.className = 'stock-card';
+            card.innerHTML = `
+                <div class="stock-icon">${ticker.symbol.substring(0, 2)}</div>
+                <div class="stock-info">
+                    <div class="stock-symbol">${ticker.symbol}</div>
+                    <div class="stock-name">${ticker.name || '—'}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                        ${ticker.sector || '—'} · ${t('stock.archived_date')}: ${archivedDate}
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-success" onclick="restoreTicker('${ticker.symbol}')">
+                    <span class="material-icons-outlined" style="font-size:16px">restore</span>
+                    ${t('stock.restore')}
+                </button>
             `;
-            tbody.appendChild(tr);
+            container.appendChild(card);
         });
     }
 
@@ -444,12 +562,127 @@
     loadReports();
     loadSectors();
 
+    // ── Smart polling (wealthlens-style) ─────────────────────────────
+    let pollInterval = 60;  // default 60s, will be updated by /api/refresh-interval
+    let pollTimer = null;
+
+    async function refreshPolling() {
+        try {
+            const r = await fetch('/api/refresh-interval');
+            const d = await r.json();
+            pollInterval = d.interval || 60;
+            // Update visible badge if present
+            const badge = document.getElementById('refresh-badge');
+            if (badge) {
+                const reasonMap = {us_market_open:'盤中',us_extended_hours:'盤後',us_off_hours:'收盤',weekend:'週末'};
+                badge.textContent = `${reasonMap[d.reason] || d.reason} • ${pollInterval}s`;
+                badge.dataset.reason = d.reason;
+            }
+        } catch (e) { console.debug('refresh interval fetch failed', e); }
+    }
+
+    function startPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        const tick = () => {
+            loadStocks();
+            pollTimer = setTimeout(tick, pollInterval * 1000);
+        };
+        tick();
+    }
+
+    refreshPolling().then(startPolling);
+    // Re-check interval every 5 min (so we cross from off-hours to market open etc.)
+    setInterval(refreshPolling, 5 * 60 * 1000);
+
+    // ── Search autocomplete ──────────────────────────────────────
+    let searchDebounce = null;
+    let previewDebounce = null;
+    const inputSymbol = document.getElementById('input-symbol');
+    const suggestBox = document.getElementById('search-suggestions');
+    const previewBox = document.getElementById('add-preview');
+
+    inputSymbol.addEventListener('input', (e) => {
+        const q = e.target.value.trim();
+        clearTimeout(searchDebounce);
+        clearTimeout(previewDebounce);
+
+        if (!q) {
+            suggestBox.style.display = 'none';
+            previewBox.style.display = 'none';
+            return;
+        }
+        // Autocomplete suggestions
+        searchDebounce = setTimeout(() => loadSuggestions(q), 200);
+        // Live preview of current typed symbol
+        previewDebounce = setTimeout(() => loadPreview(q), 500);
+    });
+
+    async function loadSuggestions(q) {
+        try {
+            const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+            const d = await r.json();
+            const list = d.popular || [];
+            if (list.length === 0) {
+                suggestBox.style.display = 'none';
+                return;
+            }
+            suggestBox.innerHTML = list.map(s => `
+                <div class="suggest-item" data-sym="${s.symbol}">
+                    <div class="suggest-symbol">${s.symbol}</div>
+                    <div class="suggest-name">${s.name || ''}</div>
+                    <div class="suggest-market">${s.market || s.exchange || 'US'}</div>
+                </div>
+            `).join('');
+            suggestBox.style.display = 'block';
+            // Click handler
+            suggestBox.querySelectorAll('.suggest-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    inputSymbol.value = el.dataset.sym;
+                    suggestBox.style.display = 'none';
+                    loadPreview(el.dataset.sym);
+                });
+            });
+        } catch (e) { console.debug('search failed', e); }
+    }
+
+    async function loadPreview(sym) {
+        try {
+            previewBox.innerHTML = '<div class="preview-loading">載入中…</div>';
+            previewBox.style.display = 'block';
+            const r = await fetch('/api/tickers/preview', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({symbol: sym})
+            });
+            if (!r.ok) {
+                previewBox.style.display = 'none';
+                return;
+            }
+            const d = await r.json();
+            const chg = d.change_pct;
+            const chgClass = chg >= 0 ? 'text-green' : 'text-red';
+            const sign = chg > 0 ? '+' : '';
+            previewBox.innerHTML = `
+                <div class="preview-card">
+                    <div class="preview-row">
+                        <div class="preview-name">${d.name || sym}</div>
+                        <div class="preview-market">${d.market || ''}</div>
+                    </div>
+                    <div class="preview-row">
+                        <div class="preview-price">${d.price != null ? '$' + d.price.toLocaleString() : '—'}</div>
+                        <div class="${chgClass}">${chg != null ? sign + chg + '%' : ''}</div>
+                    </div>
+                    ${d.sector ? `<div class="preview-sector">${d.sector}</div>` : ''}
+                </div>
+            `;
+        } catch (e) { console.debug('preview failed', e); previewBox.style.display = 'none'; }
+    }
+
     // Re-render dynamic content when language changes
     window.addEventListener('langchange', () => {
         loadStocks();
         loadReports();
-        loadSectors();
-        if (currentTab === 'archived' || document.querySelector('.tab-btn.active')?.dataset.tab === 'archived') {
+        if (currentTab === 'archived') {
             loadArchived();
         }
     });

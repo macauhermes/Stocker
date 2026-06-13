@@ -1,4 +1,4 @@
-# Stocker — AI 美股分析器 SPEC (v3.1)
+# Stocker — AI 美股分析器 SPEC (v3.2)
 
 ## 1. 概覽
 
@@ -9,14 +9,14 @@ Stocker 是一個本地部署的 AI 美股追蹤與分析工具，提供 Web 介
 - **核心數據庫:** SQLite (tickers, reports, events, files)
 - **時序數據庫:** 獨立 SQLite (daily_prices, intraday_ticks) — 分離以提升效能
 - **前端:** 原生 HTML/CSS/JS (無框架)
-- **圖表:** Chart.js (CDN)
+- **圖表:** Chart.js + chartjs-plugin-zoom (CDN) — 觸控手勢 + 十字線 + zoom/pan
 - **PDF Viewer:** PDF.js (CDN)
-- **股票數據:** yfinance
-- **財報來源:** SEC EDGAR (10-K / 10-Q)
+- **股票數據:** 多源備援鏈（見 §2.10）— yfinance 主 → Yahoo 直接 → Stooq → CoinGecko → 自訂 JSONPath
+- **財報來源:** SEC EDGAR (10-K / 10-Q) + SpaceX-style S-1/424B4
 - **行業新聞:** Yahoo Finance 行業頁面
 - **分析報告:** yfinance analyst + Yahoo Finance Analysis
 - **AI 分析:** OpenAI API
-- **設計風格:** 深色 fintech dashboard
+- **設計風格:** 深色 fintech dashboard, mobile-first 320px 適配
 
 ### 初始追蹤清單
 TSLA, NVDA, TE, GLW, MRVU, IBM
@@ -96,6 +96,62 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - 語言偏好保存在 localStorage
 - 動態內容切換語言時自動重新渲染
 
+### 2.9 手機 UI 優化 (v3.2)
+- **320px 安全區:** 確保窄屏幕無水平滾動
+- **44px 觸控目標:** Apple HIG 標準，所有按鈕/連結 min-height: 44px
+- **卡片式列表:** 取代傳統表格，便於滑動操作
+- **底部 Tab 導航:** 主頁/行業/投行/數據源/檔案
+- **FAB 浮動按鈕:** 主頁右下角「+」直接打開新增股票
+- **智能更新 badge:** 頂部顯示「盤中/盤後/週末 + 間隔秒數」
+
+### 2.10 多源數據備援鏈 (v3.2, wealthlens-style)
+
+借鏡 wealthlens 設計，每類數據有主源、備源、最後手段，單一服務故障不影響平台：
+
+| 數據 | 主源 | 備援 1 | 備援 2 | 備援 3 | 最後手段 |
+|------|------|--------|--------|--------|----------|
+| 美股歷史價 | yfinance | Yahoo Finance 直接 API | Stooq | — | — |
+| 港股/A股/日股 | Yahoo 直接 | yfinance | Stooq | — | — |
+| 加密貨幣 (BTC-USD 等) | Yahoo 直接 | CoinGecko | yfinance | — | — |
+| 自訂基金/債券 | **DB-stored JSONPath** | — | — | — | — |
+
+**自訂 JSONPath 數據源:**
+- `GET /api/sources` 列出 / `POST` 新增 / `PUT /:id` 編輯 / `DELETE /:id` 刪除
+- 每個源支援：`url`（含 `{symbol}` placeholder）+ `date_path` + `price_path` + 可選 `open_path`/`high_path`/`low_path`/`volume_path`/`symbol_match`
+- JSONPath 子集支援：`$.a.b.c`、`$.a[0].b`、`$.a[*].b`、`$['key with spaces']`
+- 日期格式自動偵測：ISO、Unix 秒/毫秒、MM/DD/YYYY
+- 啟用狀態（`enabled=0/1`）+ 優先級（`priority`）控制載入順序
+- 自訂源在歷史價解析鏈中優先於 Yahoo
+
+### 2.11 智能更新頻率 + 即時推送 (v3.2)
+
+**智能輪詢頻率** (wealthlens-style):
+- 美股盤中（週一至五 09:30-16:00 ET）→ **3 秒**
+- 美股盤後（04:00-20:00 ET）→ **15 秒**
+- 平日收盤後 → **60 秒**
+- 週末/假日 → **300 秒（5 分鐘）**
+- `GET /api/refresh-interval` 返回當前建議間隔 + 原因
+
+**SSE 即時推送:**
+- `GET /api/stream/tickers` 為 Server-Sent Events 端點
+- 按智能頻率推送所有追蹤股票的當前快照
+- 前端可選擇用 polling 或 SSE client 訂閱
+
+### 2.12 股票搜索 + 預覽 (v3.2)
+
+- **Autocomplete:** 輸入框 200ms debounce → `GET /api/search?q=`
+- 內置 33 個熱門股 (US + HK + CN + JP + TW + Crypto) 即時匹配（無網絡）
+- Yahoo Finance search API 補完冷門股
+- **預覽卡片:** 500ms debounce → `POST /api/tickers/preview` 顯示股名/即時價/漲跌幅/PE/EPS/市值/行業
+- 點擊建議項自動填入並重新預覽
+- 支援多市場推斷：`.HK` / `.SS` / `.SZ` / `.T` / `.TW` / `-USD` → US/HK/CN/JP/TW/CRYPTO
+
+### 2.13 SEC 文件 (v3.2)
+
+- `sec_filing` category 收納 S-1 / 424B4 / 8-A12B / FWP / CERT 等
+- 上市前公司（如 SpaceX SPCX）無 10-K/10-Q 時，招股書即主要財務來源
+- 已內建 SPCX 7 份招股書 (424B4/S-1/EU Prospectus/FWP/8-A12B/Listing Cert)
+
 ---
 
 ## 3. 數據庫設計
@@ -150,6 +206,24 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 | file_path | TEXT | 儲存路徑 |
 | file_size | INTEGER | 檔案大小 |
 | report_id | INTEGER FK | 關聯報告 |
+| created_at | DATETIME | 建立時間 |
+
+#### `custom_data_sources` 表 (v3.2)
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| id | INTEGER PK | 自增ID |
+| name | TEXT | 源名稱 |
+| url | TEXT | API URL（含 `{symbol}` placeholder） |
+| date_path | TEXT | JSONPath 取日期 |
+| price_path | TEXT | JSONPath 取收盤價 |
+| open_path | TEXT | JSONPath 取開盤價（可選） |
+| high_path | TEXT | JSONPath 取最高（可選） |
+| low_path | TEXT | JSONPath 取最低（可選） |
+| volume_path | TEXT | JSONPath 取成交量（可選） |
+| symbol_match | TEXT | JSONPath 過濾特定 symbol（可選） |
+| priority | INTEGER | 載入順序（數字愈小愈先） |
+| enabled | INTEGER | 啟用 0/1 |
+| notes | TEXT | 備註 |
 | created_at | DATETIME | 建立時間 |
 
 ### 3.2 時序數據庫 (timeseries.db) — 獨立檔案

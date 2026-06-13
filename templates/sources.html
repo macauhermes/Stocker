@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Stocker — 自訂數據源{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="container">
+        <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h1 style="font-size:1.3rem; margin:0;">自訂數據源</h1>
+            <button class="btn btn-primary" onclick="openAddSourceModal()">
+                <span class="material-icons-outlined">add</span>
+                <span>新增</span>
+            </button>
+        </div>
+
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">
+            為任何基金 / 債券 / 理財產品接入歷史價（JSONPath + URL）。
+            自訂源喺歷史價解析鏈中優先於 Yahoo。
+        </p>
+
+        <div id="sources-list"></div>
+    </div>
+</main>
+
+<!-- Add/Edit Source Modal -->
+<div id="source-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="source-modal-title">新增自訂數據源</h2>
+            <button class="modal-close" onclick="closeSourceModal()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="input-group">
+                <label class="input-label">名稱 *</label>
+                <input type="text" id="src-name" class="input" placeholder="例：My Pension Fund">
+            </div>
+            <div class="input-group">
+                <label class="input-label">URL *</label>
+                <input type="text" id="src-url" class="input" placeholder="https://api.example.com/history?sym={symbol}">
+                <small style="color:var(--text-muted);">{symbol} 會被替換</small>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Date JSONPath *</label>
+                <input type="text" id="src-date-path" class="input" placeholder="$.records[*].date">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Price JSONPath *</label>
+                <input type="text" id="src-price-path" class="input" placeholder="$.records[*].nav">
+            </div>
+            <details style="margin-top:8px; color:var(--text-muted);">
+                <summary style="cursor:pointer;">可選欄位（Open / High / Low / Volume / 過濾）</summary>
+                <div class="input-group" style="margin-top:8px;">
+                    <label class="input-label">Open</label>
+                    <input type="text" id="src-open-path" class="input" placeholder="$.records[*].open">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">High</label>
+                    <input type="text" id="src-high-path" class="input" placeholder="$.records[*].high">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Low</label>
+                    <input type="text" id="src-low-path" class="input" placeholder="$.records[*].low">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Volume</label>
+                    <input type="text" id="src-volume-path" class="input" placeholder="$.records[*].volume">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Symbol 過濾路徑（只取對應 symbol）</label>
+                    <input type="text" id="src-symbol-match" class="input" placeholder="$.records[*].sym">
+                </div>
+            </details>
+            <div class="input-group">
+                <label class="input-label">備註</label>
+                <input type="text" id="src-notes" class="input" placeholder="例：每日 23:00 更新">
+            </div>
+            <div id="src-error" class="error-text" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSourceModal()">取消</button>
+            <button class="btn btn-primary" id="btn-save-src" onclick="saveSource()">儲存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingSourceId = null;
+
+async function loadSources() {
+    try {
+        const r = await fetch('/api/sources');
+        const list = await r.json();
+        renderSources(list);
+    } catch (e) {
+        document.getElementById('sources-list').innerHTML =
+            '<div class="empty-state">載入失敗</div>';
+    }
+}
+
+function renderSources(list) {
+    const c = document.getElementById('sources-list');
+    if (!list || list.length === 0) {
+        c.innerHTML = `
+            <div class="empty-state">
+                <span class="material-icons-outlined empty-state-icon">cloud_off</span>
+                <div class="empty-state-title">未設定任何自訂源</div>
+                <button class="btn btn-primary mt-16" onclick="openAddSourceModal()">新增</button>
+            </div>
+        `;
+        return;
+    }
+    c.innerHTML = list.map(s => `
+        <div class="card" style="margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:start; gap:12px;">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-weight:600;">${s.name}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.url}</div>
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+                        date: <code>${s.date_path}</code> → price: <code>${s.price_path}</code>
+                    </div>
+                    ${s.notes ? `<div style="font-size:0.75rem; margin-top:4px; color:var(--text-muted);">${s.notes}</div>` : ''}
+                    <div style="font-size:0.7rem; margin-top:4px;">
+                        <span style="color:${s.enabled ? 'var(--green)' : 'var(--text-muted)'};">
+                            ${s.enabled ? '● 啟用' : '○ 停用'}
+                        </span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn btn-secondary" style="min-width:36px; min-height:36px; padding:6px;" onclick="editSource(${s.id})">
+                        <span class="material-icons-outlined" style="font-size:18px;">edit</span>
+                    </button>
+                    <button class="btn btn-secondary" style="min-width:36px; min-height:36px; padding:6px;" onclick="deleteSource(${s.id})">
+                        <span class="material-icons-outlined" style="font-size:18px; color:var(--red);">delete</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openAddSourceModal() {
+    editingSourceId = null;
+    document.getElementById('source-modal-title').textContent = '新增自訂數據源';
+    ['name', 'url', 'date-path', 'price-path', 'open-path', 'high-path', 'low-path', 'volume-path', 'symbol-match', 'notes'].forEach(id => {
+        document.getElementById('src-' + id).value = '';
+    });
+    document.getElementById('src-error').style.display = 'none';
+    document.getElementById('source-modal').style.display = 'flex';
+}
+
+function closeSourceModal() {
+    document.getElementById('source-modal').style.display = 'none';
+}
+
+async function editSource(id) {
+    const r = await fetch('/api/sources');
+    const list = await r.json();
+    const s = list.find(x => x.id === id);
+    if (!s) return;
+    editingSourceId = id;
+    document.getElementById('source-modal-title').textContent = '編輯自訂數據源';
+    document.getElementById('src-name').value = s.name || '';
+    document.getElementById('src-url').value = s.url || '';
+    document.getElementById('src-date-path').value = s.date_path || '';
+    document.getElementById('src-price-path').value = s.price_path || '';
+    document.getElementById('src-open-path').value = s.open_path || '';
+    document.getElementById('src-high-path').value = s.high_path || '';
+    document.getElementById('src-low-path').value = s.low_path || '';
+    document.getElementById('src-volume-path').value = s.volume_path || '';
+    document.getElementById('src-symbol-match').value = s.symbol_match || '';
+    document.getElementById('src-notes').value = s.notes || '';
+    document.getElementById('src-error').style.display = 'none';
+    document.getElementById('source-modal').style.display = 'flex';
+}
+
+async function saveSource() {
+    const data = {
+        name: document.getElementById('src-name').value.trim(),
+        url: document.getElementById('src-url').value.trim(),
+        date_path: document.getElementById('src-date-path').value.trim(),
+        price_path: document.getElementById('src-price-path').value.trim(),
+        open_path: document.getElementById('src-open-path').value.trim() || null,
+        high_path: document.getElementById('src-high-path').value.trim() || null,
+        low_path: document.getElementById('src-low-path').value.trim() || null,
+        volume_path: document.getElementById('src-volume-path').value.trim() || null,
+        symbol_match: document.getElementById('src-symbol-match').value.trim() || null,
+        notes: document.getElementById('src-notes').value.trim() || null,
+    };
+    if (!data.name || !data.url || !data.date_path || !data.price_path) {
+        showSrcError('name, url, date_path, price_path 全部必填');
+        return;
+    }
+    const url = editingSourceId ? `/api/sources/${editingSourceId}` : '/api/sources';
+    const method = editingSourceId ? 'PUT' : 'POST';
+    try {
+        const r = await fetch(url, {
+            method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data),
+        });
+        if (!r.ok) {
+            const j = await r.json().catch(() => ({}));
+            throw new Error(j.error || '儲存失敗');
+        }
+        closeSourceModal();
+        showToast('已儲存', 'success');
+        loadSources();
+    } catch (e) {
+        showSrcError(e.message);
+    }
+}
+
+async function deleteSource(id) {
+    if (!confirm('確定刪除此自訂源？')) return;
+    try {
+        const r = await fetch(`/api/sources/${id}`, {method: 'DELETE'});
+        if (!r.ok) throw new Error('刪除失敗');
+        showToast('已刪除', 'success');
+        loadSources();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
+function showSrcError(msg) {
+    const e = document.getElementById('src-error');
+    e.textContent = msg;
+    e.style.display = 'flex';
+}
+
+loadSources();
+</script>
+{% endblock %}

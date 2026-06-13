@@ -27,6 +27,7 @@ from services.stock_data import (
 )
 from services.report_collector import collect_reports, collect_ticker_reports
 from services.ai_analyzer import analyze_report
+from services import multi_source
 
 # ── App Setup ──────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -492,7 +493,349 @@ def api_init_data():
     return jsonify({'added': added, 'errors': errors})
 
 
+# ── API: Investment Banks ────────────────────────────────────────────
+
+@app.route('/api/banks', methods=['GET'])
+def api_get_banks():
+    """Return all investment banks."""
+    banks = models.get_all_investment_banks()
+    return jsonify([dict(b) for b in banks])
+
+
+@app.route('/api/banks/enabled', methods=['GET'])
+def api_get_enabled_banks():
+    """Return enabled investment banks."""
+    banks = models.get_enabled_investment_banks()
+    return jsonify([dict(b) for b in banks])
+
+
+@app.route('/api/banks', methods=['POST'])
+def api_add_bank():
+    """Add a new investment bank."""
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    try:
+        bank = models.add_investment_bank(
+            name=name,
+            short_name=data.get('short_name'),
+            website_url=data.get('website_url'),
+            report_url=data.get('report_url'),
+            logo_url=data.get('logo_url'),
+        )
+        return jsonify(dict(bank)), 201
+    except Exception as e:
+        logger.error(f"Error adding bank {name}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/banks/<int:bank_id>', methods=['PUT'])
+def api_update_bank(bank_id):
+    """Update an investment bank."""
+    data = request.get_json()
+    bank = models.update_investment_bank(bank_id, data)
+    if not bank:
+        return jsonify({'error': 'Bank not found'}), 404
+    return jsonify(dict(bank))
+
+
+@app.route('/api/banks/<int:bank_id>', methods=['DELETE'])
+def api_delete_bank(bank_id):
+    """Delete an investment bank."""
+    deleted = models.delete_investment_bank(bank_id)
+    if not deleted:
+        return jsonify({'error': 'Bank not found'}), 404
+    return jsonify({'success': True})
+
+
+@app.route('/api/banks/<int:bank_id>/toggle', methods=['POST'])
+def api_toggle_bank(bank_id):
+    """Toggle investment bank enabled status."""
+    data = request.get_json()
+    enabled = data.get('enabled', True)
+    success = models.toggle_investment_bank(bank_id, enabled)
+    if not success:
+        return jsonify({'error': 'Bank not found'}), 404
+    return jsonify({'success': True})
+
+
+@app.route('/api/banks/<int:bank_id>/reports', methods=['GET'])
+def api_get_bank_reports(bank_id):
+    """Return reports for a specific bank."""
+    reports = models.get_bank_reports(bank_id)
+    return jsonify([dict(r) for r in reports])
+
+
+@app.route('/api/banks/reports/all', methods=['GET'])
+def api_get_all_bank_reports():
+    """Return all bank reports."""
+    reports = models.get_all_bank_reports()
+    return jsonify([dict(r) for r in reports])
+
+
+@app.route('/api/banks/reports/<int:report_id>/download', methods=['POST'])
+def api_download_bank_report(report_id):
+    """Download a bank report PDF."""
+    from services.bank_report_scraper import download_report_pdf
+    try:
+        result = download_report_pdf(report_id)
+        if result.get("success"):
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Error downloading report {report_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/banks/reports/undownloaded', methods=['GET'])
+def api_get_undownloaded_reports():
+    """Return undownloaded bank reports."""
+    reports = models.get_undownloaded_reports()
+    return jsonify([dict(r) for r in reports])
+
+
+@app.route('/api/banks/<int:bank_id>/check', methods=['POST'])
+def api_check_bank(bank_id):
+    """Manually trigger a check for new reports from a bank."""
+    from services.bank_report_scraper import check_bank_for_reports
+    try:
+        result = check_bank_for_reports(bank_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error checking bank {bank_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/banks/check-all', methods=['POST'])
+def api_check_all_banks():
+    """Check all enabled banks for new reports."""
+    from services.bank_report_scraper import check_all_banks
+    try:
+        result = check_all_banks()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error checking banks: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ── Page Routes: Investment Banks ────────────────────────────────────
+
+@app.route('/banks')
+def banks_page():
+    """Investment banks watchlist page."""
+    return render_template('banks.html')
+
+
+@app.route('/sources')
+def sources_page():
+    """Custom data sources (JSONPath) management page."""
+    return render_template('sources.html')
+
+
 # ── Run ────────────────────────────────────────────────────────────────
+
+# ── Smart refresh frequency (wealthlens-style) ──────────────────────
+import pytz  # lightweight tz lib; falls back if not installed
+try:
+    from zoneinfo import ZoneInfo
+    _HAS_ZONEINFO = True
+except ImportError:
+    _HAS_ZONEINFO = False
+
+def get_refresh_interval():
+    """
+    Return the recommended polling interval in seconds, based on whether
+    US markets are currently open.
+
+    Rules:
+      - NYSE regular hours (Mon-Fri 09:30-16:00 ET) → 3s (high frequency)
+      - NYSE extended hours (04:00-20:00 ET)        → 15s
+      - Weekday off-hours                          → 60s
+      - Weekend                                    → 300s (5 min)
+    """
+    now_utc = datetime.utcnow()
+    # Convert to ET (handles DST via zoneinfo if available)
+    if _HAS_ZONEINFO:
+        try:
+            et = now_utc.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("America/New_York"))
+        except Exception:
+            et = now_utc - timedelta(hours=4)  # rough fallback
+    else:
+        et = now_utc - timedelta(hours=4)
+
+    weekday = et.weekday()  # 0=Mon ... 6=Sun
+    hour = et.hour
+    minute = et.minute
+    # 9:30 = 570 minutes
+    minutes_of_day = hour * 60 + minute
+
+    if weekday >= 5:  # Sat/Sun
+        return 300
+    if 9 * 60 + 30 <= minutes_of_day < 16 * 60:
+        return 3
+    if 4 * 60 <= minutes_of_day < 20 * 60:
+        return 15
+    return 60
+
+
+# ── API: Search (autocomplete) ────────────────────────────────────────
+
+@app.route('/api/search')
+def api_search():
+    """Search tickers via multi-source (popular list + Yahoo)."""
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify({'popular': multi_source.search_popular('', limit=10)})
+
+    # First: local popular list (instant, no network)
+    popular = multi_source.search_popular(q, limit=8)
+    # Then: Yahoo search (network, may return intl symbols)
+    yahoo = multi_source.search_symbols(q, limit=8)
+    # Dedupe by symbol
+    seen = {p['symbol'] for p in popular}
+    for y in yahoo:
+        if y['symbol'] not in seen:
+            y['market'] = _infer_market(y['symbol'])
+            popular.append(y)
+            seen.add(y['symbol'])
+    return jsonify({'popular': popular[:15], 'query': q})
+
+
+def _infer_market(symbol):
+    if symbol.endswith('.HK'):
+        return 'HK'
+    if symbol.endswith('.SS') or symbol.endswith('.SZ'):
+        return 'CN'
+    if symbol.endswith('.T'):
+        return 'JP'
+    if symbol.endswith('.TW'):
+        return 'TW'
+    if symbol.endswith('-USD') or symbol.endswith('-USDT'):
+        return 'CRYPTO'
+    return 'US'
+
+
+# ── API: Ticker preview (before adding) ───────────────────────────────
+
+@app.route('/api/tickers/preview', methods=['POST'])
+def api_ticker_preview():
+    """Preview ticker info before adding (price, name, sector)."""
+    data = request.get_json() or {}
+    symbol = (data.get('symbol') or '').strip().upper()
+    if not symbol:
+        return jsonify({'error': 'Symbol required'}), 400
+    try:
+        info = multi_source.get_current_price(symbol)
+        # Cross-check with yfinance for name + sector
+        try:
+            yinfo = fetch_stock_info(symbol)
+            info['name'] = yinfo.get('name') or info.get('name')
+            info['sector'] = yinfo.get('sector')
+            info['pe_ratio'] = yinfo.get('pe_ratio')
+            info['eps'] = yinfo.get('eps')
+            info['market_cap'] = yinfo.get('market_cap')
+        except Exception:
+            pass
+        info['market'] = _infer_market(symbol)
+        return jsonify(info)
+    except Exception as e:
+        logger.error("preview ticker %s: %s", symbol, e)
+        return jsonify({'error': str(e)}), 500
+
+
+# ── API: Custom data sources CRUD ─────────────────────────────────────
+
+@app.route('/api/sources', methods=['GET'])
+def api_list_sources():
+    return jsonify(multi_source._get_custom_sources())
+
+
+@app.route('/api/sources', methods=['POST'])
+def api_add_source():
+    data = request.get_json() or {}
+    if not data.get('name') or not data.get('url') or not data.get('date_path') or not data.get('price_path'):
+        return jsonify({'error': 'name, url, date_path, price_path required'}), 400
+    src = models.add_custom_source(data)
+    return jsonify(dict(src)), 201
+
+
+@app.route('/api/sources/<int:source_id>', methods=['PUT'])
+def api_update_source(source_id):
+    data = request.get_json() or {}
+    src = models.update_custom_source(source_id, data)
+    if not src:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify(dict(src))
+
+
+@app.route('/api/sources/<int:source_id>', methods=['DELETE'])
+def api_delete_source(source_id):
+    ok = models.delete_custom_source(source_id)
+    if not ok:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'success': True})
+
+
+# ── API: Refresh-interval hint ────────────────────────────────────────
+
+@app.route('/api/refresh-interval')
+def api_refresh_interval():
+    """Returns the current recommended polling interval (seconds)."""
+    interval = get_refresh_interval()
+    # Explain why
+    now_utc = datetime.utcnow()
+    if _HAS_ZONEINFO:
+        try:
+            et = now_utc.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("America/New_York"))
+        except Exception:
+            et = now_utc - timedelta(hours=4)
+    else:
+        et = now_utc - timedelta(hours=4)
+    weekday = et.weekday()
+    minutes_of_day = et.hour * 60 + et.minute
+    if weekday >= 5:
+        reason = "weekend"
+    elif 9*60+30 <= minutes_of_day < 16*60:
+        reason = "us_market_open"
+    elif 4*60 <= minutes_of_day < 20*60:
+        reason = "us_extended_hours"
+    else:
+        reason = "us_off_hours"
+    return jsonify({'interval': interval, 'reason': reason, 'et_time': et.strftime('%H:%M ET')})
+
+
+# ── API: SSE stream of live prices (for future SSE client) ────────────
+
+@app.route('/api/stream/tickers')
+def api_stream_tickers():
+    """Server-Sent Events stream of current prices for tracked tickers."""
+    def generate():
+        # Send one snapshot then yield updates
+        try:
+            while True:
+                tickers = models.get_all_tickers()
+                snapshot = []
+                for t in tickers:
+                    try:
+                        info = multi_source.get_current_price(t['symbol'])
+                        snapshot.append({
+                            'symbol': t['symbol'],
+                            'price': info.get('price'),
+                            'change_pct': info.get('change_pct'),
+                            'ts': datetime.utcnow().isoformat(),
+                        })
+                    except Exception as exc:
+                        logger.debug("SSE snapshot %s: %s", t['symbol'], exc)
+                yield f"data: {json.dumps(snapshot)}\n\n"
+                interval = get_refresh_interval()
+                time.sleep(interval)
+        except GeneratorExit:
+            return
+    return app.response_class(generate(), mimetype='text/event-stream')
+
 
 if __name__ == '__main__':
     # Initialize data directories

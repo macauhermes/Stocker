@@ -5,94 +5,138 @@
 <div class="detail-page" id="detail-page">
     <!-- Back Button + Header -->
     <div class="detail-header">
-        <a href="/" class="btn-pill btn-back" data-i18n="detail.back">← 返回</a>
+        <a href="/" class="back-btn">
+            <span class="material-icons-outlined">arrow_back</span>
+        </a>
         <div class="detail-title">
-            <h1 id="stock-symbol">{{ symbol }}</h1>
-            <span class="stock-name" id="stock-name" data-i18n="common.loading">Loading...</span>
+            <div class="detail-symbol" id="stock-symbol">{{ symbol }}</div>
+            <div class="detail-name" id="stock-name" data-i18n="common.loading">載入中...</div>
         </div>
+        <button class="btn btn-ghost btn-icon" onclick="refreshStock()">
+            <span class="material-icons-outlined">refresh</span>
+        </button>
     </div>
 
     <!-- Event Banner -->
     <div id="event-banner" class="event-banner" style="display:none;">
-        <span class="event-icon">⚠️</span>
-        <span id="event-banner-text"></span>
-        <button class="btn-pill btn-pill-sm btn-dismiss" id="btn-dismiss-event" onclick="dismissEvent()" data-i18n="detail.event_dismiss">已知悉</button>
+        <span class="material-icons-outlined">warning</span>
+        <span id="event-banner-text" class="event-text"></span>
+        <button class="event-dismiss" id="btn-dismiss-event" onclick="dismissEvent()" data-i18n="detail.event_dismiss">已知悉</button>
     </div>
 
-    <!-- Time Range Buttons -->
-    <div class="range-buttons">
-        <button class="btn-pill btn-range active" data-range="1m">1M</button>
-        <button class="btn-pill btn-range" data-range="3m">3M</button>
-        <button class="btn-pill btn-range" data-range="6m">6M</button>
-        <button class="btn-pill btn-range" data-range="1y">1Y</button>
+    <!-- Price Display -->
+    <div class="price-display">
+        <div class="current-price" id="current-price">—</div>
+        <div class="price-change" id="price-change">—</div>
     </div>
 
-    <!-- Indicator Toggle Panel -->
-    <div class="indicator-panel" id="indicator-panel">
-        <label class="indicator-toggle"><input type="checkbox" data-indicator="ma5" checked> MA5</label>
-        <label class="indicator-toggle"><input type="checkbox" data-indicator="ma20" checked> MA20</label>
-        <label class="indicator-toggle"><input type="checkbox" data-indicator="ma60" checked> MA60</label>
-        <label class="indicator-toggle"><input type="checkbox" data-indicator="rsi"> RSI</label>
-        <label class="indicator-toggle"><input type="checkbox" data-indicator="macd"> MACD</label>
-        <label class="indicator-toggle"><input type="checkbox" data-indicator="volume"> Volume</label>
-    </div>
-
-    <!-- Price Chart -->
+    <!-- Chart Container -->
     <div class="chart-container">
-        <canvas id="price-chart"></canvas>
-        <div class="chart-loading" id="chart-loading"><div class="spinner-sm"></div> <span data-i18n="detail.chart_loading">Loading chart...</span></div>
-    </div>
-
-    <!-- Volume Chart -->
-    <div class="chart-container chart-container-volume" id="volume-chart-container" style="display:none;">
-        <canvas id="volume-chart"></canvas>
+        <div class="chart-header">
+            <div class="chart-title">
+                <span class="material-icons-outlined">candlestick_chart</span>
+                <span data-i18n="detail.indicators">技術指標</span>
+            </div>
+            <div class="chart-range-btns">
+                <button class="chart-range-btn active" data-range="1m" onclick="setRange('1m')">1M</button>
+                <button class="chart-range-btn" data-range="3m" onclick="setRange('3m')">3M</button>
+                <button class="chart-range-btn" data-range="6m" onclick="setRange('6m')">6M</button>
+                <button class="chart-range-btn" data-range="1y" onclick="setRange('1y')">1Y</button>
+            </div>
+        </div>
+        
+        <!-- Indicator Toggles -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                <input type="checkbox" data-indicator="ma5" checked onchange="updateChart()"> MA5
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                <input type="checkbox" data-indicator="ma20" checked onchange="updateChart()"> MA20
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                <input type="checkbox" data-indicator="ma60" checked onchange="updateChart()"> MA60
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                <input type="checkbox" data-indicator="rsi" onchange="updateChart()"> RSI
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                <input type="checkbox" data-indicator="macd" onchange="updateChart()"> MACD
+            </label>
+        </div>
+        
+        <div style="position:relative; height:250px;">
+            <canvas id="price-chart"></canvas>
+            <div class="chart-loading" id="chart-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:var(--card);">
+                <div class="spinner-sm"></div>
+                <span style="margin-left:8px; color:var(--text-muted);" data-i18n="detail.chart_loading">載入圖表中...</span>
+            </div>
+        </div>
     </div>
 
     <!-- Info Grid -->
-    <div class="info-grid" id="info-grid">
-        <div class="info-card">
-            <span class="info-label">Market Cap</span>
-            <span class="info-value" id="val-market-cap">—</span>
+    <div class="stats-grid" id="info-grid">
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.market_cap">市值</div>
+            <div class="stat-value" id="val-market-cap">—</div>
         </div>
-        <div class="info-card">
-            <span class="info-label">P/E Ratio</span>
-            <span class="info-value" id="val-pe-ratio">—</span>
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.pe_ratio">PE 比率</div>
+            <div class="stat-value" id="val-pe-ratio">—</div>
         </div>
-        <div class="info-card">
-            <span class="info-label">EPS</span>
-            <span class="info-value" id="val-eps">—</span>
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.eps">每股盈利</div>
+            <div class="stat-value" id="val-eps">—</div>
         </div>
-        <div class="info-card">
-            <span class="info-label">52W High</span>
-            <span class="info-value" id="val-52w-high">—</span>
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.high_52w">52周最高</div>
+            <div class="stat-value" id="val-52w-high">—</div>
         </div>
-        <div class="info-card">
-            <span class="info-label">52W Low</span>
-            <span class="info-value" id="val-52w-low">—</span>
-        </div>
-    </div>
-
-    <!-- News List -->
-    <div class="section">
-        <h3 class="section-title" data-i18n="detail.news_title">最近新聞</h3>
-        <div class="news-list" id="news-list">
-            <div class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></div>
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.low_52w">52周最低</div>
+            <div class="stat-value" id="val-52w-low">—</div>
         </div>
     </div>
 
-    <!-- Holdings -->
-    <div class="section">
-        <h3 class="section-title">持倉資訊</h3>
+    <!-- News Section -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">article</span>
+                <span data-i18n="detail.news">最近新聞</span>
+            </div>
+        </div>
+        <div id="news-list" class="news-list">
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span data-i18n="common.loading">載入中...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holdings Section -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">account_balance_wallet</span>
+                <span data-i18n="detail.holdings">持倉管理</span>
+            </div>
+        </div>
         <div class="holdings-form">
-            <div class="form-group">
-                <label for="input-shares" data-i18n="detail.shares_label">持倉數量</label>
-                <input type="number" id="input-shares" class="input-field" placeholder="0" min="0" step="1">
+            <div class="input-group">
+                <label class="input-label" data-i18n="detail.shares_label">持倉數量</label>
+                <input type="number" id="input-shares" class="input" placeholder="0" min="0" step="1">
             </div>
-            <div class="form-group">
-                <label for="input-cost-basis" data-i18n="detail.cost_label">成本價</label>
-                <input type="number" id="input-cost-basis" class="input-field" placeholder="0.00" min="0" step="0.01">
+            <div class="input-group">
+                <label class="input-label" data-i18n="detail.cost_label">成本價</label>
+                <div class="input-icon">
+                    <span class="material-icons-outlined">attach_money</span>
+                    <input type="number" id="input-cost-basis" class="input" placeholder="0.00" min="0" step="0.01">
+                </div>
             </div>
-            <button class="btn-pill btn-primary" id="btn-save-holdings" onclick="saveHoldings()" data-i18n="detail.save_holdings">保存</button>
+            <button class="btn btn-primary w-full" id="btn-save-holdings" onclick="saveHoldings()">
+                <span class="material-icons-outlined">save</span>
+                <span data-i18n="detail.save_holdings">保存</span>
+            </button>
         </div>
     </div>
 </div>
@@ -104,16 +148,16 @@
     let currentRange = '1m';
     let priceChart = null;
     let currentEventId = null;
+    let chartData = null;
 
-    // Range button switching
-    document.querySelectorAll('.btn-range').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.btn-range').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentRange = btn.dataset.range;
-            loadChartData();
+    // Range switching
+    function setRange(range) {
+        currentRange = range;
+        document.querySelectorAll('.chart-range-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.range === range);
         });
-    });
+        loadChartData();
+    }
 
     // Load stock detail
     async function loadDetail() {
@@ -125,6 +169,18 @@
             // Header
             document.getElementById('stock-name').textContent = data.name || SYMBOL;
             document.getElementById('stock-symbol').textContent = SYMBOL;
+
+            // Price
+            if (data.price != null) {
+                document.getElementById('current-price').textContent = '$' + data.price.toFixed(2);
+                const changePct = data.change_pct;
+                const changeEl = document.getElementById('price-change');
+                if (changePct != null) {
+                    const sign = changePct >= 0 ? '+' : '';
+                    changeEl.textContent = sign + changePct.toFixed(2) + '%';
+                    changeEl.className = 'price-change ' + (changePct >= 0 ? 'text-green' : 'text-red');
+                }
+            }
 
             // Info grid
             if (data.market_cap != null) {
@@ -175,13 +231,19 @@
         try {
             const res = await fetch('/api/stock/' + SYMBOL + '/chart-data?range=' + currentRange);
             if (!res.ok) throw new Error('Failed to fetch chart data');
-            const data = await res.json();
-            renderChart(data);
+            chartData = await res.json();
+            renderChart(chartData);
         } catch (err) {
             console.error('Failed to load chart:', err);
             showToast('載入圖表失敗', 'error');
         } finally {
             chartLoading.style.display = 'none';
+        }
+    }
+
+    function updateChart() {
+        if (chartData) {
+            renderChart(chartData);
         }
     }
 
@@ -208,7 +270,9 @@
                 fill: false
             }
         ];
-        if (ma5.length > 0) {
+
+        // Check indicator toggles
+        if (document.querySelector('[data-indicator="ma5"]').checked && ma5.length > 0) {
             datasets.push({
                 label: 'MA5',
                 data: ma5,
@@ -216,11 +280,10 @@
                 borderWidth: 1,
                 pointRadius: 0,
                 tension: 0.1,
-                borderDash: [],
                 fill: false
             });
         }
-        if (ma20.length > 0) {
+        if (document.querySelector('[data-indicator="ma20"]').checked && ma20.length > 0) {
             datasets.push({
                 label: 'MA20',
                 data: ma20,
@@ -231,7 +294,7 @@
                 fill: false
             });
         }
-        if (ma60.length > 0) {
+        if (document.querySelector('[data-indicator="ma60"]').checked && ma60.length > 0) {
             datasets.push({
                 label: 'MA60',
                 data: ma60,
@@ -254,25 +317,52 @@
                     legend: {
                         display: true,
                         position: 'top',
-                        labels: { color: '#999', font: { family: 'Inter', size: 11 } }
+                        labels: {
+                            color: '#8888a0',
+                            font: { family: 'Inter', size: 10 },
+                            boxWidth: 12,
+                            padding: 8
+                        }
                     },
                     tooltip: {
-                        backgroundColor: '#1e1e24',
+                        backgroundColor: '#1e1e26',
                         titleColor: '#fff',
                         bodyColor: '#ccc',
-                        borderColor: '#333',
-                        borderWidth: 1
-                    }
+                        borderColor: '#2a2a35',
+                        borderWidth: 1,
+                        titleFont: { family: 'JetBrains Mono', size: 11 },
+                        bodyFont: { family: 'JetBrains Mono', size: 11 },
+                        // External crosshair label (rendered on canvas)
+                        callbacks: {
+                            title: (items) => items[0]?.label || '',
+                            label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`
+                        }
+                    },
+                    // ── Touch gestures (wealthlens-style) ─────────────
+                    zoom: {
+                        pan: { enabled: true, mode: 'x', modifierKey: null },
+                        zoom: {
+                            wheel: { enabled: true, modifierKey: null },
+                            pinch: { enabled: true },       // mobile pinch
+                            drag: { enabled: false },
+                            mode: 'x',
+                        },
+                        limits: { x: { minRange: 5 } },
+                    },
                 },
                 scales: {
                     x: {
-                        ticks: { color: '#666', maxTicksLimit: 10, font: { family: 'Inter', size: 10 } },
+                        ticks: { color: '#666', maxTicksLimit: 8, font: { family: 'Inter', size: 10 } },
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     },
                     y: {
-                        ticks: { color: '#666', font: { family: 'Inter', size: 10 }, callback: v => '$' + v.toFixed(2) },
+                        ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 10 }, callback: v => '$' + v.toFixed(2) },
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     }
+                },
+                onClick: (e, activeElements) => {
+                    // Reset zoom on double-click (chartjs-plugin-zoom exposes chart.resetZoom)
+                    if (e.native && e.native.detail === 2) priceChart.resetZoom();
                 }
             }
         });
@@ -282,7 +372,12 @@
     function renderNews(news) {
         const list = document.getElementById('news-list');
         if (!news || news.length === 0) {
-            list.innerHTML = '<div class="empty-cell">暫無新聞</div>';
+            list.innerHTML = `
+                <div class="empty-state" style="padding:24px;">
+                    <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">article</span>
+                    <div style="margin-top:8px; color:var(--text-muted);" data-i18n="detail.no_news">暫無新聞</div>
+                </div>
+            `;
             return;
         }
         list.innerHTML = '';
@@ -291,11 +386,13 @@
             const item = document.createElement('div');
             item.className = 'news-item';
             item.innerHTML = `
-                <div class="news-content">
-                    ${n.link ? '<a href="' + n.link + '" target="_blank" class="news-title">' + (n.title || (typeof t !== 'undefined' ? t('common.untitled') : 'Untitled')) + '</a>' : '<span class="news-title">' + (n.title || (typeof t !== 'undefined' ? t('common.untitled') : 'Untitled')) + '</span>'}
-                    <span class="news-source">${n.publisher || n.source || '—'}</span>
+                <div class="news-item-title">
+                    ${n.link ? '<a href="' + n.link + '" target="_blank" style="color:var(--text);">' + (n.title || '無標題') + '</a>' : (n.title || '無標題')}
                 </div>
-                <span class="news-date">${date}</span>
+                <div class="news-item-meta">
+                    <span>${n.publisher || n.source || '—'}</span>
+                    <span>${date}</span>
+                </div>
             `;
             list.appendChild(item);
         });
@@ -307,7 +404,7 @@
         const costBasis = document.getElementById('input-cost-basis').value;
         const btn = document.getElementById('btn-save-holdings');
         btn.disabled = true;
-        btn.textContent = '保存中...';
+        btn.innerHTML = '<div class="spinner-sm"></div> 保存中...';
         try {
             const res = await fetch('/api/tickers/' + SYMBOL, {
                 method: 'PUT',
@@ -324,7 +421,24 @@
             showToast(err.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = '保存';
+            btn.innerHTML = `
+                <span class="material-icons-outlined">save</span>
+                <span>保存</span>
+            `;
+        }
+    }
+
+    // Refresh stock
+    async function refreshStock() {
+        try {
+            showToast('更新中...', 'info');
+            const res = await fetch('/api/stock/' + SYMBOL + '/refresh', { method: 'POST' });
+            if (!res.ok) throw new Error('更新失敗');
+            showToast('已更新', 'success');
+            loadDetail();
+            loadChartData();
+        } catch (err) {
+            showToast(err.message, 'error');
         }
     }
 

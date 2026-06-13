@@ -4,9 +4,13 @@
 
 ## 功能
 
-- **即時行情追蹤** — 每 5 秒自動更新價格，支援多支美股同時監控
-- **互動圖表** — 支援 MA/RSI/MACD/Volume 等技術指標，可個別開關顯示
-- **SEC 財報下載** — 自動從 SEC EDGAR 下載 10-K / 10-Q 年報季報
+- **即時行情追蹤** — 智能輪詢頻率（盤中 3s / 盤後 15s / 收盤 60s / 週末 300s）+ SSE 推送
+- **多源數據備援** — yfinance → Yahoo → Stooq → CoinGecko → 自訂 JSONPath（任何單一源失效自動切換）
+- **多市場支援** — 美股 / 港股 (`.HK`) / A股 (`.SS`/`.SZ`) / 日股 (`.T`) / 台股 (`.TW`) / 加密貨幣 (`-USD`)
+- **觸控走勢圖** — Chart.js + chartjs-plugin-zoom，捏合縮放 / 拖動平移 / 滾輪縮放 / 雙擊重置 + MA/RSI/MACD
+- **股票搜索** — Autocomplete + 預覽卡片，支援 33 個熱門股即時匹配
+- **手機優先 UI** — 320px 適配 / 44px 觸控目標 / 卡片式列表 / 底部 Tab / FAB 浮動按鈕
+- **SEC 財報下載** — 自動從 SEC EDGAR 下載 10-K / 10-Q + S-1/424B4/8-A12B (上市前公司)
 - **金融機構分析報告** — 收集各大銀行及投行的分析師評級及預測
 - **行業新聞** — 按行業分類顯示報告，每天自動收集行業新聞
 - **股票歸檔** — 刪除時自動歸檔，保留所有資料，可隨時恢復追蹤
@@ -22,10 +26,10 @@
 | 後端 | Python Flask |
 | 數據庫 | SQLite (核心) + 獨立 SQLite (時序) |
 | 前端 | 原生 HTML/CSS/JS + i18n |
-| 圖表 | Chart.js |
+| 圖表 | Chart.js + chartjs-plugin-zoom (觸控) |
 | PDF | PDF.js |
-| 股票數據 | yfinance |
-| 財報來源 | SEC EDGAR (10-K / 10-Q) |
+| 股票數據 | 多源備援鏈 (yfinance + Yahoo 直接 + Stooq + CoinGecko + 自訂 JSONPath) |
+| 財報來源 | SEC EDGAR (10-K/10-Q/S-1/424B4/8-A12B) |
 | 行業新聞 | Yahoo Finance |
 | 分析報告 | yfinance analyst + Yahoo Finance Analysis |
 | AI 分析 | OpenAI API |
@@ -154,8 +158,8 @@ Stocker/
 | 方法 | 路徑 | 說明 |
 |------|------|------|
 | GET | `/api/tickers` | 所有活躍 ticker 含即時價格 |
-| GET | `/api/tickers/stream` | 輕量價格流 (5秒輪詢用) |
 | POST | `/api/tickers` | 新增 ticker |
+| POST | `/api/tickers/preview` | 預覽 ticker (股名/即時價/PE/EPS/市值) |
 | PUT | `/api/tickers/<symbol>` | 更新持倉/成本 |
 | DELETE | `/api/tickers/<symbol>` | 歸檔 ticker (軟刪除) |
 | POST | `/api/tickers/<symbol>/restore` | 恢復歸檔的 ticker |
@@ -167,11 +171,15 @@ Stocker/
 | GET | `/api/industry/data` | 行業統計數據 |
 | GET | `/api/reports` | 報告列表 |
 | GET | `/api/reports/<id>` | 報告詳情 |
-| GET | `/api/reports/<id>/pdf` | 報告 PDF 檔案 |
 | GET | `/api/events/active` | 未處理事件 |
 | POST | `/api/events/<id>/dismiss` | 標記事件已知悉 |
 | GET | `/api/files` | 檔案列表 |
 | GET | `/api/files/<id>/download` | 下載檔案 |
+| **GET** | **`/api/search?q=`** | **股票搜索 autocomplete (popular + Yahoo)** |
+| **GET** | **`/api/refresh-interval`** | **智能輪詢頻率 (盤中 3s / 收盤 60s)** |
+| **GET** | **`/api/stream/tickers`** | **SSE 即時推送 (server-sent events)** |
+| **GET/POST** | **`/api/sources`** | **列出 / 新增自訂 JSONPath 數據源** |
+| **PUT/DELETE** | **`/api/sources/<id>`** | **編輯 / 刪除自訂源** |
 
 ## 初始追蹤清單
 

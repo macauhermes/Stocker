@@ -2,56 +2,166 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Stocker{% endblock %}</title>
+    
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/i18n.css">
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/text-renderer.css">
+    
+    <!-- i18n -->
     <script src="/static/js/i18n.js"></script>
+    
+    <!-- Text Renderer -->
+    <script src="/static/js/text-renderer.js"></script>
+    
+    {% block head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="nav-logo">Stocker</a>
-            <div class="nav-links">
-                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}" data-i18n="nav.dashboard">主頁</a>
-                <a href="/industry" class="nav-link {% if request.path == '/industry' %}active{% endif %}" data-i18n="nav.industry">行業</a>
-                <a href="/files" class="nav-link {% if request.path == '/files' %}active{% endif %}" data-i18n="nav.files">檔案</a>
-                <script>document.currentScript.insertAdjacentHTML('afterend', createLangSwitcher())</script>
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <a href="/" class="nav-logo">
+                <span class="material-icons-outlined">show_chart</span>
+                <span class="logo-text">Stocker</span>
+            </a>
+        </div>
+        <div class="nav-right">
+            <button class="nav-icon-btn" onclick="toggleSearch()">
+                <span class="material-icons-outlined">search</span>
+            </button>
+            <div class="lang-switcher">
+                <button class="lang-btn ${_lang === 'zh' ? 'active' : ''}" data-lang="zh" onclick="setLang('zh')">中</button>
+                <button class="lang-btn ${_lang === 'en' ? 'active' : ''}" data-lang="en" onclick="setLang('en')">EN</button>
             </div>
         </div>
     </nav>
+
+    <!-- Search Bar (hidden by default) -->
+    <div id="search-bar" class="search-bar" style="display:none;">
+        <div class="search-input-wrapper">
+            <span class="material-icons-outlined">search</span>
+            <input type="text" id="search-input" placeholder="搜尋股票代碼..." data-i18n="nav.search_placeholder">
+            <button class="search-close" onclick="toggleSearch()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
     <main class="main-content">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Bottom Tab Bar -->
+    <nav class="bottom-nav">
+        <a href="/" class="bottom-nav-item {% if request.path == '/' %}active{% endif %}">
+            <span class="material-icons-outlined">dashboard</span>
+            <span data-i18n="nav.dashboard">主頁</span>
+        </a>
+        <a href="/industry" class="bottom-nav-item {% if request.path == '/industry' %}active{% endif %}">
+            <span class="material-icons-outlined">business</span>
+            <span data-i18n="nav.industry">行業</span>
+        </a>
+        <a href="/banks" class="bottom-nav-item {% if request.path == '/banks' %}active{% endif %}">
+            <span class="material-icons-outlined">account_balance</span>
+            <span>投行</span>
+        </a>
+        <a href="/sources" class="bottom-nav-item {% if request.path == '/sources' %}active{% endif %}">
+            <span class="material-icons-outlined">cloud</span>
+            <span>數據源</span>
+        </a>
+        <a href="/files" class="bottom-nav-item {% if request.path == '/files' %}active{% endif %}">
+            <span class="material-icons-outlined">folder</span>
+            <span data-i18n="nav.files">檔案</span>
+        </a>
+    </nav>
+
+    <!-- Floating Action Button (FAB) — visible on dashboard only, opens Add Ticker modal -->
+    {% if request.path == '/' %}
+    <button class="fab" onclick="openAddModal()" aria-label="新增股票" data-i18n-aria="index.add">
+        <span class="material-icons-outlined">add</span>
+    </button>
+    {% endif %}
+
+    <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display:none;">
         <div class="spinner"></div>
     </div>
+
+    <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
+
     <script>
+        // Search toggle
+        function toggleSearch() {
+            const searchBar = document.getElementById('search-bar');
+            const searchInput = document.getElementById('search-input');
+            if (searchBar.style.display === 'none') {
+                searchBar.style.display = 'flex';
+                searchInput.focus();
+            } else {
+                searchBar.style.display = 'none';
+                searchInput.value = '';
+            }
+        }
+
+        // Loading
         function showLoading() {
             document.getElementById('loading-overlay').style.display = 'flex';
         }
         function hideLoading() {
             document.getElementById('loading-overlay').style.display = 'none';
         }
+
+        // Toast notification
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = 'toast toast-' + type;
-            toast.textContent = message;
+            
+            const icons = {
+                'info': 'info',
+                'success': 'check_circle',
+                'error': 'error',
+                'warning': 'warning'
+            };
+            
+            toast.innerHTML = `
+                <span class="material-icons-outlined">${icons[type] || 'info'}</span>
+                <span class="toast-message">${message}</span>
+            `;
             container.appendChild(toast);
-            setTimeout(() => { toast.classList.add('show'); }, 10);
+            
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+            
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
+
+        // Apply translations on load
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTranslations();
+        });
     </script>
+    
     {% block scripts %}{% endblock %}
 </body>
 </html>
