@@ -3,7 +3,7 @@
 ## 當前狀態（截至最後一次手動執行 2026-06-13）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e406d8 (v3.2)
-**Latest commit**: f4e2251 [P0] fetch_stock_info multi_source fallback
+**Latest commit**: 56776e8 [P1] SSE client for live price updates
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -28,7 +28,7 @@
  [ ] 加 staging area git commit workflow 改進
 
 ### P1 - 重要
-- [ ] Add SSE client in index.html (用 EventSource 取代 setInterval 輪詢)
+- [x] Add SSE client in index.html (用 EventSource 取代 setInterval 輪詢) (commit 56776e8)
 - [ ] Add `data-source-badge` 顯示每個 ticker 嘅數據源 (yfinance / yahoo_direct / stooq / coingecko / custom)
 - [ ] Add `data-freshness` 顯示最後更新時間 (relative: 3s ago / 5m ago)
 - [ ] Add `nightly_refresher` 自動刷新 5 年歷史價 + 預熱 cache
