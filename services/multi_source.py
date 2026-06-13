@@ -62,8 +62,8 @@ def _eval_path(data, path):
     p = path.strip().lstrip("$").lstrip(".")
     if not p:
         return data
-    tokens = re.findall(r"[^.\[\]'\"']+|\[[']\s*([^']*?)\s*[']\]", p)
-    tokens = [t[0] if isinstance(t, tuple) else t for t in tokens]
+    # Tokenize: plain keys, array indices [N], wildcards [*], bracket notation ['key']
+    tokens = re.findall(r"[^.\[\]'\"]+|\[\d+\]|\[\*\]|\['[^']*'\]", p)
     cur = data
     for tok in tokens:
         if cur is None:
@@ -73,6 +73,13 @@ def _eval_path(data, path):
             idx = m.group(1)
             if isinstance(cur, list):
                 cur = cur if idx == "*" else (cur[int(idx)] if int(idx) < len(cur) else None)
+            else:
+                return None
+        elif tok.startswith("['") and tok.endswith("']"):
+            # Bracket notation: ['key with spaces']
+            key = tok[2:-2]
+            if isinstance(cur, dict):
+                cur = cur.get(key)
             else:
                 return None
         else:
