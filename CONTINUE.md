@@ -3,7 +3,7 @@
 ## 當前狀態（截至最後一次手動執行 2026-06-13）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e406d8 (v3.2)
-**Latest commit**: pending [P2] unit tests + _eval_path bugfix
+**Latest commit**: 7d8c76e [P2] unit tests + _eval_path bugfix
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
