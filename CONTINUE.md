@@ -30,7 +30,7 @@
 ### P1 - 重要
 - [x] Add SSE client in index.html (用 EventSource 取代 setInterval 輪詢) (commit 56776e8)
 - [x] Add `data-source-badge` 顯示每個 ticker 嘅數據源 (yfinance / yahoo_direct / stooq / coingecko / custom) (commit 3a802c4)
-- [ ] Add `data-freshness` 顯示最後更新時間 (relative: 3s ago / 5m ago)
+- [x] Add `data-freshness` 顯示最後更新時間 (relative: 3s ago / 5m ago) (commit 98ed308)
 - [ ] Add `nightly_refresher` 自動刷新 5 年歷史價 + 預熱 cache
 - [ ] Add `watchlist_groups` (用戶分組管理追蹤股票)
 - [ ] Add `events_calendar` 月曆視圖顯示 earnings/dividend/events
