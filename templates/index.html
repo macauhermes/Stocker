@@ -220,6 +220,7 @@
                     <div class="stock-symbol">
                         ${ticker.symbol}
                         ${ticker.sector ? `<span class="stock-sector">${ticker.sector}</span>` : ''}
+                        <span class="source-badge source-${(ticker.data_source || 'unknown').replace(/_/g, '-')}" title="${ticker.data_source || 'unknown'}">${sourceLabel(ticker.data_source)}</span>
                     </div>
                     <div class="stock-name">${ticker.name || '—'}</div>
                 </div>
@@ -267,6 +268,18 @@
                 elements: { line: { borderJoinStyle: 'round' } }
             }
         });
+    }
+
+    // Source badge label helper
+    function sourceLabel(source) {
+        const labels = {
+            'yfinance': 'YF',
+            'yahoo_direct': 'Y!',
+            'stooq': 'SQ',
+            'coingecko': 'CG',
+            'custom': '✦',
+        };
+        return labels[source] || '?';
     }
 
     // Sector filter

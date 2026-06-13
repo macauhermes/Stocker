@@ -577,6 +577,25 @@ a {
   border-radius: 10px;
 }
 
+/* Data source badge — small pill next to ticker symbol */
+.source-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  line-height: 1.4;
+  cursor: help;
+}
+.source-yfinance        { background: rgba(106, 90, 205, 0.2); color: #9b8fef; }
+.source-yahoo-direct     { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+.source-stooq            { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.source-coingecko        { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.source-custom           { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
+.source-unknown          { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+
 .stock-name {
   color: var(--text-muted);
   font-size: 0.85rem;

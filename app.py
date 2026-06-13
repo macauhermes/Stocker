@@ -122,6 +122,7 @@ def api_get_tickers():
         ticker_data['eps'] = info.get('eps')
         ticker_data['week52_high'] = info.get('week52_high')
         ticker_data['week52_low'] = info.get('week52_low')
+        ticker_data['data_source'] = info.get('source', 'unknown')
         result.append(ticker_data)
 
     cache_set(cache_key, result)
@@ -833,6 +834,7 @@ def api_stream_tickers():
                             'symbol': t['symbol'],
                             'price': info.get('price'),
                             'change_pct': info.get('change_pct'),
+                            'source': info.get('source', 'unknown'),
                             'ts': datetime.utcnow().isoformat(),
                         })
                     except Exception as exc:

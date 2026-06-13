@@ -29,6 +29,12 @@ const I18N = {
     'common.category': '分類',
     'common.size': '大小',
     'common.source': '來源',
+    'source.yfinance': 'Yahoo Finance',
+    'source.yahoo_direct': 'Yahoo 直連',
+    'source.stooq': 'Stooq',
+    'source.coingecko': 'CoinGecko',
+    'source.custom': '自訂來源',
+    'source.unknown': '未知',
     'common.untitled': '無標題',
 
     // Index page
@@ -166,6 +172,12 @@ const I18N = {
     'common.category': 'Category',
     'common.size': 'Size',
     'common.source': 'Source',
+    'source.yfinance': 'Yahoo Finance',
+    'source.yahoo_direct': 'Yahoo Direct',
+    'source.stooq': 'Stooq',
+    'source.coingecko': 'CoinGecko',
+    'source.custom': 'Custom',
+    'source.unknown': 'Unknown',
     'common.untitled': 'Untitled',
 
     // Index page
