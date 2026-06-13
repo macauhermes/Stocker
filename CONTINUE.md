@@ -39,7 +39,7 @@
 - [x] 將 mobile.css 結構化 (variables + components + utilities 分檔) (commit 16264cc)
 - [x] 將 stock_detail.html chart 改用線上 plugin zoom + crosshair plugin (而非 chartjs-plugin-zoom) (commit 895af1c)
 - [x] Add `candlestick` toggle (陰陽燭 vs 折線) (commit 19e2f12)
-- [ ] Add `compare` mode (兩股疊加圖)
+- [x] Add `compare` mode (兩股疊加圖) (commit f2a302b)
 - [ ] Add i18n 補完 (en 翻譯)
 - [ ] 加 unit tests (pytest) for multi_source.py
 
