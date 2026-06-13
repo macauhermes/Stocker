@@ -1,0 +1,157 @@
+/* ============================================================
+   Stocker – Mobile-First Dark Theme
+   ============================================================ */
+
+/* CSS Variables */
+:root {
+  --bg: #0a0a0f;
+  --card: #141419;
+  --card-hover: #1e1e26;
+  --border: #2a2a35;
+  --text: #e0e0e8;
+  --text-muted: #8888a0;
+  --green: #00c853;
+  --red: #ff1744;
+  --blue: #494fdf;
+  --yellow: #ffd600;
+  --orange: #ff9100;
+  --nav-height: 56px;
+  --bottom-nav-height: 64px;
+  --touch-target: 44px;  /* Apple HIG */
+}
+
+/* Search suggestions dropdown */
+.search-suggestions {
+  background: var(--card-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.suggest-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 50px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  min-height: var(--touch-target);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.suggest-item:last-child { border-bottom: 0; }
+.suggest-item:hover, .suggest-item:active { background: var(--card); }
+.suggest-symbol { font-weight: 600; font-size: 0.9rem; color: var(--blue); }
+.suggest-name { font-size: 0.85rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggest-market { font-size: 0.7rem; color: var(--text-muted); text-align: right; }
+
+/* Add-ticker preview */
+.add-preview {
+  margin-top: 12px;
+  background: var(--card-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: var(--touch-target);
+}
+.preview-card { display: flex; flex-direction: column; gap: 8px; }
+.preview-row { display: flex; justify-content: space-between; align-items: center; }
+.preview-name { font-weight: 600; font-size: 0.95rem; }
+.preview-market { font-size: 0.7rem; color: var(--text-muted); padding: 2px 6px; background: var(--card); border-radius: 4px; }
+.preview-price { font-size: 1.4rem; font-weight: 700; }
+.preview-sector { font-size: 0.8rem; color: var(--text-muted); }
+.preview-loading { color: var(--text-muted); font-size: 0.85rem; padding: 8px 0; }
+
+/* Refresh badge (visible top-right of stock list) */
+.refresh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: help;
+}
+.refresh-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+.refresh-badge[data-reason="us_market_open"]::before { background: var(--green); }
+.refresh-badge[data-reason="us_extended_hours"]::before { background: var(--yellow); }
+.refresh-badge[data-reason="us_off_hours"]::before { background: var(--text-muted); }
+.refresh-badge[data-reason="weekend"]::before { background: var(--orange); }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* 320px safety: ensure no horizontal scroll */
+@media (max-width: 360px) {
+  body { font-size: 15px; }
+  .container, .main-content { padding-left: 12px; padding-right: 12px; }
+  .card { padding: 12px; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; }
+}
+
+/* Touch-target enforcement for all interactive elements */
+button, a.btn, .nav-icon-btn, .bottom-nav-item, .tab-btn {
+  min-height: var(--touch-target);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding-top: var(--nav-height);
+  padding-bottom: calc(var(--bottom-nav-height) + 16px);
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
