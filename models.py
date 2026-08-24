@@ -428,6 +428,97 @@ def get_report(id: int):
         conn.close()
 
 
+def search_reports(query: str = None, category: str = None, source: str = None,
+                   ticker: str = None, limit: int = 50):
+    """
+    Search/filter reports by free-text + category + source + ticker.
+
+    - `query` matches title OR summary LIKE %query% (case-insensitive)
+    - `category`, `source` are exact-match filters (case-insensitive)
+    - `ticker` extracts symbol from file_path prefix (e.g. 'GLW_10-Q...' → GLW)
+    - All filters AND together; any None means "don't filter on this"
+    - Empty `query`/category/source/ticker treated as None
+    - Returns Row objects ordered by created_at DESC, capped at `limit`
+
+    v3.4.3 — P3 feature: enables user-facing report search.
+    """
+    conn = get_db()
+    try:
+        where = []
+        params = []
+
+        # Free-text on title/summary
+        if query and query.strip():
+            where.append("(LOWER(title) LIKE ? OR LOWER(IFNULL(summary, '')) LIKE ?)")
+            like = f"%{query.strip().lower()}%"
+            params.extend([like, like])
+
+        if category and category.strip():
+            where.append("LOWER(category) = ?")
+            params.append(category.strip().lower())
+
+        if source and source.strip():
+            where.append("LOWER(source) = ?")
+            params.append(source.strip().lower())
+
+        # Ticker derives from file_path basename prefix: data/files/<category>/<SYMBOL>_...
+        # file_path is absolute (e.g. '/home/.../data/files/earnings/GLW_10-Q...'),
+        # so use LIKE on the suffix '<SYMBOL>_' after the last '/'.
+        if ticker and ticker.strip():
+            t = ticker.strip().upper()
+            where.append("file_path LIKE ?")
+            params.append(f"%/{t}_%")
+
+        sql = "SELECT * FROM reports"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+
+        return conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+
+def count_search_results(query: str = None, category: str = None, source: str = None,
+                         ticker: str = None) -> int:
+    """
+    Count results for the same filters as search_reports, without the LIMIT.
+    Used for the API response to expose total result count alongside results.
+    """
+    conn = get_db()
+    try:
+        where = []
+        params = []
+
+        if query and query.strip():
+            where.append("(LOWER(title) LIKE ? OR LOWER(IFNULL(summary, '')) LIKE ?)")
+            like = f"%{query.strip().lower()}%"
+            params.extend([like, like])
+
+        if category and category.strip():
+            where.append("LOWER(category) = ?")
+            params.append(category.strip().lower())
+
+        if source and source.strip():
+            where.append("LOWER(source) = ?")
+            params.append(source.strip().lower())
+
+        if ticker and ticker.strip():
+            t = ticker.strip().upper()
+            where.append("file_path LIKE ?")
+            params.append(f"%/{t}_%")
+
+        sql = "SELECT COUNT(*) as c FROM reports"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+
+        row = conn.execute(sql, params).fetchone()
+        return row['c'] if row else 0
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Events
 # ---------------------------------------------------------------------------

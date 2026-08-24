@@ -163,6 +163,13 @@ HEALTH_CHECK = Counter(
     ['status']  # 'healthy' / 'degraded' / 'unhealthy'
 )
 
+# Report search (v3.4.3) — track search queries by whether they returned results
+REPORT_SEARCH = Counter(
+    'stocker_report_searches_total',
+    'Filtered report searches via /api/reports (filters supplied)',
+    ['has_results']  # 'true' / 'false'
+)
+
 
 # ── Middleware ──────────────────────────────────────────────────────────
 
@@ -257,6 +264,15 @@ def record_alert_triggered(count: int = 1):
 def record_health(status):
     """Record a health check outcome (healthy/degraded/unhealthy)."""
     HEALTH_CHECK.labels(status=status).inc()
+
+
+def record_report_search(has_results: bool):
+    """Record a filtered report search via /api/reports.
+
+    Called from app.py's api_get_reports only when filters were supplied.
+    Tracks zero-result searches separately so dashboard can spot dead queries.
+    """
+    REPORT_SEARCH.labels(has_results='true' if has_results else 'false').inc()
 
 
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
@@ -574,6 +590,14 @@ def metrics_summary():
             'enabled': int(ALERTS_TOTAL.labels(enabled='true')._value.get()),
             'disabled': int(ALERTS_TOTAL.labels(enabled='false')._value.get()),
             'triggered_total': int(ALERTS_TRIGGERED._value.get()),
+        },
+        # report_searches: sum across label values for total; read each label
+        # for zero_result vs with_results breakdown. Use children (._metrics)
+        # rather than trying to read the parent Counter.
+        'report_searches': {
+            'total': sum(c._value.get() for c in REPORT_SEARCH._metrics.values()),
+            'with_results': int(REPORT_SEARCH.labels(has_results='true')._value.get()),
+            'zero_results': int(REPORT_SEARCH.labels(has_results='false')._value.get()),
         },
         'portfolio': {
             'snapshots_count': int(SNAPSHOTS_TOTAL._value.get()),

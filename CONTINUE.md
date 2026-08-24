@@ -23,6 +23,15 @@
 - ✅ 三條觸發路徑都 inc counter: /api/stock/<sym>/refresh, /api/alerts/check, nightly_tasks.py
 - ✅ _update_business_gauges() 從 price_alerts 表即時拉 enabled/disabled split
 
+**v3.4.3 (2026-08-25)**:
+- ✅ `/api/reports` 新增 search/filter 能力 — `?q=&category=&source=&ticker=&limit=&include_total=`
+- ✅ `models.search_reports()` + `count_search_results()` — AND-combined filters, case-insensitive
+- ✅ Ticker filter 由 file_path basename prefix 解析 (e.g. `GLW_10-K...` → GLW)
+- ✅ 向後兼容：無 filters 時仍返 bare array；filters 存在時返 `{results, count, filters[, total_count]}`
+- ✅ Prometheus counter `stocker_report_searches_total{has_results=true|false}` + `/api/metrics/summary` 加 `report_searches` block
+- ✅ 24 unit tests (tests/test_report_search.py) — all passing (195/195 total)
+- Commit: pending
+
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
   multiplies (price × shares), persists to portfolio_snapshots table keyed by date
@@ -70,6 +79,9 @@
 - [x] CSV export 投資組合 (active tickers + holdings + P&L) (commit 21b5bd1)
 - [x] Price Alerts v3.4 (用戶自訂價格閾值，事件自動觸發) (commit a673b22)
 - [x] alert_checker unit tests (26 tests covering threshold eval + side-effects + sweep + model validation) (commit eda159d)
+- [x] Daily Portfolio Snapshots v3.4.2 (services/portfolio_snapshot.py + dashboard widget) (commit 25cd9ef)
+- [x] Report Search v3.4.3 (/api/reports?q=&category=&source=&ticker=&limit=) (commit pending)
+- [x] Report Search unit tests (24 tests covering all 4 filter dimensions) (commit pending)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程

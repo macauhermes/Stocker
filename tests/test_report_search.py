@@ -1,0 +1,206 @@
+"""
+Unit tests for v3.4.3 Report Search feature.
+
+Covers:
+- models.search_reports() — all 4 filter dimensions (q, category, source, ticker)
+- models.count_search_results() — total count for the same filters
+- Combined AND filters
+- Empty/None filter handling
+- Order by created_at DESC
+- Limit param
+
+v3.4.3 — P3 feature: user-facing report search.
+"""
+import os
+import sys
+import tempfile
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import models
+
+
+# ── Fixtures (function-scope, mirrors test_alert_checker pattern) ────────
+
+
+@pytest.fixture
+def temp_db():
+    """Create a temp SQLite DB with full Stocker schema."""
+    tmp = tempfile.mkdtemp(prefix='stocker-report-search-test-')
+    db_path = os.path.join(tmp, 'stocker.db')
+    original = models.DB_PATH
+    models.DB_PATH = db_path
+    try:
+        models.init_db()
+        yield db_path
+    finally:
+        models.DB_PATH = original
+
+
+@pytest.fixture
+def seeded_reports(temp_db):
+    """Insert a known mix of reports across categories/sources/tickers."""
+    conn = models.get_db()
+    rows = [
+        # GLW SEC earnings
+        ('GLW 10-K (2026-02-12)', 'SEC EDGAR', 'earnings',
+         'Annual report for Corning Inc', '/home/x/data/files/earnings/GLW_10-K_2026-02-12.htm'),
+        ('GLW 10-Q (2026-05-01)', 'SEC EDGAR', 'earnings',
+         'Quarterly report', '/home/x/data/files/earnings/GLW_10-Q_2026-05-01.htm'),
+        # IBM SEC earnings
+        ('IBM 10-K (2026-02-24)', 'SEC EDGAR', 'earnings',
+         'IBM annual report', '/home/x/data/files/earnings/IBM_10-K_2026-02-24.htm'),
+        ('IBM 10-Q (2026-04-23)', 'SEC EDGAR', 'earnings',
+         'IBM quarterly report', '/home/x/data/files/earnings/IBM_10-Q_2026-04-23.htm'),
+        # TSLA industry news
+        ('TSLA Q4 earnings preview', 'Reuters', 'industry',
+         'Tesla market outlook', '/home/x/data/files/industry/TSLA_news_2026.htm'),
+        ('TSLA delivery numbers', 'Bloomberg', 'industry',
+         'Tesla deliveries beat estimates', '/home/x/data/files/industry/TSLA_deliveries.htm'),
+        # Analyst report
+        ('TSLA deep dive', 'Goldman Sachs Research', 'analyst_report',
+         'Long thesis on TSLA', '/home/x/data/files/analyst_report/TSLA_goldman.htm'),
+        # SPCX prospectus (no ticker prefix in path)
+        ('SpaceX S-1', 'SEC EDGAR', 'sec_filing',
+         'SpaceX IPO prospectus', '/home/x/data/files/sec_filing/SPCX_S1.htm'),
+    ]
+    for title, source, category, summary, file_path in rows:
+        conn.execute(
+            """INSERT INTO reports (title, source, category, summary, file_path)
+               VALUES (?, ?, ?, ?, ?)""",
+            (title, source, category, summary, file_path),
+        )
+    conn.commit()
+    conn.close()
+    return rows
+
+
+# ── search_reports tests ────────────────────────────────────────────────
+
+
+class TestSearchReports:
+    def test_no_filters_returns_all(self, seeded_reports):
+        results = models.search_reports(limit=100)
+        assert len(results) == 8
+
+    def test_all_none_filters_acts_like_no_filters(self, seeded_reports):
+        results = models.search_reports(query=None, category=None, source=None,
+                                        ticker=None, limit=100)
+        assert len(results) == 8
+
+    def test_empty_string_filters_treated_as_none(self, seeded_reports):
+        results = models.search_reports(query='', category='', source='', ticker='', limit=100)
+        assert len(results) == 8
+
+    def test_query_matches_title(self, seeded_reports):
+        results = models.search_reports(query='10-K')
+        titles = [r['title'] for r in results]
+        assert len(results) == 2
+        assert all('10-K' in t for t in titles)
+
+    def test_query_matches_summary(self, seeded_reports):
+        results = models.search_reports(query='prospectus')
+        assert len(results) == 1
+        assert 'SpaceX' in results[0]['title']
+
+    def test_query_is_case_insensitive(self, seeded_reports):
+        upper = models.search_reports(query='IBM')
+        lower = models.search_reports(query='ibm')
+        assert len(upper) == len(lower) == 2
+
+    def test_query_whitespace_stripped(self, seeded_reports):
+        results = models.search_reports(query='  10-K  ')
+        assert len(results) == 2
+
+    def test_category_filter_exact_match(self, seeded_reports):
+        results = models.search_reports(category='earnings')
+        assert len(results) == 4
+        assert all(r['category'] == 'earnings' for r in results)
+
+    def test_category_filter_case_insensitive(self, seeded_reports):
+        upper = models.search_reports(category='EARNINGS')
+        lower = models.search_reports(category='earnings')
+        assert len(upper) == len(lower) == 4
+
+    def test_source_filter(self, seeded_reports):
+        results = models.search_reports(source='SEC EDGAR')
+        assert len(results) == 5  # 4 earnings + 1 sec_filing
+        assert all(r['source'] == 'SEC EDGAR' for r in results)
+
+    def test_ticker_filter_derives_from_file_path(self, seeded_reports):
+        results = models.search_reports(ticker='GLW')
+        assert len(results) == 2
+        assert all('GLW' in r['file_path'] for r in results)
+
+    def test_ticker_filter_uppercases_input(self, seeded_reports):
+        upper = models.search_reports(ticker='tsla')
+        lower = models.search_reports(ticker='TSLA')
+        assert len(upper) == len(lower) == 3  # 2 industry + 1 analyst
+
+    def test_combined_filters_AND(self, seeded_reports):
+        results = models.search_reports(ticker='IBM', category='earnings')
+        assert len(results) == 2
+
+        results = models.search_reports(category='earnings', source='SEC EDGAR',
+                                        ticker='GLW')
+        assert len(results) == 2
+
+    def test_filters_with_no_results_returns_empty(self, seeded_reports):
+        results = models.search_reports(query='nonexistent_xyz_query')
+        assert results == []
+
+    def test_results_ordered_by_created_at_desc(self, seeded_reports):
+        # All seeded at roughly same time, but ordering should still be DESC
+        results = models.search_reports(category='earnings')
+        timestamps = [r['created_at'] for r in results]
+        assert timestamps == sorted(timestamps, reverse=True)
+
+    def test_limit_caps_results(self, seeded_reports):
+        results = models.search_reports(limit=3)
+        assert len(results) == 3
+
+    def test_query_with_no_match_returns_empty(self, seeded_reports):
+        results = models.search_reports(query='zzzz_no_match')
+        assert len(results) == 0
+
+
+# ── count_search_results tests ──────────────────────────────────────────
+
+
+class TestCountSearchResults:
+    def test_no_filters_returns_total(self, seeded_reports):
+        assert models.count_search_results() == 8
+
+    def test_query_count(self, seeded_reports):
+        assert models.count_search_results(query='10-K') == 2
+        assert models.count_search_results(query='IBM') == 2
+        assert models.count_search_results(query='nope') == 0
+
+    def test_category_count(self, seeded_reports):
+        assert models.count_search_results(category='earnings') == 4
+        assert models.count_search_results(category='industry') == 2
+
+    def test_source_count(self, seeded_reports):
+        assert models.count_search_results(source='SEC EDGAR') == 5
+
+    def test_ticker_count(self, seeded_reports):
+        assert models.count_search_results(ticker='GLW') == 2
+        assert models.count_search_results(ticker='TSLA') == 3
+
+    def test_combined_count(self, seeded_reports):
+        assert models.count_search_results(ticker='IBM', category='earnings') == 2
+
+    def test_count_matches_search_results_length(self, seeded_reports):
+        # Without limit, count should equal len(search_results(limit=very_large))
+        for combo in [
+            {'query': '10-K'},
+            {'category': 'earnings'},
+            {'source': 'SEC EDGAR'},
+            {'ticker': 'GLW'},
+            {'ticker': 'IBM', 'category': 'earnings'},
+            {},
+        ]:
+            cnt = models.count_search_results(**combo)
+            results = models.search_reports(limit=1000, **combo)
+            assert cnt == len(results), f"mismatch for {combo}: count={cnt}, results={len(results)}"

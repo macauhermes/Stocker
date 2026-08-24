@@ -17,6 +17,8 @@
 - **事件提醒** — 財報日期、除息日自動追蹤，進入頁面前提醒查看
 - **持倉管理** — 記錄持倉數量及成本，即時計算累計損益
 - **價格提醒 (v3.4)** — 用戶自訂價格閾值（升至 ≥ 或 跌至 ≤），手動刷新或每晚排程觸發時自動產生 event；Prometheus 暴露 `stocker_alerts_total{enabled=true|false}` + `stocker_alerts_triggered_total`
+- **每日投資組合快照 (v3.4.2)** — 每日 20:00 自動拍攝 total value + P&L，支援 30 日 delta 比較；Prometheus 暴露 `stocker_portfolio_snapshots_total` + `_value_dollars_latest` + `_pnl_dollars_latest`
+- **報告搜尋 (v3.4.3)** — `/api/reports?q=&category=&source=&ticker=&limit=&include_total=` AND-combined filters；Prometheus 暴露 `stocker_report_searches_total{has_results=true|false}`
 - **多語言** — 繁體中文 (預設) / English 雙語切換
 - **檔案管理** — 下載報告分類存儲，提供直接下載
 
@@ -170,7 +172,7 @@ Stocker/
 | GET | `/api/sectors` | 所有行業分類 |
 | GET | `/api/sectors/<sector>/reports` | 指定行業的報告 |
 | GET | `/api/industry/data` | 行業統計數據 |
-| GET | `/api/reports` | 報告列表 |
+| GET | `/api/reports` | 報告列表（無 filter 時 bare array；加 `?q=`/`?category=`/`?source=`/`?ticker=` 後返 `{results, count, filters}` object） |
 | GET | `/api/reports/<id>` | 報告詳情 |
 | GET | `/api/events/active` | 未處理事件 |
 | POST | `/api/events/<id>/dismiss` | 標記事件已知悉 |

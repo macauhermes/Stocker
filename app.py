@@ -617,10 +617,65 @@ def api_refresh_stock(symbol):
 
 @app.route('/api/reports', methods=['GET'])
 def api_get_reports():
-    """Get list of reports."""
-    limit = request.args.get('limit', 50, type=int)
-    reports = models.get_reports(limit)
-    return jsonify([dict(r) for r in reports])
+    """Get list of reports.
+
+    Supports filtering via query params (all optional, AND-combined):
+    - q:        free-text search on title + summary (LIKE %q%, case-insensitive)
+    - category: exact-match category filter (e.g. earnings, industry)
+    - source:   exact-match source filter (e.g. "SEC EDGAR")
+    - ticker:   filter by ticker symbol derived from file_path basename prefix
+    - limit:    max results (default 50, capped at 500)
+    - include_total: if '1', include total_count in response (slower)
+
+    Response shape:
+    - No filters supplied: bare JSON array (preserves pre-v3.4.3 backward compat)
+    - Filters supplied: dict {results, count, filters[, total_count]}
+
+    v3.4.3 — adds search/filter capability on top of plain list.
+    """
+    limit = min(request.args.get('limit', 50, type=int), 500)
+    q = request.args.get('q', '').strip() or None
+    category = request.args.get('category', '').strip() or None
+    source = request.args.get('source', '').strip() or None
+    ticker = request.args.get('ticker', '').strip() or None
+    include_total = request.args.get('include_total', '') == '1'
+
+    has_filters = any([q, category, source, ticker])
+
+    if not has_filters:
+        # Plain list — preserves the pre-v3.4.3 response shape (bare array).
+        reports = models.get_reports(limit=limit)
+        return jsonify([dict(r) for r in reports])
+
+    # Filtered search — new object response shape with metadata.
+    reports = models.search_reports(
+        query=q, category=category, source=source, ticker=ticker, limit=limit
+    )
+
+    payload = {
+        'results': [dict(r) for r in reports],
+        'count': len(reports),
+        'filters': {
+            'q': q,
+            'category': category,
+            'source': source,
+            'ticker': ticker,
+        },
+    }
+
+    if include_total:
+        payload['total_count'] = models.count_search_results(
+            query=q, category=category, source=source, ticker=ticker
+        )
+
+    # Record Prometheus counter — only count filtered searches.
+    try:
+        from services.metrics import record_report_search
+        record_report_search(has_results=len(reports) > 0)
+    except Exception:
+        pass
+
+    return jsonify(payload)
 
 
 @app.route('/api/reports/<int:report_id>', methods=['GET'])
