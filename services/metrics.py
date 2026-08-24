@@ -1,22 +1,30 @@
 """
-Prometheus Metrics for Stocker
-===============================
-Exposes /metrics endpoint for Prometheus scraping.
+Prometheus Metrics + Health Check for Stocker
+==============================================
+Exposes /metrics endpoint for Prometheus scraping and /health for liveness checks.
 
 Metrics tracked:
 - http_requests_total: Counter by method, endpoint, status_code
 - http_request_duration_seconds: Histogram by method, endpoint
 - stocker_tickers_total: Gauge — number of active tracked tickers
-- stocker_reports_total: Gauge — number of collected reports
+- stocker_reports_total: Gauge — number of collected reports (overall + by category)
+- stocker_events_total: Gauge — events count (active + upcoming 7d)
+- stocker_banks_total: Gauge — investment banks count (enabled + total)
+- stocker_custom_sources_total: Gauge — custom JSONPath sources count
+- stocker_watchlist_groups_total: Gauge — watchlist groups count
 - stocker_cache_hits_total / stocker_cache_misses_total: Counters
 - stocker_data_source_requests_total: Counter by source
 - stocker_sse_connections: Gauge — active SSE connections
 - stocker_nightly_refresh_total: Counter by status
+- stocker_health_check_total: Counter by status
 """
 
 import time
+import shutil
+from datetime import datetime, timedelta
+from pathlib import Path
 from functools import wraps
-from flask import request as flask_request
+from flask import request as flask_request, jsonify
 from prometheus_client import (
     Counter, Histogram, Gauge, CollectorRegistry,
     generate_latest, CONTENT_TYPE_LATEST
@@ -49,6 +57,47 @@ REPORTS_TOTAL = Gauge(
     'Number of collected reports'
 )
 
+REPORTS_BY_CATEGORY = Gauge(
+    'stocker_reports_by_category',
+    'Reports grouped by category',
+    ['category']
+)
+
+EVENTS_ACTIVE = Gauge(
+    'stocker_events_active',
+    'Number of active (un-dismissed) events'
+)
+
+EVENTS_UPCOMING_7D = Gauge(
+    'stocker_events_upcoming_7d',
+    'Number of upcoming events in next 7 days'
+)
+
+BANKS_TOTAL = Gauge(
+    'stocker_banks_total',
+    'Total investment banks',
+    ['enabled']  # 'true' / 'false'
+)
+
+CUSTOM_SOURCES_TOTAL = Gauge(
+    'stocker_custom_sources_total',
+    'Custom JSONPath data sources count',
+    ['enabled']
+)
+
+WATCHLIST_GROUPS_TOTAL = Gauge(
+    'stocker_watchlist_groups_total',
+    'Watchlist groups count'
+)
+
+APP_START_TIME = Gauge(
+    'stocker_app_start_time_seconds',
+    'Unix timestamp when Stocker started'
+)
+
+# Set start time on import
+APP_START_TIME.set(time.time())
+
 CACHE_HITS = Counter(
     'stocker_cache_hits_total',
     'Total cache hits'
@@ -74,6 +123,12 @@ NIGHTLY_REFRESH = Counter(
     'stocker_nightly_refresh_total',
     'Nightly refresh runs',
     ['status']
+)
+
+HEALTH_CHECK = Counter(
+    'stocker_health_check_total',
+    'Health check calls',
+    ['status']  # 'healthy' / 'degraded' / 'unhealthy'
 )
 
 
@@ -158,30 +213,306 @@ def sse_disconnect():
     SSE_CONNECTIONS.dec()
 
 
+def record_health(status):
+    """Record a health check outcome (healthy/degraded/unhealthy)."""
+    HEALTH_CHECK.labels(status=status).inc()
+
+
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
 
-def metrics_endpoint():
-    """Return Prometheus metrics as plaintext."""
-    # Update business gauges before scrape
+def _update_business_gauges():
+    """Refresh all business gauges from DB before scrape.
+    Called by metrics_endpoint and JSON summary endpoint.
+    Each block is wrapped in try/except so a single failure doesn't kill the others.
+    """
+    import models
+
+    # Tickers
     try:
-        import models
         tickers = models.get_all_tickers()
-        update_ticker_count(len(tickers))
+        update_ticker_count(len(tickers) if tickers else 0)
     except Exception:
         pass
 
+    # Reports overall + by category
     try:
-        import models
         from models import get_db
         db = get_db()
         row = db.execute('SELECT COUNT(*) as c FROM reports').fetchone()
         if row:
             update_report_count(row['c'])
+        # By category
+        rows = db.execute(
+            'SELECT category, COUNT(*) as c FROM reports GROUP BY category'
+        ).fetchall()
+        for r in rows:
+            REPORTS_BY_CATEGORY.labels(category=r['category'] or 'unknown').set(r['c'])
     except Exception:
         pass
 
+    # Events
+    try:
+        from models import get_db
+        db = get_db()
+        row = db.execute(
+            "SELECT COUNT(*) as c FROM events WHERE dismissed = 0"
+        ).fetchone()
+        if row:
+            EVENTS_ACTIVE.set(row['c'])
+        # event_date stored as YYYY-MM-DD; use date() for consistent comparison
+        row = db.execute(
+            "SELECT COUNT(*) as c FROM events WHERE dismissed = 0 "
+            "AND event_date >= date('now') AND event_date <= date('now', '+7 days')"
+        ).fetchone()
+        if row:
+            EVENTS_UPCOMING_7D.set(row['c'])
+    except Exception:
+        pass
+
+    # Banks (enabled vs total)
+    try:
+        from models import get_db
+        db = get_db()
+        for enabled_val in ('true', 'false'):
+            row = db.execute(
+                'SELECT COUNT(*) as c FROM investment_banks WHERE enabled = ?',
+                (1 if enabled_val == 'true' else 0,)
+            ).fetchone()
+            if row:
+                BANKS_TOTAL.labels(enabled=enabled_val).set(row['c'])
+    except Exception:
+        pass
+
+    # Custom sources
+    try:
+        from models import get_db
+        db = get_db()
+        for enabled_val in ('true', 'false'):
+            row = db.execute(
+                'SELECT COUNT(*) as c FROM custom_data_sources WHERE enabled = ?',
+                (1 if enabled_val == 'true' else 0,)
+            ).fetchone()
+            if row:
+                CUSTOM_SOURCES_TOTAL.labels(enabled=enabled_val).set(row['c'])
+    except Exception:
+        pass
+
+    # Watchlist groups
+    try:
+        from models import get_db
+        db = get_db()
+        row = db.execute('SELECT COUNT(*) as c FROM watchlist_groups').fetchone()
+        if row:
+            WATCHLIST_GROUPS_TOTAL.set(row['c'])
+    except Exception:
+        pass
+
+
+def metrics_endpoint():
+    """Return Prometheus metrics as plaintext."""
+    _update_business_gauges()
     from flask import Response
     return Response(
         generate_latest(),
         mimetype=CONTENT_TYPE_LATEST
     )
+
+
+# ── Health Check ──────────────────────────────────────────────────────
+
+def _check_db():
+    """Verify SQLite is readable. Returns (ok, detail)."""
+    try:
+        import models
+        db = models.get_db()
+        row = db.execute('SELECT 1 as ok').fetchone()
+        if row and row['ok'] == 1:
+            return True, 'sqlite_ok'
+        return False, 'sqlite_query_failed'
+    except Exception as e:
+        return False, f'sqlite_error: {type(e).__name__}'
+
+
+def _check_disk():
+    """Check free disk space on data dir. Warn if <500MB."""
+    try:
+        from pathlib import Path
+        data_dir = Path.home() / 'repos' / 'Stocker' / 'data'
+        if not data_dir.exists():
+            return True, 'data_dir_missing_skipped'
+        usage = shutil.disk_usage(data_dir)
+        free_mb = usage.free / (1024 * 1024)
+        if free_mb < 100:
+            return False, f'critical_low_disk: {free_mb:.0f}MB free'
+        if free_mb < 500:
+            return True, f'low_disk_warning: {free_mb:.0f}MB free'
+        return True, f'ok_{free_mb:.0f}MB_free'
+    except Exception as e:
+        return True, f'disk_check_skipped: {type(e).__name__}'
+
+
+def _check_tsdb():
+    """Verify timeseries DB is readable. Returns (ok, detail)."""
+    try:
+        import tsdb
+        # Try a trivial query
+        df = tsdb.get_daily_prices('TSLA', days=1)
+        return True, 'tsdb_ok'
+    except Exception as e:
+        return False, f'tsdb_error: {type(e).__name__}: {str(e)[:80]}'
+
+
+def health_check():
+    """
+    Liveness + readiness probe.
+    Returns 200 if healthy/degraded, 503 if unhealthy.
+    Records outcome in Prometheus counter.
+    """
+    checks = {}
+    overall_ok = True
+
+    db_ok, db_detail = _check_db()
+    checks['database'] = {'ok': db_ok, 'detail': db_detail}
+    if not db_ok:
+        overall_ok = False
+
+    disk_ok, disk_detail = _check_disk()
+    checks['disk'] = {'ok': disk_ok, 'detail': disk_detail}
+    if not disk_ok:
+        overall_ok = False
+
+    tsdb_ok, tsdb_detail = _check_tsdb()
+    checks['tsdb'] = {'ok': tsdb_ok, 'detail': tsdb_detail}
+    if not tsdb_ok:
+        # TSDB failure is degraded, not unhealthy — app can still serve from primary DB
+        pass
+
+    uptime_seconds = time.time() - APP_START_TIME._value.get()
+
+    # Determine status
+    if not overall_ok:
+        status = 'unhealthy'
+        http_code = 503
+    elif not tsdb_ok:
+        status = 'degraded'
+        http_code = 200
+    else:
+        status = 'healthy'
+        http_code = 200
+
+    record_health(status)
+
+    payload = {
+        'status': status,
+        'uptime_seconds': round(uptime_seconds, 1),
+        'checks': checks,
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }
+    return jsonify(payload), http_code
+
+
+# ── JSON Metrics Summary (for human-readable dashboards) ──────────────
+
+def metrics_summary():
+    """
+    Human-readable JSON summary of key Stocker business metrics.
+    Designed for monitoring dashboards (not Prometheus).
+    """
+    _update_business_gauges()
+
+    try:
+        from models import get_db
+        db = get_db()
+
+        # Reports by category breakdown
+        cat_rows = db.execute(
+            'SELECT category, COUNT(*) as c FROM reports GROUP BY category ORDER BY c DESC'
+        ).fetchall()
+        reports_by_category = {r['category']: r['c'] for r in cat_rows}
+
+        # Top sectors
+        sector_rows = db.execute(
+            '''SELECT sector, COUNT(*) as c FROM tickers
+               WHERE archived = 0 AND sector IS NOT NULL
+               GROUP BY sector ORDER BY c DESC LIMIT 10'''
+        ).fetchall()
+        sectors = [{'sector': r['sector'], 'count': r['c']} for r in sector_rows]
+
+        # Banks status
+        bank_rows = db.execute(
+            '''SELECT enabled, COUNT(*) as c FROM investment_banks GROUP BY enabled'''
+        ).fetchall()
+        banks = {'enabled': 0, 'disabled': 0}
+        for r in bank_rows:
+            if r['enabled']:
+                banks['enabled'] = r['c']
+            else:
+                banks['disabled'] = r['c']
+
+        # Latest report timestamp
+        latest = db.execute(
+            'SELECT MAX(created_at) as ts FROM reports'
+        ).fetchone()
+        latest_report_ts = latest['ts'] if latest else None
+
+        # Tickers with most reports (top 5) — derive symbol from file_path prefix
+        # file_path format: data/files/<category>/<SYMBOL>_
+        top_rows = db.execute(
+            '''SELECT file_path, COUNT(*) as c FROM reports
+               WHERE file_path IS NOT NULL AND file_path != ''
+               GROUP BY file_path ORDER BY c DESC LIMIT 50'''
+        ).fetchall()
+
+        # Count by extracted symbol
+        from collections import Counter
+        symbol_counter = Counter()
+        for r in top_rows:
+            fp = r['file_path'] or ''
+            # filename like "GLW_10-Q_2026-05-01.htm" — take part before first '_'
+            fname = fp.split('/')[-1] if '/' in fp else fp.split('\\')[-1]
+            sym = fname.split('_')[0].split('.')[0].upper()
+            if sym.isalpha() and len(sym) <= 5:
+                symbol_counter[sym] += r['c']
+        top_tickers = [
+            {'symbol': sym, 'reports': cnt}
+            for sym, cnt in symbol_counter.most_common(5)
+        ]
+
+    except Exception as e:
+        return jsonify({'error': f'db_query_failed: {type(e).__name__}', 'detail': str(e)[:200]}), 500
+
+    uptime_seconds = time.time() - APP_START_TIME._value.get()
+
+    return jsonify({
+        'uptime_seconds': round(uptime_seconds, 1),
+        'uptime_human': _format_uptime(uptime_seconds),
+        'tickers_active': int(TICKERS_TOTAL._value.get()),
+        'reports_total': int(REPORTS_TOTAL._value.get()),
+        'reports_by_category': reports_by_category,
+        'events_active': int(EVENTS_ACTIVE._value.get()),
+        'events_upcoming_7d': int(EVENTS_UPCOMING_7D._value.get()),
+        'banks': banks,
+        'custom_sources': {
+            'enabled': int(CUSTOM_SOURCES_TOTAL.labels(enabled='true')._value.get()),
+            'disabled': int(CUSTOM_SOURCES_TOTAL.labels(enabled='false')._value.get()),
+        },
+        'watchlist_groups': int(WATCHLIST_GROUPS_TOTAL._value.get()),
+        'sse_connections': int(SSE_CONNECTIONS._value.get()),
+        'top_sectors': sectors,
+        'top_tickers_by_reports': top_tickers,
+        'latest_report_at': latest_report_ts,
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+def _format_uptime(seconds):
+    """Format uptime in human-readable form (e.g. '3d 4h 22m')."""
+    td = timedelta(seconds=int(seconds))
+    days = td.days
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes = remainder // 60
+    if days > 0:
+        return f'{days}d {hours}h {minutes}m'
+    if hours > 0:
+        return f'{hours}h {minutes}m'
+    return f'{minutes}m'

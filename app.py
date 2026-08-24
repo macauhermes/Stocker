@@ -1109,6 +1109,18 @@ def prometheus_metrics():
     return metrics.metrics_endpoint()
 
 
+@app.route('/health')
+def health():
+    """Liveness + readiness probe for load balancers and monitoring."""
+    return metrics.health_check()
+
+
+@app.route('/api/metrics/summary')
+def api_metrics_summary():
+    """Human-readable JSON summary of business metrics (for dashboards)."""
+    return metrics.metrics_summary()
+
+
 if __name__ == '__main__':
     # Initialize data directories
     for cat in ['earnings', 'analyst_report', 'news', 'sec_filing']:

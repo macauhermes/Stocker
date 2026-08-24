@@ -46,7 +46,8 @@
 
 ### P3 - 優化
 - [ ] 將 in-memory `_cache` 改 Redis (可選)
-- [x] 加 Prometheus metrics endpoint (commit pending)
+- [x] 加 Prometheus metrics endpoint (commit cdf61bd)
+- [x] 增強 Prometheus 業務指標 + /health + /api/metrics/summary (commit pending)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程
