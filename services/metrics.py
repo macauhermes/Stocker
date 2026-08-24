@@ -12,6 +12,8 @@ Metrics tracked:
 - stocker_banks_total: Gauge — investment banks count (enabled + total)
 - stocker_custom_sources_total: Gauge — custom JSONPath sources count
 - stocker_watchlist_groups_total: Gauge — watchlist groups count
+- stocker_alerts_total: Gauge — price alerts count (enabled + disabled)
+- stocker_alerts_triggered_total: Counter — alerts triggered events
 - stocker_cache_hits_total / stocker_cache_misses_total: Counters
 - stocker_data_source_requests_total: Counter by source
 - stocker_sse_connections: Gauge — active SSE connections
@@ -88,6 +90,19 @@ CUSTOM_SOURCES_TOTAL = Gauge(
 WATCHLIST_GROUPS_TOTAL = Gauge(
     'stocker_watchlist_groups_total',
     'Watchlist groups count'
+)
+
+# ── Price Alerts (v3.4) ─────────────────────────────────────────────────
+
+ALERTS_TOTAL = Gauge(
+    'stocker_alerts_total',
+    'Price alerts count',
+    ['enabled']  # 'true' / 'false'
+)
+
+ALERTS_TRIGGERED = Counter(
+    'stocker_alerts_triggered_total',
+    'Total price alerts that have fired (across all check paths)'
 )
 
 APP_START_TIME = Gauge(
@@ -213,6 +228,15 @@ def sse_disconnect():
     SSE_CONNECTIONS.dec()
 
 
+def record_alert_triggered(count: int = 1):
+    """Record that `count` price alerts fired.
+
+    Called by app.py / nightly_tasks.py whenever check_alerts_*() produces output.
+    """
+    if count > 0:
+        ALERTS_TRIGGERED.inc(count)
+
+
 def record_health(status):
     """Record a health check outcome (healthy/degraded/unhealthy)."""
     HEALTH_CHECK.labels(status=status).inc()
@@ -304,6 +328,20 @@ def _update_business_gauges():
         row = db.execute('SELECT COUNT(*) as c FROM watchlist_groups').fetchone()
         if row:
             WATCHLIST_GROUPS_TOTAL.set(row['c'])
+    except Exception:
+        pass
+
+    # Price alerts (v3.4) — split by enabled flag
+    try:
+        from models import get_db
+        db = get_db()
+        for enabled_val in ('true', 'false'):
+            row = db.execute(
+                'SELECT COUNT(*) as c FROM price_alerts WHERE enabled = ?',
+                (1 if enabled_val == 'true' else 0,)
+            ).fetchone()
+            if row:
+                ALERTS_TOTAL.labels(enabled=enabled_val).set(row['c'])
     except Exception:
         pass
 
@@ -498,6 +536,11 @@ def metrics_summary():
         },
         'watchlist_groups': int(WATCHLIST_GROUPS_TOTAL._value.get()),
         'sse_connections': int(SSE_CONNECTIONS._value.get()),
+        'alerts': {
+            'enabled': int(ALERTS_TOTAL.labels(enabled='true')._value.get()),
+            'disabled': int(ALERTS_TOTAL.labels(enabled='false')._value.get()),
+            'triggered_total': int(ALERTS_TRIGGERED._value.get()),
+        },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,
         'latest_report_at': latest_report_ts,

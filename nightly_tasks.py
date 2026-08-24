@@ -91,6 +91,14 @@ def run_nightly():
         from services.alert_checker import check_alerts_all
         triggered = check_alerts_all()
         results["tasks"]["alerts"] = {"triggered": len(triggered)}
+        # Record to Prometheus counter when running in-process. When this
+        # script is invoked via cron (separate process from app.py), the
+        # counter file isn't shared — call only when we're in the Flask process.
+        try:
+            from services.metrics import record_alert_triggered
+            record_alert_triggered(len(triggered))
+        except Exception:
+            pass  # metrics module may not be importable standalone
         logger.info("[5/5] 價格提醒檢查完成: %d 個觸發", len(triggered))
     except Exception as e:
         results["tasks"]["alerts"] = {"error": str(e)}

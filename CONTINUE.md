@@ -17,6 +17,12 @@
 6. ✅ 自訂 JSONPath 數據源管理頁 /sources
 7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
 
+**v3.4 補完 (2026-08-25)**:
+- ✅ Prometheus 暴露 stocker_alerts_total{enabled=true|false} + stocker_alerts_triggered_total counter
+- ✅ /api/metrics/summary 加入 `alerts: {enabled, disabled, triggered_total}` 區塊
+- ✅ 三條觸發路徑都 inc counter: /api/stock/<sym>/refresh, /api/alerts/check, nightly_tasks.py
+- ✅ _update_business_gauges() 從 price_alerts 表即時拉 enabled/disabled split
+
 ## 接力做事項（v3.3 規劃）
 
 按以下優先級，每小時做 1-2 項，commit + push + restart server:

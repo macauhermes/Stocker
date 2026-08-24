@@ -519,6 +519,8 @@ def api_refresh_stock(symbol):
         try:
             from services.alert_checker import check_alerts_for_ticker
             triggered = check_alerts_for_ticker(symbol)
+            if triggered:
+                metrics.record_alert_triggered(len(triggered))
         except Exception as ae:
             logger.warning(f"alert check failed for {symbol}: {ae}")
             triggered = []
@@ -1256,6 +1258,8 @@ def api_check_alerts():
     except Exception as e:
         logger.error(f"manual alert check failed: {e}")
         return jsonify({'error': str(e)}), 500
+    if triggered:
+        metrics.record_alert_triggered(len(triggered))
     return jsonify({'triggered': triggered, 'count': len(triggered)})
 
 
