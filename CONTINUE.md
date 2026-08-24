@@ -3,7 +3,7 @@
 ## 當前狀態（截至最後一次手動執行 2026-06-13）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e406d8 (v3.2)
-**Latest commit**: 7d8c76e [P2] unit tests + _eval_path bugfix
+**Latest commit**: 288aa7d [P1] banks/投行 feature complete — scraper + PDF + text renderer
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -34,6 +34,7 @@
 - [x] Add `nightly_refresher` 自動刷新 5 年歷史價 + 預熱 cache (commit a16585a)
 - [x] Add `watchlist_groups` (用戶分組管理追蹤股票) (commit pending)
 - [x] Add `events_calendar` 月曆視圖顯示 earnings/dividend/events
+- [x] Add `banks/投行` feature — scraper + PDF + text renderer (commit 288aa7d)
 
 ### P2 - 改進
 - [x] 將 mobile.css 結構化 (variables + components + utilities 分檔) (commit 16264cc)
