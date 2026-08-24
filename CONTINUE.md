@@ -30,7 +30,7 @@
 - ✅ 向後兼容：無 filters 時仍返 bare array；filters 存在時返 `{results, count, filters[, total_count]}`
 - ✅ Prometheus counter `stocker_report_searches_total{has_results=true|false}` + `/api/metrics/summary` 加 `report_searches` block
 - ✅ 24 unit tests (tests/test_report_search.py) — all passing (195/195 total)
-- Commit: pending
+- Commit: 40e37b5
 
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
@@ -80,8 +80,8 @@
 - [x] Price Alerts v3.4 (用戶自訂價格閾值，事件自動觸發) (commit a673b22)
 - [x] alert_checker unit tests (26 tests covering threshold eval + side-effects + sweep + model validation) (commit eda159d)
 - [x] Daily Portfolio Snapshots v3.4.2 (services/portfolio_snapshot.py + dashboard widget) (commit 25cd9ef)
-- [x] Report Search v3.4.3 (/api/reports?q=&category=&source=&ticker=&limit=) (commit pending)
-- [x] Report Search unit tests (24 tests covering all 4 filter dimensions) (commit pending)
+- [x] Report Search v3.4.3 (/api/reports?q=&category=&source=&ticker=&limit=) (commit 40e37b5)
+- [x] Report Search unit tests (24 tests covering all 4 filter dimensions) (commit 40e37b5)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程
