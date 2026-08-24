@@ -41,7 +41,7 @@
 - ✅ i18n：新增 `portfolio.sparkline_meta` + `portfolio.sparkline_title` (zh + en)
 - ✅ Touch templates/index.html + static/css/components.css + static/js/i18n.js，無 backend 改動
 - ✅ Smoke test：手動 capture 3 個 backdated snapshots (08-21, 08-23, 08-24)，curve 由 $8,430 → $15,409
-- Commit: pending
+- Commit: 4fc0299
 
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
@@ -93,7 +93,7 @@
 - [x] Daily Portfolio Snapshots v3.4.2 (services/portfolio_snapshot.py + dashboard widget) (commit 25cd9ef)
 - [x] Report Search v3.4.3 (/api/reports?q=&category=&source=&ticker=&limit=) (commit 40e37b5)
 - [x] Report Search unit tests (24 tests covering all 4 filter dimensions) (commit 40e37b5)
-- [x] Portfolio Sparkline v3.4.4 (Chart.js trendline on dashboard widget, < 2 snapshots hidden) (commit pending)
+- [x] Portfolio Sparkline v3.4.4 (Chart.js trendline on dashboard widget, < 2 snapshots hidden) (commit 4fc0299)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程
