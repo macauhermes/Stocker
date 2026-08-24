@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import (
-    Flask, render_template, jsonify, request, send_file, redirect, url_for
+    Flask, render_template, jsonify, request, send_file, redirect, url_for,
+    Response,
 )
 
 # Ensure project root is on path
@@ -254,6 +255,84 @@ def api_get_archived_tickers():
     """Return all archived tickers."""
     tickers = models.get_archived_tickers()
     return jsonify([dict(t) for t in tickers])
+
+
+@app.route('/api/tickers/export.csv', methods=['GET'])
+def api_export_tickers_csv():
+    """Export active tickers with holdings + current price + market value + P&L as CSV.
+
+    Columns: symbol, name, sector, shares_held, cost_basis, current_price,
+    market_value, cost_value, unrealized_pl, pl_percent, change_pct,
+    data_source, last_updated
+
+    Use ?group=<id> to scope to a watchlist group, or omit for all active tickers.
+    """
+    import csv
+    from io import StringIO
+
+    group_id = request.args.get('group', type=int)
+    if group_id:
+        tickers = models.get_watchlist_group_tickers(group_id)
+    else:
+        tickers = models.get_all_tickers()
+
+    buf = StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        'symbol', 'name', 'sector', 'shares_held', 'cost_basis',
+        'current_price', 'market_value', 'cost_value',
+        'unrealized_pl', 'pl_percent', 'change_pct',
+        'data_source', 'last_updated',
+    ])
+
+    for t in tickers:
+        symbol = t['symbol']
+        info = cached(f'stock_info_{symbol}', ttl=60)
+        if info is None:
+            try:
+                info = fetch_stock_info(symbol)
+                cache_set(f'stock_info_{symbol}', info)
+            except Exception as e:
+                logger.warning(f"CSV export: failed to fetch {symbol}: {e}")
+                info = {}
+
+        current_price = info.get('price')
+        # sqlite3.Row supports [] but not .get(); use dict.get for safety
+        shares = t['shares_held'] if 'shares_held' in t.keys() and t['shares_held'] is not None else 0
+        cost_basis = t['cost_basis'] if 'cost_basis' in t.keys() and t['cost_basis'] is not None else 0
+        name = t['name'] if 'name' in t.keys() else ''
+        sector = t['sector'] if 'sector' in t.keys() else ''
+        market_value = round(current_price * shares, 2) if current_price else 0
+        cost_value = round(cost_basis * shares, 2)
+        unrealized_pl = round(market_value - cost_value, 2) if current_price else 0
+        pl_percent = round((unrealized_pl / cost_value) * 100, 2) if cost_value > 0 else 0
+
+        ts = cache_timestamp(f'stock_info_{symbol}')
+        last_updated = ts.isoformat() if ts else ''
+
+        writer.writerow([
+            symbol,
+            name,
+            sector,
+            shares,
+            cost_basis,
+            current_price if current_price is not None else '',
+            market_value,
+            cost_value,
+            unrealized_pl,
+            pl_percent,
+            info.get('change_pct', ''),
+            info.get('source', 'unknown'),
+            last_updated,
+        ])
+
+    csv_text = buf.getvalue()
+    filename = f"stocker-{datetime.now().strftime('%Y%m%d-%H%M')}.csv"
+    return Response(
+        csv_text,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 # ── API: Sectors ───────────────────────────────────────────────────────

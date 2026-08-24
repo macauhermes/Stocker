@@ -2,8 +2,8 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-06-13）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e406d8 (v3.2)
-**Latest commit**: 288aa7d [P1] banks/投行 feature complete — scraper + PDF + text renderer
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit ded10a5 (v3.3.1)
+**Latest commit**: ded10a5 [P3] enhance Prometheus metrics + add /health + /api/metrics/summary
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -47,7 +47,8 @@
 ### P3 - 優化
 - [ ] 將 in-memory `_cache` 改 Redis (可選)
 - [x] 加 Prometheus metrics endpoint (commit cdf61bd)
-- [x] 增強 Prometheus 業務指標 + /health + /api/metrics/summary (commit pending)
+- [x] 增強 Prometheus 業務指標 + /health + /api/metrics/summary (commit ded10a5)
+- [x] CSV export 投資組合 (active tickers + holdings + P&L) (commit pending)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程

@@ -180,6 +180,10 @@ Stocker/
 | **GET** | **`/api/stream/tickers`** | **SSE 即時推送 (server-sent events)** |
 | **GET/POST** | **`/api/sources`** | **列出 / 新增自訂 JSONPath 數據源** |
 | **PUT/DELETE** | **`/api/sources/<id>`** | **編輯 / 刪除自訂源** |
+| **GET** | **`/health`** | **健康檢查 (DB / disk / tsdb)** |
+| **GET** | **`/metrics`** | **Prometheus 指標** |
+| **GET** | **`/api/metrics/summary`** | **業務指標摘要 (dashboard JSON)** |
+| **GET** | **`/api/tickers/export.csv`** | **匯出投資組合 CSV (含 P&L)** |
 
 ## 初始追蹤清單
 
