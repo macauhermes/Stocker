@@ -5,7 +5,7 @@
 - yfinance analyst recommendations
 - Yahoo Finance analyst opinion pages
 - MarketWatch analyst ratings
-- 存入 DB 並保存檔案
+- 存入 DB 並保存檔案（TXT + PDF）
 """
 import os
 import sys
@@ -18,6 +18,7 @@ from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
+from fpdf import FPDF
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models
@@ -32,6 +33,60 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
+
+
+def _generate_pdf(title: str, content: str, output_path: Path) -> bool:
+    """
+    Generate a PDF file from text content.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        from fpdf import XPos, YPos
+        
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        
+        # Calculate effective width
+        effective_w = pdf.w - pdf.l_margin - pdf.r_margin
+        
+        # Use built-in font
+        pdf.set_font("Helvetica", "B", 14)
+        
+        # Title - truncate if too long
+        safe_title = title.encode('latin-1', 'replace').decode('latin-1')
+        if len(safe_title) > 80:
+            safe_title = safe_title[:77] + "..."
+        pdf.cell(effective_w, 10, safe_title, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        pdf.ln(5)
+        
+        # Date
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.cell(effective_w, 8, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        pdf.ln(8)
+        
+        # Content
+        pdf.set_font("Helvetica", "", 9)
+        
+        # Clean content for PDF (replace non-latin1 chars)
+        clean_content = content.encode('latin-1', 'replace').decode('latin-1')
+        
+        # Split into lines and add to PDF
+        for line in clean_content.split('\n'):
+            line = line.strip()
+            if line:
+                # Truncate very long lines
+                if len(line) > 120:
+                    line = line[:117] + "..."
+                pdf.multi_cell(w=effective_w, h=5, text=line)
+            else:
+                pdf.ln(3)
+        
+        pdf.output(str(output_path))
+        return True
+    except Exception as e:
+        logger.warning("PDF generation failed: %s", e)
+        return False
 
 # Major investment banks / research firms to track
 INSTITUTIONS = [
@@ -82,9 +137,15 @@ def collect_analyst_ratings(symbol: str) -> list[dict]:
 
                 title = f"{symbol} 分析師評級摘要 ({datetime.now().strftime('%Y-%m')})"
                 if not _is_duplicate(title):
+                    # Save TXT
                     file_name = f"{symbol}_analyst_ratings_{datetime.now().strftime('%Y%m%d')}.txt"
                     file_path = REPORTS_DIR / file_name
                     file_path.write_text(rec_text, encoding="utf-8")
+                    
+                    # Also generate PDF
+                    pdf_name = f"{symbol}_analyst_ratings_{datetime.now().strftime('%Y%m%d')}.pdf"
+                    pdf_path = REPORTS_DIR / pdf_name
+                    pdf_generated = _generate_pdf(title, rec_text, pdf_path)
 
                     report = models.add_report({
                         "title": title,
@@ -105,8 +166,17 @@ def collect_analyst_ratings(symbol: str) -> list[dict]:
                             "file_size": file_path.stat().st_size,
                             "report_id": report["id"],
                         })
+                        # Also record PDF file if generated
+                        if pdf_generated and pdf_path.exists():
+                            models.add_file({
+                                "filename": pdf_name,
+                                "category": "analyst_report",
+                                "file_path": str(pdf_path),
+                                "file_size": pdf_path.stat().st_size,
+                                "report_id": report["id"],
+                            })
                     collected.append({"symbol": symbol, "title": title, "type": "ratings"})
-                    logger.info("[%s] 分析師評級已收集", symbol)
+                    logger.info("[%s] 分析師評級已收集 (TXT%s)", symbol, " + PDF" if pdf_generated else "")
             except Exception as e:
                 logger.warning("[%s] 處理分析師評級失敗: %s", symbol, e)
 
@@ -150,9 +220,15 @@ def collect_analyst_opinions(symbol: str) -> list[dict]:
             title = f"{symbol} 分析師預測 ({datetime.now().strftime('%Y-%m-%d')})"
 
             if not _is_duplicate(title):
+                # Save HTML
                 file_name = f"{symbol}_analyst_opinions_{datetime.now().strftime('%Y%m%d')}.html"
                 file_path = REPORTS_DIR / file_name
                 file_path.write_text(content, encoding="utf-8")
+                
+                # Also generate PDF
+                pdf_name = f"{symbol}_analyst_opinions_{datetime.now().strftime('%Y%m%d')}.pdf"
+                pdf_path = REPORTS_DIR / pdf_name
+                pdf_generated = _generate_pdf(title, content, pdf_path)
 
                 report = models.add_report({
                     "title": title,
@@ -173,8 +249,17 @@ def collect_analyst_opinions(symbol: str) -> list[dict]:
                         "file_size": file_path.stat().st_size,
                         "report_id": report["id"],
                     })
+                    # Also record PDF file if generated
+                    if pdf_generated and pdf_path.exists():
+                        models.add_file({
+                            "filename": pdf_name,
+                            "category": "analyst_report",
+                            "file_path": str(pdf_path),
+                            "file_size": pdf_path.stat().st_size,
+                            "report_id": report["id"],
+                        })
                 collected.append({"symbol": symbol, "title": title, "type": "opinions"})
-                logger.info("[%s] 分析師預測已收集", symbol)
+                logger.info("[%s] 分析師預測已收集 (HTML%s)", symbol, " + PDF" if pdf_generated else "")
 
     except Exception as e:
         logger.debug("[%s] Yahoo Finance analysis scrape failed: %s", symbol, e)

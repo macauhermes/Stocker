@@ -1,37 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Files — Stocker{% endblock %}
+{% block title %}檔案 — Stocker{% endblock %}
 
 {% block content %}
-<div class="files-page">
-    <div class="page-header">
-        <h1>檔案管理</h1>
-    </div>
+<!-- Page Header -->
+<div style="display:flex; align-items:center; margin-bottom:16px;">
+    <h1 style="font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:8px;">
+        <span class="material-icons-outlined">folder</span>
+        <span data-i18n="files.title">檔案管理</span>
+    </h1>
+</div>
 
-    <!-- Category Filter Tabs -->
-    <div class="filter-tabs" id="filter-tabs">
-        <button class="btn-pill btn-filter active" data-category="all" data-i18n="files.cat.all">全部</button>
-        <button class="btn-pill btn-filter" data-category="earnings" data-i18n="files.cat.earnings">Earnings</button>
-        <button class="btn-pill btn-filter" data-category="analyst_report" data-i18n="files.cat.analyst_report">Analyst Report</button>
-        <button class="btn-pill btn-filter" data-category="news" data-i18n="files.cat.news">News</button>
-        <button class="btn-pill btn-filter" data-category="sec_filing" data-i18n="files.cat.sec_filing">SEC Filing</button>
-    </div>
+<!-- Category Filter Tabs -->
+<div class="tabs" style="margin-bottom:16px;">
+    <button class="tab-btn active" data-category="all" onclick="filterByCategory('all')">
+        <span class="material-icons-outlined">apps</span>
+        <span data-i18n="files.cat.all">全部</span>
+    </button>
+    <button class="tab-btn" data-category="earnings" onclick="filterByCategory('earnings')">
+        <span class="material-icons-outlined">assessment</span>
+        <span data-i18n="files.cat.earnings">財報</span>
+    </button>
+    <button class="tab-btn" data-category="analyst_report" onclick="filterByCategory('analyst_report')">
+        <span class="material-icons-outlined">analytics</span>
+        <span data-i18n="files.cat.analyst_report">分析</span>
+    </button>
+    <button class="tab-btn" data-category="news" onclick="filterByCategory('news')">
+        <span class="material-icons-outlined">article</span>
+        <span data-i18n="files.cat.news">新聞</span>
+    </button>
+</div>
 
-    <!-- File Table -->
-    <div class="table-container">
-        <table class="file-table">
-            <thead>
-                <tr>
-                    <th data-i18n="files.filename">Filename</th>
-                    <th data-i18n="common.category">Category</th>
-                    <th data-i18n="common.size">Size</th>
-                    <th data-i18n="common.date">Date</th>
-                    <th data-i18n="common.action">Action</th>
-                </tr>
-            </thead>
-            <tbody id="file-table-body">
-                <tr><td colspan="5" class="loading-cell"><div class="spinner-sm"></div> <span data-i18n="common.loading">Loading...</span></td></tr>
-            </tbody>
-        </table>
+<!-- File List -->
+<div id="file-list" class="file-list">
+    <div class="loading-cell">
+        <div class="spinner-sm"></div>
+        <span data-i18n="common.loading">載入中...</span>
     </div>
 </div>
 {% endblock %}
@@ -41,15 +44,13 @@
     let allFiles = [];
     let activeCategory = 'all';
 
-    // Category filter buttons
-    document.querySelectorAll('.btn-filter').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            activeCategory = btn.dataset.category;
-            renderFiles();
+    function filterByCategory(category) {
+        activeCategory = category;
+        document.querySelectorAll('[data-category]').forEach(b => {
+            b.classList.toggle('active', b.dataset.category === category);
         });
-    });
+        renderFiles();
+    }
 
     // Load files
     async function loadFiles() {
@@ -60,42 +61,75 @@
             renderFiles();
         } catch (err) {
             console.error(err);
-            document.getElementById('file-table-body').innerHTML =
-                '<tr><td colspan="5" class="error-cell">⚠️ ' + (typeof t !== 'undefined' ? t('files.load_error') : '載入檔案列表失敗') + '</td></tr>';
+            document.getElementById('file-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('files.load_error')}</div>
+                </div>
+            `;
         }
     }
 
     function renderFiles() {
-        const tbody = document.getElementById('file-table-body');
+        const container = document.getElementById('file-list');
         const filtered = activeCategory === 'all'
             ? allFiles
             : allFiles.filter(f => f.category === activeCategory);
 
         if (!filtered || filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">此分類下暫無檔案</td></tr>';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">folder_open</span>
+                    <div class="empty-state-title">${t('files.empty')}</div>
+                </div>
+            `;
             return;
         }
 
-        tbody.innerHTML = '';
+        container.innerHTML = '';
         filtered.forEach(f => {
             const date = f.created_at ? new Date(f.created_at).toLocaleDateString('zh-TW') : '—';
             const size = formatFileSize(f.file_size);
             const categoryLabel = formatCategory(f.category);
+            
+            // Determine icon and color based on category
+            let icon = 'description';
+            let iconBg = 'rgba(73, 79, 223, 0.15)';
+            let iconColor = 'var(--blue)';
+            
+            if (f.category === 'earnings') {
+                icon = 'assessment';
+                iconBg = 'rgba(0, 200, 83, 0.15)';
+                iconColor = 'var(--green)';
+            } else if (f.category === 'news') {
+                icon = 'article';
+                iconBg = 'rgba(255, 214, 0, 0.15)';
+                iconColor = 'var(--yellow)';
+            } else if (f.category === 'analyst_report') {
+                icon = 'analytics';
+                iconBg = 'rgba(73, 79, 223, 0.15)';
+                iconColor = 'var(--blue)';
+            }
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="file-name">
-                    <span class="file-icon">${getFileIcon(f.category)}</span>
-                    ${f.filename || '—'}
-                </td>
-                <td><span class="category-badge badge-${f.category || 'default'}">${categoryLabel}</span></td>
-                <td class="file-size">${size}</td>
-                <td class="file-date">${date}</td>
-                <td>
-                    <a href="/api/files/${f.id}/download" class="btn-pill btn-pill-sm btn-download" download data-i18n="files.download">下載</a>
-                </td>
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <div class="file-icon" style="background:${iconBg}">
+                    <span class="material-icons-outlined" style="color:${iconColor}">${icon}</span>
+                </div>
+                <div class="file-info">
+                    <div class="file-name">${f.filename || '—'}</div>
+                    <div class="file-meta">
+                        <span class="badge" style="background:${iconBg}; color:${iconColor}; font-size:0.7rem;">${categoryLabel}</span>
+                        <span>${size}</span>
+                        <span>${date}</span>
+                    </div>
+                </div>
+                <a href="/api/files/${f.id}/download" class="file-download" download>
+                    <span class="material-icons-outlined">download</span>
+                </a>
             `;
-            tbody.appendChild(tr);
+            container.appendChild(item);
         });
     }
 
@@ -108,25 +142,18 @@
 
     function formatCategory(cat) {
         const map = {
-            'earnings': typeof t !== 'undefined' ? t('files.cat.earnings') : 'Earnings',
-            'analyst_report': typeof t !== 'undefined' ? t('files.cat.analyst_report') : 'Analyst',
-            'news': typeof t !== 'undefined' ? t('files.cat.news') : 'News',
-            'sec_filing': typeof t !== 'undefined' ? t('files.cat.sec_filing') : 'SEC Filing'
+            'earnings': t('files.cat.earnings'),
+            'analyst_report': t('files.cat.analyst_report'),
+            'news': t('files.cat.news'),
+            'sec_filing': t('files.cat.sec_filing')
         };
         return map[cat] || cat || '—';
     }
 
-    function getFileIcon(category) {
-        const map = {
-            'earnings': '📊',
-            'analyst_report': '📈',
-            'news': '📰',
-            'sec_filing': '📋'
-        };
-        return map[category] || '📄';
-    }
-
     // Init
     loadFiles();
+
+    // Reload on language change
+    window.addEventListener('langchange', () => loadFiles());
 </script>
 {% endblock %}

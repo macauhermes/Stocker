@@ -1,202 +1,53 @@
 {% extends "base.html" %}
-
-{% block title %}Industry — Stocker{% endblock %}
+{% block title %}行業 — Stocker{% endblock %}
 
 {% block content %}
-<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-    <h1 style="color:var(--text); font-size:1.6rem; font-weight:600;" data-i18n='industry.title'>Industry News &amp; Reports</h1>
-    <button id="btn-collect" class="btn btn-primary" onclick="collectNews()">
-        <span id="collect-spinner" class="spinner-sm" style="display:none;"></span>
-        <span id="collect-label" data-i18n='industry.collect'>Collect Industry News</span>
+<!-- Page Header -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <h1 style="font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:8px;">
+        <span class="material-icons-outlined">business</span>
+        <span data-i18n="industry.title">行業新聞與報告</span>
+    </h1>
+    <button class="btn btn-primary btn-sm" id="btn-collect" onclick="collectNews()">
+        <span class="material-icons-outlined" style="font-size:18px">refresh</span>
+        <span id="collect-label" data-i18n="industry.collect">收集</span>
     </button>
 </div>
 
-<!-- Sector cards grid -->
-<div id="sectors-grid" class="sectors-grid">
-        <div class="empty-state" data-i18n='common.loading'>Loading sectors…</div>
+<!-- Sector Grid -->
+<div id="sectors-grid" class="industry-grid">
+    <div class="loading-cell">
+        <div class="spinner-sm"></div>
+        <span data-i18n="common.loading">載入中...</span>
+    </div>
 </div>
 
-<!-- Reports panel (hidden until a sector is selected) -->
-<div id="reports-panel" class="reports-panel" style="display:none;">
-    <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 id="reports-title" style="color:var(--text); font-size:1.2rem; font-weight:600;"></h2>
-        <button class="btn btn-secondary" onclick="closeReports()" data-i18n='industry.close'>✕ Close</button>
+<!-- Reports Panel (shown when a sector is selected) -->
+<div id="reports-panel" style="display:none; margin-top:16px;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">description</span>
+                <span id="reports-title"></span>
+            </div>
+            <button class="btn btn-ghost btn-icon" onclick="closeReports()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div id="reports-list" class="report-list"></div>
     </div>
-    <div id="reports-list" class="reports-list"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<style>
-    .sectors-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .sector-card {
-        background: var(--card, #1e1e2e);
-        border: 1px solid var(--border, #333);
-        border-radius: 12px;
-        padding: 20px;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s, transform 0.15s;
-    }
-    .sector-card:hover {
-        background: var(--card-hover, #2a2a3d);
-        border-color: var(--blue, #4a9eff);
-        transform: translateY(-2px);
-    }
-    .sector-card.active {
-        border-color: var(--green, #00e676);
-        box-shadow: 0 0 0 1px var(--green, #00e676);
-    }
-    .sector-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text, #e0e0e0);
-        margin-bottom: 8px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .sector-meta {
-        display: flex;
-        gap: 16px;
-        font-size: 0.8rem;
-        color: var(--text-muted, #999);
-    }
-    .sector-meta span {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .sector-meta .badge {
-        background: var(--bg, #12121a);
-        padding: 2px 8px;
-        border-radius: 8px;
-        font-weight: 500;
-    }
-
-    .reports-panel {
-        background: var(--card, #1e1e2e);
-        border: 1px solid var(--border, #333);
-        border-radius: 12px;
-        padding: 24px;
-        margin-top: 8px;
-    }
-
-    .report-row {
-        display: grid;
-        grid-template-columns: 1fr 200px 120px 140px auto;
-        gap: 12px;
-        align-items: center;
-        padding: 14px 0;
-        border-bottom: 1px solid var(--border, #333);
-    }
-    .report-row:last-child { border-bottom: none; }
-
-    .report-title {
-        font-weight: 500;
-        color: var(--blue, #4a9eff);
-        text-decoration: none;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .report-title:hover { text-decoration: underline; }
-    .report-summary {
-        color: var(--text-muted, #999);
-        font-size: 0.85rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .report-source {
-        color: var(--text-muted, #999);
-        font-size: 0.8rem;
-    }
-    .report-date {
-        color: var(--text-muted, #999);
-        font-size: 0.8rem;
-    }
-    .report-tickers {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-    .ticker-tag {
-        background: var(--bg, #12121a);
-        color: var(--green, #00e676);
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-decoration: none;
-    }
-    .ticker-tag:hover {
-        background: var(--card-hover, #2a2a3d);
-    }
-
-    .empty-state {
-        grid-column: 1 / -1;
-        text-align: center;
-        color: var(--text-muted, #999);
-        padding: 40px 0;
-        font-size: 0.95rem;
-    }
-
-    .spinner-sm {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(255,255,255,0.3);
-        border-top-color: #fff;
-        border-radius: 50%;
-        animation: spin 0.6s linear infinite;
-        margin-right: 6px;
-        vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .btn-primary {
-        background: var(--blue, #4a9eff);
-        color: #fff;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 0.9rem;
-    }
-    .btn-primary:hover { opacity: 0.85; }
-    .btn-secondary {
-        background: transparent;
-        color: var(--text-muted, #999);
-        border: 1px solid var(--border, #333);
-        padding: 6px 14px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.85rem;
-    }
-    .btn-secondary:hover { background: var(--card-hover, #2a2a3d); }
-
-    /* Mobile adjustments */
-    @media (max-width: 768px) {
-        .sectors-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .report-row { grid-template-columns: 1fr; gap: 4px; }
-    }
-</style>
-
 <script>
     let allSectors = [];
     let activeSector = null;
 
-    // ── Load sector data on page load ──────────────────────────────────
+    // Load sector data
     document.addEventListener('DOMContentLoaded', loadSectors);
 
-    // ── Reload on language change ──────────────────────────────────
+    // Reload on language change
     document.addEventListener('langchange', () => {
         loadSectors();
         if (activeSector) selectSector(activeSector);
@@ -210,30 +61,60 @@
             renderSectors();
         } catch (e) {
             console.error('Failed to load sectors:', e);
-            document.getElementById('sectors-grid').innerHTML =
-                '<div class="empty-state">' + t('industry.load_error') + '</div>';
+            document.getElementById('sectors-grid').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('industry.load_error')}</div>
+                </div>
+            `;
         }
     }
 
     function renderSectors() {
         const grid = document.getElementById('sectors-grid');
         if (!allSectors.length) {
-            grid.innerHTML = '<div class="empty-state">' + t('industry.no_sectors') + '</div>';
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">business</span>
+                    <div class="empty-state-title">${t('industry.no_sectors')}</div>
+                </div>
+            `;
             return;
         }
+        
         grid.innerHTML = allSectors.map(s => `
-            <div class="sector-card ${activeSector === s.name ? 'active' : ''}"
+            <div class="industry-card ${activeSector === s.name ? 'active' : ''}"
                  onclick="selectSector('${escHtml(s.name)}')">
-                <div class="sector-name" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
-                <div class="sector-meta">
-                    <span>📊 <span class="badge">${s.ticker_count} ${t('industry.tickers')}</span></span>
-                    <span>📰 <span class="badge">${s.report_count} ${t('industry.reports')}</span></span>
+                <div class="industry-card-icon">
+                    <span class="material-icons-outlined">${getSectorIcon(s.name)}</span>
+                </div>
+                <div>
+                    <div class="industry-card-name" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
+                    <div class="industry-card-stats">
+                        ${s.ticker_count} ${t('industry.tickers')} · ${s.report_count} ${t('industry.reports')}
+                    </div>
                 </div>
             </div>
         `).join('');
     }
 
-    // ── Select a sector → load its reports ─────────────────────────────
+    function getSectorIcon(sector) {
+        const icons = {
+            'Technology': 'memory',
+            'Consumer Cyclical': 'shopping_cart',
+            'Industrials': 'factory',
+            'Healthcare': 'local_hospital',
+            'Financial': 'account_balance',
+            'Energy': 'bolt',
+            'Communication': 'cell_tower',
+            'Real Estate': 'home',
+            'Utilities': 'power',
+            'Basic Materials': 'science',
+        };
+        return icons[sector] || 'business';
+    }
+
+    // Select a sector → load its reports
     async function selectSector(sectorName) {
         activeSector = sectorName;
         renderSectors();
@@ -243,7 +124,12 @@
         const list = document.getElementById('reports-list');
 
         title.textContent = sectorName + ' — ' + t('industry.reports');
-        list.innerHTML = '<div class="empty-state">' + t('common.loading') + '</div>';
+        list.innerHTML = `
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span>${t('common.loading')}</span>
+            </div>
+        `;
         panel.style.display = 'block';
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -253,35 +139,71 @@
             renderReports(reports);
         } catch (e) {
             console.error('Failed to load reports:', e);
-            list.innerHTML = '<div class="empty-state">' + t('industry.report_error') + '</div>';
+            list.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('industry.report_error')}</div>
+                </div>
+            `;
         }
     }
 
     function renderReports(reports) {
         const list = document.getElementById('reports-list');
         if (!reports.length) {
-            list.innerHTML = '<div class="empty-state">' + t('industry.no_reports') + '</div>';
+            list.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">description</span>
+                    <div class="empty-state-title">${t('industry.no_reports')}</div>
+                </div>
+            `;
             return;
         }
 
         list.innerHTML = reports.map(r => {
-            const summary = (r.summary || r.title || '').substring(0, 50);
+            const summary = (r.summary || r.title || '').substring(0, 80);
             const source = r.source || '—';
             const date = r.published_at || r.created_at || '';
-            const dateStr = date ? date.substring(0, 10) : '—';
-            // Extract ticker symbols mentioned in title
-            const tickers = extractTickers(r.title || '');
+            const dateStr = date ? new Date(date).toLocaleDateString('zh-TW') : '—';
+            
+            // Determine icon based on category
+            let icon = 'description';
+            let iconBg = 'rgba(73, 79, 223, 0.15)';
+            let iconColor = 'var(--blue)';
+            
+            if (r.category === 'earnings') {
+                icon = 'assessment';
+                iconBg = 'rgba(0, 200, 83, 0.15)';
+                iconColor = 'var(--green)';
+            } else if (r.category === 'industry' || r.category === 'news') {
+                icon = 'article';
+                iconBg = 'rgba(255, 214, 0, 0.15)';
+                iconColor = 'var(--yellow)';
+            }
 
             return `
-                <div class="report-row">
-                    <a class="report-title" href="/report/${r.id}" title="${escHtml(r.title)}">${escHtml(r.title || 'Untitled')}</a>
-                    <span class="report-summary">${escHtml(summary)}${summary.length >= 50 ? '…' : ''}</span>
-                    <span class="report-source">${escHtml(source)}</span>
-                    <span class="report-date">${dateStr}</span>
-                    <span class="report-tickers">
-                        ${tickers.map(t => `<a class="ticker-tag" href="/stock/${t}">${t}</a>`).join('')}
-                    </span>
-                </div>`;
+                <a href="/report/${r.id}" class="report-card">
+                    <div class="report-card-header">
+                        <div class="report-icon" style="background:${iconBg}">
+                            <span class="material-icons-outlined" style="color:${iconColor}">${icon}</span>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div class="report-title">${escHtml(r.title || 'Untitled')}</div>
+                            <div class="report-summary">${escHtml(summary)}${summary.length >= 80 ? '...' : ''}</div>
+                        </div>
+                    </div>
+                    <div class="report-meta">
+                        <span class="report-source">
+                            <span class="material-icons-outlined" style="font-size:14px">source</span>
+                            ${escHtml(source)}
+                        </span>
+                        <span class="report-date">
+                            <span class="material-icons-outlined" style="font-size:14px">schedule</span>
+                            ${dateStr}
+                        </span>
+                    </div>
+                </a>
+            `;
         }).join('');
     }
 
@@ -291,42 +213,35 @@
         renderSectors();
     }
 
-    // ── Collect news ───────────────────────────────────────────────────
+    // Collect news
     async function collectNews() {
         const btn = document.getElementById('btn-collect');
-        const spinner = document.getElementById('collect-spinner');
+        const label = document.getElementById('collect-label');
         btn.disabled = true;
-        spinner.style.display = 'inline-block';
-        document.getElementById('collect-label').textContent = t('industry.collecting');
+        btn.innerHTML = '<div class="spinner-sm"></div> ' + t('industry.collecting');
 
         try {
             const res = await fetch('/api/reports/collect', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
-                showToast('News collection complete!', 'success');
+                showToast('收集完成！', 'success');
                 loadSectors();
                 if (activeSector) selectSector(activeSector);
             } else {
-                showToast(data.error || 'Collection failed', 'error');
+                showToast(data.error || '收集失敗', 'error');
             }
         } catch (e) {
-            showToast('Network error', 'error');
+            showToast('網絡錯誤', 'error');
         } finally {
             btn.disabled = false;
-            spinner.style.display = 'none';
-            document.getElementById('collect-label').textContent = t('industry.collect');
+            btn.innerHTML = `
+                <span class="material-icons-outlined" style="font-size:18px">refresh</span>
+                <span>${t('industry.collect')}</span>
+            `;
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────
-    function extractTickers(text) {
-        // Match uppercase sequences 1-5 chars that look like ticker symbols
-        const matches = text.match(/\b[A-Z]{1,5}\b/g) || [];
-        // Filter out common words
-        const stopWords = new Set(['THE','AND','FOR','ARE','BUT','NOT','YOU','ALL','CAN','HAS','HER','WAS','ONE','OUR','OUT','SEC','IPO','CEO','CFO','ETF','GDP','IPO','SEC','FDA','API','AI','US','UK','IT','NEW','CEO','CFO','IPO']);
-        return [...new Set(matches.filter(m => !stopWords.has(m) && m.length >= 2))].slice(0, 4);
-    }
-
+    // Helpers
     function escHtml(str) {
         const d = document.createElement('div');
         d.textContent = str || '';
