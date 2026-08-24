@@ -23,6 +23,19 @@
 - ✅ 三條觸發路徑都 inc counter: /api/stock/<sym>/refresh, /api/alerts/check, nightly_tasks.py
 - ✅ _update_business_gauges() 從 price_alerts 表即時拉 enabled/disabled split
 
+**v3.4.2 (2026-08-25)**:
+- ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
+  multiplies (price × shares), persists to portfolio_snapshots table keyed by date
+- ✅ 3 新 API: GET /api/portfolio/snapshots, GET /api/portfolio/summary (含 30 日 delta),
+  POST /api/portfolio/capture (manual capture)
+- ✅ nightly_tasks.py Task 6: 每日 20:00 自動拍攝 + prune >365d 嘅 snapshots
+- ✅ Prometheus gauges: stocker_portfolio_snapshots_total + _value_dollars_latest + _pnl_dollars_latest
+- ✅ /api/metrics/summary 加入 `portfolio: {snapshots_count, latest_value, latest_pnl}` 區塊
+- ✅ Dashboard widget (templates/index.html) 顯示總市值/未實現損益/30 日變化/持倉數
+- ✅ 13 個 zh/en i18n keys (static/js/i18n.js)
+- ✅ 27 unit tests (tests/test_portfolio_snapshot.py) — all passing (171/171 total)
+- Commit: 25cd9ef (cron tick salvage of ~2hr uncommitted WIP)
+
 ## 接力做事項（v3.3 規劃）
 
 按以下優先級，每小時做 1-2 項，commit + push + restart server:
