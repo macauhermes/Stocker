@@ -184,6 +184,15 @@ PORTFOLIO_BREAKDOWN = Counter(
     ['status']  # 'ok' / 'empty' / 'error'
 )
 
+# Portfolio snapshot capture (v3.4.8) — track both manual (dashboard button)
+# and nightly (cron) trigger paths. Lets dashboards see whether users are
+# actively curating their history vs. relying purely on the 20:00 sweep.
+PORTFOLIO_CAPTURES = Counter(
+    'stocker_portfolio_captures_total',
+    'Portfolio snapshot captures via /api/portfolio/capture (manual) or nightly_tasks.py (cron)',
+    ['trigger']  # 'manual' / 'nightly'
+)
+
 
 # ── Middleware ──────────────────────────────────────────────────────────
 
@@ -308,6 +317,18 @@ def record_portfolio_breakdown(status: str):
     genuine errors.
     """
     PORTFOLIO_BREAKDOWN.labels(status=status).inc()
+
+
+def record_portfolio_capture(trigger: str):
+    """Record a portfolio snapshot capture.
+
+    `trigger` is 'manual' (dashboard "拍攝" button → POST /api/portfolio/capture)
+    or 'nightly' (cron sweep in nightly_tasks.py). Splits the two paths
+    so dashboards can chart daily activity vs. user-driven curation.
+    """
+    if trigger not in ('manual', 'nightly'):
+        trigger = 'manual'  # fail safe — never silently drop an event
+    PORTFOLIO_CAPTURES.labels(trigger=trigger).inc()
 
 
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
@@ -654,6 +675,14 @@ def metrics_summary():
             'ok': int(PORTFOLIO_BREAKDOWN.labels(status='ok')._value.get()),
             'empty': int(PORTFOLIO_BREAKDOWN.labels(status='empty')._value.get()),
             'error': int(PORTFOLIO_BREAKDOWN.labels(status='error')._value.get()),
+        },
+        # portfolio_captures (v3.4.8): track how the history was built —
+        # nightly sweep vs. user pressing the dashboard "拍攝" button.
+        # Empty/missing label keys are coerced to 0 via labels(...)._value.get().
+        'portfolio_captures': {
+            'total': sum(c._value.get() for c in PORTFOLIO_CAPTURES._metrics.values()),
+            'manual': int(PORTFOLIO_CAPTURES.labels(trigger='manual')._value.get()),
+            'nightly': int(PORTFOLIO_CAPTURES.labels(trigger='nightly')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,

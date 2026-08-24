@@ -415,6 +415,12 @@ def api_capture_portfolio_snapshot():
         return jsonify({'error': str(e)}), 500
     if not row:
         return jsonify({'error': 'capture_failed'}), 500
+    # Counter BEFORE return (Pitfall 9 — code after `return` is dead).
+    # Distinguishes dashboard "拍攝" button traffic from the nightly cron sweep.
+    try:
+        metrics.record_portfolio_capture(trigger='manual')
+    except Exception:
+        pass  # never let metrics failures break the user-facing endpoint
     return jsonify({'success': True, 'snapshot': row}), 201
 
 

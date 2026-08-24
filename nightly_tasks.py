@@ -111,6 +111,14 @@ def run_nightly():
     try:
         from services.portfolio_snapshot import capture_snapshot, prune_old_snapshots
         snap = capture_snapshot()
+        # Counter for the nightly capture (v3.4.8) — paired with the
+        # 'manual' counter wired in app.py's /api/portfolio/capture.
+        # Lets dashboards see nightly sweep vs. user-driven curation.
+        try:
+            from services.metrics import record_portfolio_capture
+            record_portfolio_capture(trigger='nightly')
+        except Exception:
+            pass  # never let metrics failures break the cron sweep
         results["tasks"]["portfolio_snapshot"] = {
             "snapshot_date": snap.get("snapshot_date") if snap else None,
             "total_value": snap.get("total_value") if snap else None,

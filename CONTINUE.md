@@ -61,6 +61,27 @@
 - ✅ Smoke test: 3 個持倉 (TSLA 30股/MSFT 8股/NVDA 5股) 返 share_of_portfolio 67.94% / 25.3% / 6.76% — sum 100%
 - ✅ 10 個 unit tests (tests/test_portfolio_breakdown.py) — all passing (218/218 total)
 
+**v3.4.8 (2026-08-25)**:
+- ✅ Dashboard 投資組合卡片新增「📸 拍攝快照」「📥 匯出 CSV」兩個 quick-action buttons — 終於將之前 orphan 嘅 `POST /api/portfolio/capture` 同 `GET /api/portfolio/snapshots/export.csv` 拉到 UI surface
+- ✅ Buttons 帶 44px 觸控目標、桌面並排 / 手機自動堆疊、loading state 帶 ⏳ spinner、成功 / 失敗 toast 4 秒自動消失
+- ✅ `data-i18n` 全部 6 個新 keys (zh + en)：`portfolio.{capture_now,export_csv,capture_success,capture_failed,export_failed,actions_title}`
+- ✅ Prometheus 新增 `stocker_portfolio_captures_total{trigger=manual|nightly}` counter — manual 同 nightly 兩條 trigger path 都 inc
+- ✅ `/api/metrics/summary` 新增 `portfolio_captures: {total, manual, nightly}` block
+- ✅ 7 個 unit tests (tests/test_portfolio_capture_metric.py) — all passing (225/225 total)
+- ✅ 改動: services/metrics.py, app.py, nightly_tasks.py, templates/index.html, static/js/i18n.js, static/css/components.css
+- ✅ Smoke test: POST capture 返 201 + snapshot row #10、GET export.csv 返 text/csv + 6 行 CSV + Content-Disposition 對 filename=/metrics shows manual counter=1
+
+**v3.4.7 (2026-08-25)**:
+- ✅ Dashboard 投資組合卡片內嵌 holdings breakdown 表格 — 列出每個持倉嘅代碼/股數/現價/市值/未實現損益/佔比
+- ✅ 零持倉時自動隱藏整個 wrapper (避免顯示空表)；sort by MV desc (server 已經做)
+- ✅ Mobile-first: <480px 自動隱藏現價欄避免水平捲動 (MV = shares × price 讀者可以心算)
+- ✅ i18n: 9 個新 zh/en keys (holdings_title/symbol/shares/price/market_value/unrealized_pl/share/empty/count_total)
+- ✅ P&L 欄綠色 (正) / 紅色 (負) 配色；share 欄灰色；hover 整行淺藍高亮
+- ✅ 純前端改動 — `templates/index.html` + `static/css/components.css` + `static/js/i18n.js`，零 backend / DB / route 改動
+- ✅ Reuses `/api/portfolio/breakdown` (v3.4.6 endpoint)
+- ✅ Smoke test: 3 holdings (TSLA 30股/MSFT 8股/NVDA 5股) 顯示正確 MV/P&L/share
+- ✅ i18n langchange handler 自動重渲染 holdings table
+
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
   multiplies (price × shares), persists to portfolio_snapshots table keyed by date

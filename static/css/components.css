@@ -933,6 +933,236 @@
   font-size: 0.95rem;
 }
 
+/* Portfolio quick actions toolbar (v3.4.8) — capture + export buttons.
+   Mobile-friendly 44px tap target, dark fintech style consistent with the card. */
+.portfolio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.portfolio-action-btn {
+  min-height: 44px;             /* Apple HIG 44px touch target */
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #e8eef5);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+
+.portfolio-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.portfolio-action-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.portfolio-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.portfolio-action-primary {
+  background: rgba(33, 150, 243, 0.18);    /* blue accent */
+  border-color: rgba(33, 150, 243, 0.35);
+  color: #82b1ff;
+}
+
+.portfolio-action-primary:hover:not(:disabled) {
+  background: rgba(33, 150, 243, 0.28);
+  border-color: rgba(33, 150, 243, 0.55);
+}
+
+.portfolio-action-secondary {
+  background: rgba(255, 255, 255, 0.04);    /* neutral */
+}
+
+.portfolio-action-toast {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  white-space: nowrap;
+  animation: portfolio-action-toast-in 200ms ease;
+}
+
+.portfolio-action-toast.portfolio-action-toast-error {
+  background: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+  border-color: rgba(239, 83, 80, 0.35);
+}
+
+.portfolio-action-toast.portfolio-action-toast-success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+@keyframes portfolio-action-toast-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 480px) {
+  /* On small screens: stack buttons full-width, hide toast (it's
+     redundant next to inline button feedback on tap) */
+  .portfolio-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .portfolio-action-btn {
+    width: 100%;
+    text-align: center;
+  }
+  .portfolio-action-toast {
+    margin-left: 0;
+    text-align: center;
+  }
+}
+
+/* Per-ticker holdings breakdown table (v3.4.7) — sits inside the
+   portfolio summary card, below the sparkline. Each row is one holding
+   with shares / current price / MV / unrealized P&L / share of portfolio. */
+.portfolio-holdings-wrapper {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.portfolio-holdings-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.portfolio-holdings-title {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #8b96a8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.portfolio-holdings-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted, #6b7480);
+}
+
+.portfolio-holdings-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  /* Subtle inner border so the table reads as a card surface */
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.portfolio-holdings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  color: var(--text-primary, #e8eef5);
+}
+
+.portfolio-holdings-table thead th {
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #8b96a8);
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.portfolio-holdings-table thead th.num {
+  text-align: right;
+}
+
+.portfolio-holdings-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.portfolio-holdings-table tbody tr:hover {
+  background: rgba(79, 195, 247, 0.06);
+}
+
+.portfolio-holdings-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.portfolio-holdings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.portfolio-holdings-table tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.portfolio-holdings-table .symbol-cell strong {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.portfolio-holdings-table .pnl-positive {
+  color: #4caf50;
+}
+
+.portfolio-holdings-table .pnl-negative {
+  color: #ef5350;
+}
+
+.portfolio-holdings-table .share-cell {
+  color: var(--text-secondary, #8b96a8);
+}
+
+/* On very narrow phones (<480px) hide the price column — redundant with
+   MV (MV = shares × price, reader can mentally derive). Keeps the table
+   readable without horizontal scroll. */
+@media (max-width: 480px) {
+  .portfolio-holdings-table thead th:nth-child(3),
+  .portfolio-holdings-table tbody td:nth-child(3) {
+    display: none;
+  }
+  .portfolio-holdings-table thead th,
+  .portfolio-holdings-table tbody td {
+    padding: 6px 6px;
+    font-size: 0.76rem;
+  }
+}
+
+.portfolio-holdings-empty {
+  padding: 14px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7480);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
 .event-icon {
   font-size: 1.2rem;
 }

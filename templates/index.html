@@ -39,9 +39,43 @@
             <canvas id="portfolio-sparkline-chart"></canvas>
         </div>
     </div>
+    <!-- Per-ticker holdings breakdown table (v3.4.7) — live MVs/P&L/share per position -->
+    <div id="portfolio-holdings-wrapper" class="portfolio-holdings-wrapper" style="display:none;">
+        <div class="portfolio-holdings-header">
+            <span class="portfolio-holdings-title" data-i18n="portfolio.holdings_title">持倉明細</span>
+            <span class="portfolio-holdings-meta" id="portfolio-holdings-meta"></span>
+        </div>
+        <div class="portfolio-holdings-table-wrap">
+            <table class="portfolio-holdings-table" id="portfolio-holdings-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="portfolio.holdings_symbol">代碼</th>
+                        <th class="num" data-i18n="portfolio.holdings_shares">股數</th>
+                        <th class="num" data-i18n="portfolio.holdings_price">現價</th>
+                        <th class="num" data-i18n="portfolio.holdings_market_value">市值</th>
+                        <th class="num" data-i18n="portfolio.holdings_unrealized_pl">未實現損益</th>
+                        <th class="num" data-i18n="portfolio.holdings_share">佔比</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-holdings-tbody">
+                </tbody>
+            </table>
+        </div>
+        <div id="portfolio-holdings-empty" class="portfolio-holdings-empty" style="display:none;" data-i18n="portfolio.holdings_empty">暫無持倉</div>
+    </div>
     <div class="portfolio-meta">
         <span class="material-icons-outlined">schedule</span>
         <span id="portfolio-snapshot-date" data-i18n="portfolio.dashboard_no_history">尚未有投資組合歷史快照</span>
+    </div>
+    <!-- Portfolio quick actions (v3.4.8) — manual capture + CSV export. Wires
+         the previously-orphan /api/portfolio/capture + /api/portfolio/snapshots/export.csv
+         to the dashboard. Buttons are desktop-and-mobile friendly (44px tap target). -->
+    <div class="portfolio-actions" id="portfolio-actions">
+        <button type="button" id="portfolio-capture-btn" class="portfolio-action-btn portfolio-action-primary"
+                data-i18n="portfolio.capture_now">📸 拍攝快照</button>
+        <button type="button" id="portfolio-export-btn" class="portfolio-action-btn portfolio-action-secondary"
+                data-i18n="portfolio.export_csv">📥 匯出 CSV</button>
+        <span id="portfolio-action-toast" class="portfolio-action-toast" style="display:none;"></span>
     </div>
 </div>
 
@@ -377,6 +411,162 @@
             console.error('Failed to load portfolio sparkline:', err);
             wrapper.style.display = 'none';
         }
+    }
+
+    // Per-ticker holdings breakdown table (v3.4.7) — populates a small
+    // table inside the portfolio card showing each holding's shares,
+    // current price, market value, unrealized P&L, and share of portfolio.
+    // Backed by /api/portfolio/breakdown which already sorts by MV desc
+    // and enriches with unrealized_pl_pct / share_of_portfolio.
+    async function loadPortfolioHoldings() {
+        const wrapper = document.getElementById('portfolio-holdings-wrapper');
+        if (!wrapper) return;
+        const tbody = document.getElementById('portfolio-holdings-tbody');
+        const metaEl = document.getElementById('portfolio-holdings-meta');
+        const emptyEl = document.getElementById('portfolio-holdings-empty');
+        try {
+            const res = await fetch('/api/portfolio/breakdown');
+            if (!res.ok) {
+                wrapper.style.display = 'none';
+                return;
+            }
+            const data = await res.json();
+            const holdings = (data && data.holdings) || [];
+            // Hide the whole wrapper if no current-price-eligible positions
+            if (holdings.length === 0) {
+                wrapper.style.display = 'none';
+                return;
+            }
+
+            // Build rows. Server already sorted by market_value desc.
+            tbody.innerHTML = holdings.map(h => {
+                const pl = h.unrealized_pl || 0;
+                const plClass = pl > 0 ? 'pnl-positive' : (pl < 0 ? 'pnl-negative' : '');
+                const plSign = pl >= 0 ? '+' : '';
+                const shareSign = (h.share_of_portfolio || 0) >= 0 ? '' : '';
+                return `<tr>
+                    <td class="symbol-cell"><strong>${escapeHtml(h.symbol)}</strong></td>
+                    <td class="num">${Number(h.shares).toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
+                    <td class="num">$${Number(h.current_price).toFixed(2)}</td>
+                    <td class="num">$${Number(h.market_value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="num ${plClass}">${plSign}$${Math.abs(pl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${plSign}${(h.unrealized_pl_pct || 0).toFixed(2)}%)</td>
+                    <td class="num share-cell">${shareSign}${(h.share_of_portfolio || 0).toFixed(2)}%</td>
+                </tr>`;
+            }).join('');
+
+            // Meta line: show count + total
+            metaEl.textContent = t('portfolio.holdings_count_total', {
+                n: holdings.length,
+                total: formatCurrency(data.total_value || 0),
+            });
+            emptyEl.style.display = 'none';
+            wrapper.style.display = 'block';
+        } catch (err) {
+            console.error('Failed to load portfolio holdings:', err);
+            wrapper.style.display = 'none';
+        }
+    }
+
+    // Portfolio quick actions (v3.4.8) — manual capture + CSV export.
+    // Wires the previously-orphan /api/portfolio/capture and
+    // /api/portfolio/snapshots/export.csv to the dashboard card so users
+    // don't have to curl. Counters are bumped server-side.
+    let _portfolioActionBusy = false;
+    async function capturePortfolioSnapshot() {
+        if (_portfolioActionBusy) return;
+        _portfolioActionBusy = true;
+        const btn = document.getElementById('portfolio-capture-btn');
+        const toast = document.getElementById('portfolio-action-toast');
+        const originalLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ …'; }
+        try {
+            const res = await fetch('/api/portfolio/capture', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showActionToast(t('portfolio.capture_failed', { error: data.error || res.status }), 'error');
+                return;
+            }
+            const snap = data.snapshot || {};
+            showActionToast(
+                t('portfolio.capture_success', {
+                    date: snap.snapshot_date || '?',
+                    value: snap.total_value != null ? formatCurrency(snap.total_value) : '—',
+                }),
+                'success'
+            );
+            // Refresh summary + sparkline + holdings so the new row shows up.
+            await Promise.all([
+                loadPortfolioSummary(),
+                loadPortfolioSparkline(),
+                loadPortfolioHoldings(),
+            ]);
+        } catch (err) {
+            console.error('Capture failed:', err);
+            showActionToast(t('portfolio.capture_failed', { error: err.message || 'network' }), 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+            _portfolioActionBusy = false;
+        }
+    }
+
+    async function exportPortfolioCsv() {
+        if (_portfolioActionBusy) return;
+        _portfolioActionBusy = true;
+        const btn = document.getElementById('portfolio-export-btn');
+        const originalLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ …'; }
+        try {
+            // Use a synthesized <a download> for the file — the server's
+            // Content-Disposition sets the filename, the browser downloads.
+            const a = document.createElement('a');
+            a.href = '/api/portfolio/snapshots/export.csv?days=365';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showActionToast('✓', 'success');
+        } catch (err) {
+            console.error('Export failed:', err);
+            showActionToast(t('portfolio.export_failed', { error: err.message || 'network' }), 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+            _portfolioActionBusy = false;
+        }
+    }
+
+    let _actionToastTimer = null;
+    function showActionToast(msg, kind) {
+        const toast = document.getElementById('portfolio-action-toast');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.toggle('portfolio-action-toast-error', kind === 'error');
+        toast.classList.toggle('portfolio-action-toast-success', kind === 'success');
+        toast.style.display = 'inline-block';
+        if (_actionToastTimer) clearTimeout(_actionToastTimer);
+        _actionToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    function initPortfolioActions() {
+        const captureBtn = document.getElementById('portfolio-capture-btn');
+        const exportBtn = document.getElementById('portfolio-export-btn');
+        if (captureBtn) captureBtn.addEventListener('click', capturePortfolioSnapshot);
+        if (exportBtn) exportBtn.addEventListener('click', exportPortfolioCsv);
+    }
+
+    // Minimal HTML escape — symbols come from the user-entered ticker table
+    // which already constrains to alphanumeric + dot, but escape defensively.
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function formatCurrency(n) {
@@ -888,9 +1078,11 @@
     loadEvents();
     loadPortfolioSummary();
     loadPortfolioSparkline();
+    loadPortfolioHoldings();
     loadStocks();
     loadReports();
     loadSectors();
+    initPortfolioActions();  // v3.4.8 — wire capture/export buttons
     startFreshnessUpdater();  // Auto-update freshness badges every 5s
 
     // ── Smart polling (wealthlens-style) ─────────────────────────────
@@ -1081,6 +1273,7 @@
         // Re-render portfolio widgets so meta line + chart title re-translate
         loadPortfolioSummary();
         loadPortfolioSparkline();
+        loadPortfolioHoldings();
     });
 </script>
 {% endblock %}
