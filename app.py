@@ -67,6 +67,23 @@ def cache_timestamp(key):
         return _cache[key][1]
     return None
 
+def cache_invalidate(*keys):
+    """Remove one or more keys from the cache. Silently ignores missing keys.
+
+    Use this whenever underlying data changes (ticker added/removed/restored,
+    stock data refreshed, etc.) so the next request sees fresh data instead
+    of stale TTL-cached values.
+    """
+    for k in keys:
+        _cache.pop(k, None)
+
+def cache_invalidate_prefix(prefix):
+    """Remove all keys starting with `prefix` (e.g. 'stock_info_')."""
+    stale = [k for k in _cache if k.startswith(prefix)]
+    for k in stale:
+        _cache.pop(k, None)
+    return len(stale)
+
 
 # ── Initialize DB on startup ──────────────────────────────────────────
 models.init_db()
@@ -175,6 +192,9 @@ def api_add_ticker():
         except Exception as e:
             logger.warning(f"Failed to refresh data for new ticker {symbol}: {e}")
 
+        # Invalidate aggregate tickers cache so new ticker shows up immediately
+        cache_invalidate('tickers_with_prices')
+
         return jsonify(dict(ticker)), 201
     except Exception as e:
         logger.error(f"Error adding ticker {symbol}: {e}")
@@ -203,6 +223,9 @@ def api_update_ticker(symbol):
     if not ticker:
         return jsonify({'error': f'Ticker {symbol} not found'}), 404
 
+    # Holdings changes affect the dashboard aggregate view
+    cache_invalidate('tickers_with_prices')
+
     return jsonify(dict(ticker))
 
 
@@ -212,6 +235,7 @@ def api_delete_ticker(symbol):
     deleted = models.archive_ticker(symbol.upper())
     if not deleted:
         return jsonify({'error': f'Ticker {symbol} not found'}), 404
+    cache_invalidate('tickers_with_prices', f'stock_info_{symbol.upper()}')
     return jsonify({'success': True, 'action': 'archived'})
 
 
@@ -221,6 +245,7 @@ def api_restore_ticker(symbol):
     restored = models.restore_ticker(symbol.upper())
     if not restored:
         return jsonify({'error': f'Archived ticker {symbol} not found'}), 404
+    cache_invalidate('tickers_with_prices', f'stock_info_{symbol.upper()}')
     return jsonify({'success': True, 'action': 'restored'})
 
 
@@ -409,6 +434,8 @@ def api_refresh_stock(symbol):
     symbol = symbol.upper()
     try:
         refresh_ticker_data(symbol)
+        # User-initiated refresh must show fresh data, not cached snapshot
+        cache_invalidate('tickers_with_prices', f'stock_info_{symbol}')
         return jsonify({'success': True})
     except Exception as e:
         logger.error(f"Error refreshing {symbol}: {e}")
@@ -594,6 +621,9 @@ def api_init_data():
                 errors.append(f'{symbol}: not found')
         except Exception as e:
             errors.append(f'{symbol}: {str(e)}')
+
+    if added:
+        cache_invalidate('tickers_with_prices')
 
     return jsonify({'added': added, 'errors': errors})
 
