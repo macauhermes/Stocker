@@ -170,6 +170,13 @@ REPORT_SEARCH = Counter(
     ['has_results']  # 'true' / 'false'
 )
 
+# Portfolio CSV export (v3.4.5) — track export calls by format
+PORTFOLIO_EXPORT = Counter(
+    'stocker_portfolio_exports_total',
+    'Portfolio snapshot CSV/TSV export calls via /api/portfolio/snapshots/export.csv',
+    ['format']  # 'csv' / 'tsv'
+)
+
 
 # ── Middleware ──────────────────────────────────────────────────────────
 
@@ -273,6 +280,16 @@ def record_report_search(has_results: bool):
     Tracks zero-result searches separately so dashboard can spot dead queries.
     """
     REPORT_SEARCH.labels(has_results='true' if has_results else 'false').inc()
+
+
+def record_portfolio_export(fmt: str):
+    """Record a portfolio snapshot CSV/TSV export via /api/portfolio/snapshots/export.csv.
+
+    Tracks format separately (csv vs tsv) so dashboards can spot which
+    format users actually consume — useful before adding new formats
+    like JSON or XLSX.
+    """
+    PORTFOLIO_EXPORT.labels(format=fmt).inc()
 
 
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
@@ -603,6 +620,13 @@ def metrics_summary():
             'snapshots_count': int(SNAPSHOTS_TOTAL._value.get()),
             'latest_value': round(PORTFOLIO_VALUE_LATEST._value.get(), 2),
             'latest_pnl': round(PORTFOLIO_PNL_LATEST._value.get(), 2),
+        },
+        # portfolio_exports: sum across format label values for total;
+        # split by format for dashboards. Mirrors report_searches pattern.
+        'portfolio_exports': {
+            'total': sum(c._value.get() for c in PORTFOLIO_EXPORT._metrics.values()),
+            'csv': int(PORTFOLIO_EXPORT.labels(format='csv')._value.get()),
+            'tsv': int(PORTFOLIO_EXPORT.labels(format='tsv')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,

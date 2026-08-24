@@ -43,6 +43,15 @@
 - ✅ Smoke test：手動 capture 3 個 backdated snapshots (08-21, 08-23, 08-24)，curve 由 $8,430 → $15,409
 - Commit: 4fc0299
 
+**v3.4.5 (2026-08-25)**:
+- ✅ `/api/portfolio/snapshots/export.csv` — 將每日 portfolio snapshots 下載成 CSV (default) 或 TSV (`?fmt=tsv`, Excel-friendly paste)
+- ✅ Columns: snapshot_date, total_value, total_cost, total_pnl, pnl_pct, holdings_count, captured_at
+- ✅ `?days=N` 控制 window (default 365, max 3650); 總是 200 — empty result 返 header-only CSV 而非 404
+- ✅ Prometheus counter `stocker_portfolio_exports_total{format=csv|tsv}` + `record_portfolio_export()` helper
+- ✅ `/api/metrics/summary` 加入 `portfolio_exports: {total, csv, tsv}` block
+- ✅ 13 個 unit tests (tests/test_portfolio_csv.py) — all passing (208/208 total)
+- ✅ Fix double-charset bug: Flask auto-appends `; charset=utf-8` to text/* mimetypes, 所以唔可以自己加
+
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
   multiplies (price × shares), persists to portfolio_snapshots table keyed by date

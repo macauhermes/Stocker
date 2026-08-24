@@ -418,6 +418,73 @@ def api_capture_portfolio_snapshot():
     return jsonify({'success': True, 'snapshot': row}), 201
 
 
+# ── API: Portfolio Snapshot CSV Export (v3.4.5) ────────────────────────
+
+@app.route('/api/portfolio/snapshots/export.csv', methods=['GET'])
+def api_export_portfolio_snapshots_csv():
+    """Export daily portfolio snapshots as CSV.
+
+    Columns: snapshot_date, total_value, total_cost, total_pnl, pnl_pct,
+    holdings_count, captured_at.
+
+    Query params:
+        days — how many days of history (default 365, max 3650)
+        fmt  — if 'tsv', emit tab-separated values (Excel-friendly paste)
+
+    Returns 200 with text/csv body even when empty (header-only CSV is
+    still valid — easier than 404 for an export endpoint).
+    """
+    import csv
+    from io import StringIO
+
+    try:
+        days = min(int(request.args.get('days', 365)), 3650)
+    except (TypeError, ValueError):
+        days = 365
+
+    fmt = (request.args.get('fmt') or 'csv').lower()
+    delimiter = '\t' if fmt == 'tsv' else ','
+
+    snapshots = models.list_snapshots(days=days)
+
+    buf = StringIO()
+    writer = csv.writer(buf, delimiter=delimiter)
+    writer.writerow([
+        'snapshot_date', 'total_value', 'total_cost', 'total_pnl',
+        'pnl_pct', 'holdings_count', 'captured_at',
+    ])
+    for s in snapshots:
+        # sqlite3.Row bracket-access is safe; only the writer needs stringy values
+        writer.writerow([
+            s['snapshot_date'],
+            s['total_value'],
+            s['total_cost'],
+            s['total_pnl'],
+            s['pnl_pct'],
+            s['holdings_count'],
+            s['captured_at'],
+        ])
+
+    text = buf.getvalue()
+    ext = 'tsv' if fmt == 'tsv' else 'csv'
+    # Don't include `; charset=utf-8` — Flask auto-appends it for text/* mimetypes
+    # (otherwise we get `text/csv; charset=utf-8; charset=utf-8` in headers).
+    mime = 'text/tab-separated-values' if fmt == 'tsv' else 'text/csv'
+    filename = f"stocker-portfolio-{datetime.now().strftime('%Y%m%d-%H%M')}.{ext}"
+    # Record the export BEFORE returning — code after `return` is dead
+    # (see flask-api-integration-pitfalls pitfall 9).
+    try:
+        from services.metrics import record_portfolio_export
+        record_portfolio_export(ext)
+    except Exception:
+        pass  # metrics are best-effort; never break the export
+    return Response(
+        text,
+        mimetype=mime,
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
 # ── API: Sectors ───────────────────────────────────────────────────────
 
 @app.route('/api/sectors', methods=['GET'])
