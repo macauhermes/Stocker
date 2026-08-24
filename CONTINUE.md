@@ -56,6 +56,7 @@
 - [x] 增強 Prometheus 業務指標 + /health + /api/metrics/summary (commit ded10a5)
 - [x] CSV export 投資組合 (active tickers + holdings + P&L) (commit 21b5bd1)
 - [x] Price Alerts v3.4 (用戶自訂價格閾值，事件自動觸發) (commit a673b22)
+- [x] alert_checker unit tests (26 tests covering threshold eval + side-effects + sweep + model validation) (commit eda159d)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程
