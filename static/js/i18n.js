@@ -288,14 +288,57 @@ const I18N = {
     // Price Alerts (v3.4)
     'alerts.title': '價格提醒',
     'alerts.add': '新增提醒',
-    'alerts.desc': '設定價格閾值，當股票價格到達指定範圍時自動產生提醒事件。',
+    'alerts.edit': '編輯提醒',
+    'alerts.desc': '設定價格閾值，當股票價格到達指定範圍時自動產生提醒事件。每個提醒只會觸發一次，需重新啟用（rearm）才會再次觸發。',
     'alerts.threshold_high': '升至 ≥',
     'alerts.threshold_low': '跌至 ≤',
+    'alerts.threshold_high_full': '升至 ≥ 目標價',
+    'alerts.threshold_low_full': '跌至 ≤ 目標價',
     'alerts.target_price': '目標價 (USD)',
     'alerts.rearm': '重新武裝',
     'alerts.enabled': '啟用',
     'alerts.disabled': '已停用',
     'alerts.triggered_at': '已觸發：{time}',
+    'alerts.note': '備註',
+    'alerts.note_placeholder': '（選填）例：突破阻力位',
+    'alerts.symbol_placeholder': 'TSLA',
+    'alerts.target_placeholder': '例：300.00',
+    // Page actions
+    'alerts.check_all': '立即檢查',
+    'alerts.check_all_title': '立即檢查所有啟用中的提醒',
+    // Filter chips
+    'alerts.filter_all': '全部',
+    'alerts.filter_enabled': '啟用中',
+    'alerts.filter_disabled': '已停用',
+    // Modal form labels
+    'alerts.field_symbol': '股票代碼 *',
+    'alerts.field_type': '觸發類型 *',
+    'alerts.field_target': '目標價 (USD) *',
+    'alerts.required_field': '必填',
+    // Status / empty / errors
+    'alerts.empty': '冇提醒。點擊「新增提醒」開始設定。',
+    'alerts.empty_short': '冇提醒',
+    'alerts.load_error': '載入失敗：{msg}',
+    'alerts.save_error': '儲存失敗：{msg}',
+    'alerts.rearm_error': '重新武裝失敗：{msg}',
+    'alerts.delete_error': '刪除失敗：{msg}',
+    'alerts.update_error': '更新失敗：{msg}',
+    'alerts.symbol_required': '請輸入股票代碼',
+    'alerts.price_required': '請輸入有效的目標價',
+    'alerts.check_error': '檢查失敗：{msg}',
+    'alerts.check_triggered': '已觸發 {n} 個提醒！',
+    'alerts.check_none': '沒有提醒被觸發。',
+    'alerts.check_line': '{symbol} {type} ${threshold} (now ${current})',
+    // Confirm dialog
+    'alerts.delete_confirm_title': '確認',
+    'alerts.delete_confirm_msg': '確定要刪除 {symbol} 嘅提醒？此操作無法復原。',
+    // Card actions (titles)
+    'alerts.action_disable': '停用',
+    'alerts.action_enable': '啟用',
+    'alerts.action_rearm_title': '重新武裝 (rearm)',
+    'alerts.action_edit_title': '編輯',
+    'alerts.action_delete_title': '刪除',
+    'alerts.note_prefix': '備註：',
 
     // Time
     'time.just_now': '剛剛',
@@ -593,14 +636,57 @@ const I18N = {
     // Price Alerts (v3.4)
     'alerts.title': 'Price Alerts',
     'alerts.add': 'New Alert',
-    'alerts.desc': 'Set price thresholds — events fire automatically when prices cross them.',
+    'alerts.edit': 'Edit Alert',
+    'alerts.desc': 'Set price thresholds — events fire automatically when prices cross them. Each alert fires once; rearm to re-arm.',
     'alerts.threshold_high': 'Rises to ≥',
     'alerts.threshold_low': 'Falls to ≤',
+    'alerts.threshold_high_full': 'Rises to ≥ target',
+    'alerts.threshold_low_full': 'Falls to ≤ target',
     'alerts.target_price': 'Target Price (USD)',
     'alerts.rearm': 'Rearm',
     'alerts.enabled': 'Enabled',
     'alerts.disabled': 'Disabled',
     'alerts.triggered_at': 'Triggered: {time}',
+    'alerts.note': 'Notes',
+    'alerts.note_placeholder': '(optional) e.g. breakout level',
+    'alerts.symbol_placeholder': 'TSLA',
+    'alerts.target_placeholder': 'e.g. 300.00',
+    // Page actions
+    'alerts.check_all': 'Check Now',
+    'alerts.check_all_title': 'Check all enabled alerts now',
+    // Filter chips
+    'alerts.filter_all': 'All',
+    'alerts.filter_enabled': 'Enabled',
+    'alerts.filter_disabled': 'Disabled',
+    // Modal form labels
+    'alerts.field_symbol': 'Symbol *',
+    'alerts.field_type': 'Trigger Type *',
+    'alerts.field_target': 'Target Price (USD) *',
+    'alerts.required_field': 'required',
+    // Status / empty / errors
+    'alerts.empty': 'No alerts yet. Click "New Alert" to set one up.',
+    'alerts.empty_short': 'No alerts',
+    'alerts.load_error': 'Load failed: {msg}',
+    'alerts.save_error': 'Save failed: {msg}',
+    'alerts.rearm_error': 'Rearm failed: {msg}',
+    'alerts.delete_error': 'Delete failed: {msg}',
+    'alerts.update_error': 'Update failed: {msg}',
+    'alerts.symbol_required': 'Please enter a symbol',
+    'alerts.price_required': 'Please enter a valid target price',
+    'alerts.check_error': 'Check failed: {msg}',
+    'alerts.check_triggered': '{n} alert(s) triggered!',
+    'alerts.check_none': 'No alerts triggered.',
+    'alerts.check_line': '{symbol} {type} ${threshold} (now ${current})',
+    // Confirm dialog
+    'alerts.delete_confirm_title': 'Confirm',
+    'alerts.delete_confirm_msg': 'Delete the alert for {symbol}? This cannot be undone.',
+    // Card actions (titles)
+    'alerts.action_disable': 'Disable',
+    'alerts.action_enable': 'Enable',
+    'alerts.action_rearm_title': 'Rearm',
+    'alerts.action_edit_title': 'Edit',
+    'alerts.action_delete_title': 'Delete',
+    'alerts.note_prefix': 'Notes:',
 
     // Time
     'time.just_now': 'Just now',
@@ -670,6 +756,13 @@ function applyTranslations() {
   // Translate aria-label and title attributes
   document.querySelectorAll('[data-i18n-aria]').forEach(el => {
     el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')));
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
+  });
+  // Translate placeholder attribute on inputs
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
   });
   // Update page title
   const titleEl = document.querySelector('[data-i18n-title]');
