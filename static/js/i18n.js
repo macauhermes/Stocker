@@ -354,6 +354,8 @@ const I18N = {
     'portfolio.dashboard_no_history': '尚未有投資組合歷史快照',
     'portfolio.dashboard_value_only': '當前總市值',
     'portfolio.dashboard_change': '較 30 日前',
+    'portfolio.sparkline_meta': '{n}日 · {sign}{delta} ({sign}{pct}%)',
+    'portfolio.sparkline_title': '市值走勢 (近30日)',
 
     // Time
     'time.just_now': '剛剛',
@@ -717,6 +719,8 @@ const I18N = {
     'portfolio.dashboard_no_history': 'No portfolio history yet',
     'portfolio.dashboard_value_only': 'Current total value',
     'portfolio.dashboard_change': 'vs 30 days ago',
+    'portfolio.sparkline_meta': '{n}d · {sign}{delta} ({sign}{pct}%)',
+    'portfolio.sparkline_title': 'Value trend (last 30 days)',
 
     // Time
     'time.just_now': 'Just now',

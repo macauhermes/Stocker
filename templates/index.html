@@ -29,6 +29,16 @@
             <div class="portfolio-stat-value" id="portfolio-holdings">—</div>
         </div>
     </div>
+    <!-- Portfolio history sparkline (v3.4.4) — total value over time, hidden when <2 points -->
+    <div id="portfolio-sparkline-wrapper" class="portfolio-sparkline-wrapper" style="display:none;">
+        <div class="portfolio-sparkline-header">
+            <span class="portfolio-sparkline-title" data-i18n="portfolio.sparkline_title">市值走勢 (近30日)</span>
+            <span class="portfolio-sparkline-meta" id="portfolio-sparkline-meta"></span>
+        </div>
+        <div class="portfolio-sparkline-canvas-wrap">
+            <canvas id="portfolio-sparkline-chart"></canvas>
+        </div>
+    </div>
     <div class="portfolio-meta">
         <span class="material-icons-outlined">schedule</span>
         <span id="portfolio-snapshot-date" data-i18n="portfolio.dashboard_no_history">尚未有投資組合歷史快照</span>
@@ -248,6 +258,124 @@
         } catch (err) {
             console.error('Failed to load portfolio summary:', err);
             card.style.display = 'none';
+        }
+    }
+
+    // Portfolio history sparkline (v3.4.4) — small Chart.js line chart of total_value
+    // over the last 30 days. Hidden when fewer than 2 snapshots exist (single point
+    // can't form a trend line; chart.js would render an empty dataset).
+    let _portfolioSparklineChart = null;
+    async function loadPortfolioSparkline() {
+        const wrapper = document.getElementById('portfolio-sparkline-wrapper');
+        if (!wrapper) return;
+        try {
+            const res = await fetch('/api/portfolio/snapshots?days=30');
+            if (!res.ok) {
+                wrapper.style.display = 'none';
+                return;
+            }
+            const data = await res.json();
+            const snapshots = data.snapshots || [];
+            // Need at least 2 points to draw a meaningful line
+            if (snapshots.length < 2) {
+                wrapper.style.display = 'none';
+                return;
+            }
+
+            const labels = snapshots.map(s => s.snapshot_date.substring(5));  // MM-DD
+            const values = snapshots.map(s => Number(s.total_value));
+            const first = values[0];
+            const last = values[values.length - 1];
+            const delta = last - first;
+            const deltaPct = first > 0 ? (delta / first) * 100 : 0;
+            const trendUp = delta >= 0;
+
+            // Pick line color based on overall trend
+            const lineColor = trendUp ? '#4caf50' : '#ef5350';
+            const fillColor = trendUp ? 'rgba(76, 175, 80, 0.12)' : 'rgba(239, 83, 80, 0.12)';
+
+            // Populate meta line: N days · ±X (Y%)
+            const metaEl = document.getElementById('portfolio-sparkline-meta');
+            const sign = delta >= 0 ? '+' : '';
+            metaEl.textContent = t('portfolio.sparkline_meta', {
+                n: snapshots.length,
+                delta: formatCurrency(Math.abs(delta)),
+                sign: sign,
+                pct: Math.abs(deltaPct).toFixed(2),
+            });
+            metaEl.style.color = trendUp ? '#4caf50' : '#ef5350';
+
+            wrapper.style.display = 'block';
+
+            // Destroy old chart before re-rendering (Pitfall: Chart.js holds onto
+            // canvas state, would leak memory and double-render on langchange reload).
+            if (_portfolioSparklineChart) {
+                _portfolioSparklineChart.destroy();
+                _portfolioSparklineChart = null;
+            }
+
+            const ctx = document.getElementById('portfolio-sparkline-chart');
+            _portfolioSparklineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        borderColor: lineColor,
+                        backgroundColor: fillColor,
+                        borderWidth: 2,
+                        pointRadius: snapshots.length > 30 ? 0 : 2,
+                        pointHoverRadius: 4,
+                        pointBackgroundColor: lineColor,
+                        pointBorderColor: lineColor,
+                        fill: true,
+                        tension: 0.3,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 25, 0.95)',
+                            titleColor: '#e8eef5',
+                            bodyColor: '#e8eef5',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            padding: 8,
+                            displayColors: false,
+                            callbacks: {
+                                title: (items) => items[0].label,
+                                label: (item) => formatCurrency(item.parsed.y),
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: 'rgba(255,255,255,0.45)',
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                autoSkipPadding: 16,
+                            },
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: {
+                                color: 'rgba(255,255,255,0.45)',
+                                font: { size: 10 },
+                                callback: (v) => '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 }),
+                            },
+                        },
+                    },
+                    interaction: { mode: 'index', intersect: false },
+                },
+            });
+        } catch (err) {
+            console.error('Failed to load portfolio sparkline:', err);
+            wrapper.style.display = 'none';
         }
     }
 
@@ -759,6 +887,7 @@
     // Init
     loadEvents();
     loadPortfolioSummary();
+    loadPortfolioSparkline();
     loadStocks();
     loadReports();
     loadSectors();
@@ -949,6 +1078,9 @@
         if (currentTab === 'archived') {
             loadArchived();
         }
+        // Re-render portfolio widgets so meta line + chart title re-translate
+        loadPortfolioSummary();
+        loadPortfolioSparkline();
     });
 </script>
 {% endblock %}

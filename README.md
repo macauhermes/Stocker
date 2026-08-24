@@ -18,6 +18,7 @@
 - **持倉管理** — 記錄持倉數量及成本，即時計算累計損益
 - **價格提醒 (v3.4)** — 用戶自訂價格閾值（升至 ≥ 或 跌至 ≤），手動刷新或每晚排程觸發時自動產生 event；Prometheus 暴露 `stocker_alerts_total{enabled=true|false}` + `stocker_alerts_triggered_total`
 - **每日投資組合快照 (v3.4.2)** — 每日 20:00 自動拍攝 total value + P&L，支援 30 日 delta 比較；Prometheus 暴露 `stocker_portfolio_snapshots_total` + `_value_dollars_latest` + `_pnl_dollars_latest`
+- **投資組合走勢圖 (v3.4.4)** — Dashboard 投資組合卡片內嵌 Chart.js sparkline，繪製近 30 日 total_value 走勢；< 2 個快照時自動隱藏
 - **報告搜尋 (v3.4.3)** — `/api/reports?q=&category=&source=&ticker=&limit=&include_total=` AND-combined filters；Prometheus 暴露 `stocker_report_searches_total{has_results=true|false}`
 - **多語言** — 繁體中文 (預設) / English 雙語切換
 - **檔案管理** — 下載報告分類存儲，提供直接下載

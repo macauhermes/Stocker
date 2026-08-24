@@ -32,6 +32,17 @@
 - ✅ 24 unit tests (tests/test_report_search.py) — all passing (195/195 total)
 - Commit: 40e37b5
 
+**v3.4.4 (2026-08-25)**:
+- ✅ Dashboard 投資組合卡片內嵌 Chart.js sparkline — 繪製近 30 日 `total_value` 走勢
+- ✅ 漲綠/跌紅配色，配淺色 fill area，hover 顯示當日美元數值
+- ✅ Meta 行顯示 "Nd · ±$X (±Y%)" 整段趨勢摘要
+- ✅ < 2 個快照時自動隱藏 wrapper（單點無法畫 trend line）
+- ✅ 重新渲染前先 `.destroy()` 舊 Chart.js instance，避免 langchange 切換時記憶體洩漏
+- ✅ i18n：新增 `portfolio.sparkline_meta` + `portfolio.sparkline_title` (zh + en)
+- ✅ Touch templates/index.html + static/css/components.css + static/js/i18n.js，無 backend 改動
+- ✅ Smoke test：手動 capture 3 個 backdated snapshots (08-21, 08-23, 08-24)，curve 由 $8,430 → $15,409
+- Commit: pending
+
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
   multiplies (price × shares), persists to portfolio_snapshots table keyed by date
@@ -82,6 +93,7 @@
 - [x] Daily Portfolio Snapshots v3.4.2 (services/portfolio_snapshot.py + dashboard widget) (commit 25cd9ef)
 - [x] Report Search v3.4.3 (/api/reports?q=&category=&source=&ticker=&limit=) (commit 40e37b5)
 - [x] Report Search unit tests (24 tests covering all 4 filter dimensions) (commit 40e37b5)
+- [x] Portfolio Sparkline v3.4.4 (Chart.js trendline on dashboard widget, < 2 snapshots hidden) (commit pending)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程
