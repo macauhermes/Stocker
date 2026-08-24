@@ -340,6 +340,21 @@ const I18N = {
     'alerts.action_delete_title': '刪除',
     'alerts.note_prefix': '備註：',
 
+    // Portfolio summary (v3.4.2)
+    'portfolio.total_value': '總市值',
+    'portfolio.total_cost': '總成本',
+    'portfolio.total_pnl': '總損益',
+    'portfolio.pnl_pct': '損益百分比',
+    'portfolio.holdings_count': '持倉數',
+    'portfolio.change_30d': '30日變化',
+    'portfolio.history_title': '投資組合 30 日歷史',
+    'portfolio.history_empty': '暫無歷史快照 — 每日 20:00 自動拍攝',
+    'portfolio.snapshot_today': '今日快照：{date}',
+    'portfolio.unrealized': '未實現損益',
+    'portfolio.dashboard_no_history': '尚未有投資組合歷史快照',
+    'portfolio.dashboard_value_only': '當前總市值',
+    'portfolio.dashboard_change': '較 30 日前',
+
     // Time
     'time.just_now': '剛剛',
     'time.minutes_ago': '{n} 分鐘前',
@@ -687,6 +702,21 @@ const I18N = {
     'alerts.action_edit_title': 'Edit',
     'alerts.action_delete_title': 'Delete',
     'alerts.note_prefix': 'Notes:',
+
+    // Portfolio summary (v3.4.2)
+    'portfolio.total_value': 'Total Value',
+    'portfolio.total_cost': 'Total Cost',
+    'portfolio.total_pnl': 'Total P&L',
+    'portfolio.pnl_pct': 'P&L %',
+    'portfolio.holdings_count': 'Holdings',
+    'portfolio.change_30d': '30-Day Change',
+    'portfolio.history_title': 'Portfolio 30-Day History',
+    'portfolio.history_empty': 'No history yet — captured nightly at 20:00',
+    'portfolio.snapshot_today': 'Today snapshot: {date}',
+    'portfolio.unrealized': 'Unrealized P&L',
+    'portfolio.dashboard_no_history': 'No portfolio history yet',
+    'portfolio.dashboard_value_only': 'Current total value',
+    'portfolio.dashboard_change': 'vs 30 days ago',
 
     // Time
     'time.just_now': 'Just now',

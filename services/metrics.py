@@ -105,6 +105,23 @@ ALERTS_TRIGGERED = Counter(
     'Total price alerts that have fired (across all check paths)'
 )
 
+# ── Portfolio Snapshots (v3.4.2) ──────────────────────────────────────────
+
+SNAPSHOTS_TOTAL = Gauge(
+    'stocker_portfolio_snapshots_total',
+    'Number of portfolio snapshots stored in the database'
+)
+
+PORTFOLIO_VALUE_LATEST = Gauge(
+    'stocker_portfolio_value_dollars_latest',
+    'Latest portfolio market value in dollars'
+)
+
+PORTFOLIO_PNL_LATEST = Gauge(
+    'stocker_portfolio_pnl_dollars_latest',
+    'Latest portfolio unrealized P&L in dollars'
+)
+
 APP_START_TIME = Gauge(
     'stocker_app_start_time_seconds',
     'Unix timestamp when Stocker started'
@@ -345,6 +362,23 @@ def _update_business_gauges():
     except Exception:
         pass
 
+    # Portfolio snapshots (v3.4.2) — count + latest value/pnl
+    try:
+        from models import get_db
+        db = get_db()
+        row = db.execute('SELECT COUNT(*) as c FROM portfolio_snapshots').fetchone()
+        if row:
+            SNAPSHOTS_TOTAL.set(row['c'])
+        latest = db.execute(
+            "SELECT total_value, total_pnl FROM portfolio_snapshots "
+            "ORDER BY snapshot_date DESC LIMIT 1"
+        ).fetchone()
+        if latest:
+            PORTFOLIO_VALUE_LATEST.set(latest['total_value'] or 0)
+            PORTFOLIO_PNL_LATEST.set(latest['total_pnl'] or 0)
+    except Exception:
+        pass
+
 
 def metrics_endpoint():
     """Return Prometheus metrics as plaintext."""
@@ -540,6 +574,11 @@ def metrics_summary():
             'enabled': int(ALERTS_TOTAL.labels(enabled='true')._value.get()),
             'disabled': int(ALERTS_TOTAL.labels(enabled='false')._value.get()),
             'triggered_total': int(ALERTS_TRIGGERED._value.get()),
+        },
+        'portfolio': {
+            'snapshots_count': int(SNAPSHOTS_TOTAL._value.get()),
+            'latest_value': round(PORTFOLIO_VALUE_LATEST._value.get(), 2),
+            'latest_pnl': round(PORTFOLIO_PNL_LATEST._value.get(), 2),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,

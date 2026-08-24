@@ -818,6 +818,75 @@
   font-size: 0.85rem;
 }
 
+/* ============================================================
+   PORTFOLIO SUMMARY (v3.4.2)
+   Top-of-dashboard widget showing total value + 30-day change.
+   ============================================================ */
+.portfolio-summary-card {
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.08), rgba(79, 195, 247, 0.02));
+  border: 1px solid rgba(79, 195, 247, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.portfolio-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .portfolio-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.portfolio-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.portfolio-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary, #8b96a8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.portfolio-stat-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary, #e8eef5);
+  word-break: break-word;
+}
+
+.portfolio-stat-pnl.portfolio-positive,
+.portfolio-stat-value.portfolio-positive {
+  color: #4caf50;
+}
+
+.portfolio-stat-pnl.portfolio-negative,
+.portfolio-stat-value.portfolio-negative {
+  color: #ef5350;
+}
+
+.portfolio-meta {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #8b96a8);
+}
+
+.portfolio-meta .material-icons-outlined {
+  font-size: 0.95rem;
+}
+
 .event-icon {
   font-size: 1.2rem;
 }

@@ -30,6 +30,7 @@ from services.report_collector import collect_reports, collect_ticker_reports
 from services.ai_analyzer import analyze_report
 from services import multi_source
 from services import metrics
+from services import portfolio_snapshot
 
 # ── App Setup ──────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -333,6 +334,88 @@ def api_export_tickers_csv():
         mimetype='text/csv; charset=utf-8',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
+
+
+# ── API: Portfolio Snapshots (v3.4.2) ──────────────────────────────────
+
+@app.route('/api/portfolio/snapshots', methods=['GET'])
+def api_list_portfolio_snapshots():
+    """Return the last N daily portfolio snapshots (oldest first).
+
+    Query params:
+        days — how many days of history (default 30, max 365)
+    """
+    try:
+        days = min(int(request.args.get('days', 30)), 365)
+    except (TypeError, ValueError):
+        days = 30
+    snapshots = models.list_snapshots(days=days)
+    return jsonify({'snapshots': snapshots, 'count': len(snapshots)})
+
+
+@app.route('/api/portfolio/summary', methods=['GET'])
+def api_portfolio_summary():
+    """Return the latest snapshot + 30-day P&L delta.
+
+    Computes `change_30d` by comparing the latest snapshot's total_value
+    against the snapshot ~30 days older (or the earliest one if fewer exist).
+    Returns None for the delta if there's no history to compare.
+    """
+    latest = models.latest_snapshot()
+    if not latest:
+        return jsonify({
+            'latest': None,
+            'change_30d_value': None,
+            'change_30d_pct': None,
+            'has_history': False,
+        })
+
+    # 30-day-ago snapshot for delta calc — grab everything once for efficiency
+    rows = models.list_snapshots(days=60)
+    change_value = None
+    change_pct = None
+    if len(rows) >= 2:
+        # Find the snapshot closest to 30 days before `latest.snapshot_date`
+        from datetime import datetime as _dt, timedelta as _td
+        try:
+            latest_date = _dt.strptime(latest['snapshot_date'], '%Y-%m-%d').date()
+            target = latest_date - _td(days=30)
+            closest = min(
+                rows,
+                key=lambda r: abs(
+                    (_dt.strptime(r['snapshot_date'], '%Y-%m-%d').date() - target).days
+                ),
+            )
+            closest_value = closest['total_value']
+            if closest_value and closest_value > 0:
+                change_value = round(latest['total_value'] - closest_value, 2)
+                change_pct = round((change_value / closest_value) * 100, 2)
+        except Exception as e:
+            logger.debug("Portfolio summary delta calc: %s", e)
+
+    return jsonify({
+        'latest': latest,
+        'change_30d_value': change_value,
+        'change_30d_pct': change_pct,
+        'has_history': True,
+    })
+
+
+@app.route('/api/portfolio/capture', methods=['POST'])
+def api_capture_portfolio_snapshot():
+    """Manually capture a portfolio snapshot (for testing or ad-hoc runs).
+
+    Body (optional): {"date": "YYYY-MM-DD"} — defaults to today.
+    """
+    payload = request.get_json(silent=True) or {}
+    date_str = payload.get('date')
+    try:
+        row = portfolio_snapshot.capture_snapshot(snapshot_date=date_str)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    if not row:
+        return jsonify({'error': 'capture_failed'}), 500
+    return jsonify({'success': True, 'snapshot': row}), 201
 
 
 # ── API: Sectors ───────────────────────────────────────────────────────

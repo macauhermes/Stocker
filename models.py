@@ -164,6 +164,22 @@ def init_db():
             )
         """)
 
+        # Portfolio snapshots (v3.4.2 — daily end-of-day snapshot of total portfolio value)
+        # Used for P&L history chart. snapshot_date is the day the snapshot represents
+        # (YYYY-MM-DD). UNIQUE constraint guarantees one snapshot per day.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                snapshot_date   TEXT    NOT NULL UNIQUE,
+                total_value     REAL    NOT NULL DEFAULT 0,
+                total_cost      REAL    NOT NULL DEFAULT 0,
+                total_pnl       REAL    NOT NULL DEFAULT 0,
+                pnl_pct         REAL    NOT NULL DEFAULT 0,
+                holdings_count  INTEGER NOT NULL DEFAULT 0,
+                captured_at     TEXT    DEFAULT (datetime('now'))
+            )
+        """)
+
         # Helpful indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_ticker ON daily_prices(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_date   ON daily_prices(date)")
@@ -173,6 +189,7 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_wgt_ticker    ON watchlist_group_tickers(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ticker ON price_alerts(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_enabled ON price_alerts(enabled)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_date ON portfolio_snapshots(snapshot_date DESC)")
 
         # Backward-compatible migration: add archived columns if missing
         for col, ddl in [
@@ -1131,5 +1148,103 @@ def get_enabled_alerts_for_ticker_with_symbol(ticker_id: int):
                WHERE pa.ticker_id = ? AND pa.enabled = 1""",
             (ticker_id,),
         ).fetchall()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Portfolio snapshots (v3.4.2 — daily P&L history)
+# ---------------------------------------------------------------------------
+
+def upsert_snapshot(snapshot_date: str, total_value: float, total_cost: float,
+                    total_pnl: float, pnl_pct: float, holdings_count: int) -> dict:
+    """Insert or replace today's portfolio snapshot.
+
+    snapshot_date is YYYY-MM-DD. UNIQUE constraint guarantees one snapshot per
+    day; if called twice on the same date the second call replaces the first
+    (this is intentional — end-of-night refresh should overwrite an earlier
+    intraday snapshot for the same date).
+
+    Returns the row as a dict so callers can jsonify() without wrapping.
+    """
+    conn = get_db()
+    try:
+        conn.execute(
+            """INSERT INTO portfolio_snapshots
+                  (snapshot_date, total_value, total_cost, total_pnl,
+                   pnl_pct, holdings_count, captured_at)
+               VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+               ON CONFLICT(snapshot_date) DO UPDATE SET
+                  total_value = excluded.total_value,
+                  total_cost = excluded.total_cost,
+                  total_pnl = excluded.total_pnl,
+                  pnl_pct = excluded.pnl_pct,
+                  holdings_count = excluded.holdings_count,
+                  captured_at = excluded.captured_at""",
+            (snapshot_date, total_value, total_cost, total_pnl,
+             pnl_pct, holdings_count),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM portfolio_snapshots WHERE snapshot_date = ?",
+            (snapshot_date,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def list_snapshots(days: int = 30) -> list:
+    """Return the most recent `days` snapshots, oldest first.
+
+    Returns list of dicts (Pitfall 13 — sqlite3.Row would break jsonify()).
+    """
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            """SELECT * FROM portfolio_snapshots
+               ORDER BY snapshot_date DESC LIMIT ?""",
+            (days,),
+        ).fetchall()
+        # Reverse to ascending for chart rendering
+        return [dict(r) for r in reversed(rows)]
+    finally:
+        conn.close()
+
+
+def latest_snapshot() -> dict | None:
+    """Return the most recent snapshot row, or None if no snapshots exist."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT * FROM portfolio_snapshots ORDER BY snapshot_date DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def snapshot_count() -> int:
+    """Total number of captured snapshots (for Prometheus gauge)."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) as c FROM portfolio_snapshots"
+        ).fetchone()
+        return row['c'] if row else 0
+    finally:
+        conn.close()
+
+
+def delete_snapshots_before(date_str: str) -> int:
+    """Delete snapshots older than `date_str` (YYYY-MM-DD). Returns rows deleted."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "DELETE FROM portfolio_snapshots WHERE snapshot_date < ?",
+            (date_str,),
+        )
+        conn.commit()
+        return cur.rowcount
     finally:
         conn.close()

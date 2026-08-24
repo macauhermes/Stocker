@@ -104,6 +104,31 @@ def run_nightly():
         results["tasks"]["alerts"] = {"error": str(e)}
         logger.error("[5/5] 價格提醒檢查失敗: %s", e)
 
+    # ── Task 6: Daily Portfolio Snapshot (v3.4.2) ──────────────
+    logger.info("=" * 50)
+    logger.info("[6/6] 開始拍攝每日投資組合快照...")
+    logger.info("=" * 50)
+    try:
+        from services.portfolio_snapshot import capture_snapshot, prune_old_snapshots
+        snap = capture_snapshot()
+        results["tasks"]["portfolio_snapshot"] = {
+            "snapshot_date": snap.get("snapshot_date") if snap else None,
+            "total_value": snap.get("total_value") if snap else None,
+            "holdings_count": snap.get("holdings_count") if snap else None,
+        }
+        # Prune snapshots older than 1 year — keeps the table small
+        pruned = prune_old_snapshots(retention_days=365)
+        results["tasks"]["portfolio_snapshot"]["pruned"] = pruned
+        logger.info(
+            "[6/6] 投資組合快照完成: value=%s holdings=%s pruned=%d",
+            results["tasks"]["portfolio_snapshot"].get("total_value"),
+            results["tasks"]["portfolio_snapshot"].get("holdings_count"),
+            pruned,
+        )
+    except Exception as e:
+        results["tasks"]["portfolio_snapshot"] = {"error": str(e)}
+        logger.error("[6/6] 投資組合快照失敗: %s", e)
+
     # ── Summary ────────────────────────────────────────────────
     results["finished_at"] = datetime.now().isoformat()
 

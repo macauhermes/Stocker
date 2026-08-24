@@ -9,6 +9,32 @@
     <button class="event-dismiss" onclick="dismissBanner()" data-i18n="index.event_dismiss">已知悉</button>
 </div>
 
+<!-- Portfolio Summary Card (v3.4.2) -->
+<div id="portfolio-summary-card" class="portfolio-summary-card" style="display:none;">
+    <div class="portfolio-summary-row">
+        <div class="portfolio-stat">
+            <div class="portfolio-stat-label" data-i18n="portfolio.total_value">總市值</div>
+            <div class="portfolio-stat-value" id="portfolio-value">—</div>
+        </div>
+        <div class="portfolio-stat">
+            <div class="portfolio-stat-label" data-i18n="portfolio.unrealized">未實現損益</div>
+            <div class="portfolio-stat-value portfolio-stat-pnl" id="portfolio-pnl">—</div>
+        </div>
+        <div class="portfolio-stat">
+            <div class="portfolio-stat-label" data-i18n="portfolio.change_30d">30日變化</div>
+            <div class="portfolio-stat-value" id="portfolio-change">—</div>
+        </div>
+        <div class="portfolio-stat">
+            <div class="portfolio-stat-label" data-i18n="portfolio.holdings_count">持倉數</div>
+            <div class="portfolio-stat-value" id="portfolio-holdings">—</div>
+        </div>
+    </div>
+    <div class="portfolio-meta">
+        <span class="material-icons-outlined">schedule</span>
+        <span id="portfolio-snapshot-date" data-i18n="portfolio.dashboard_no_history">尚未有投資組合歷史快照</span>
+    </div>
+</div>
+
 <!-- Tab Navigation -->
 <div class="tabs">
     <button class="tab-btn active" data-tab="stocks" onclick="switchTab('stocks')">
@@ -179,6 +205,67 @@
         } catch (err) {
             console.error('Failed to load events:', err);
         }
+    }
+
+    // Portfolio summary (v3.4.2) — show top-of-dashboard widget with total value,
+    // unrealized P&L, and 30-day change. Hides cleanly when there's no history.
+    async function loadPortfolioSummary() {
+        const card = document.getElementById('portfolio-summary-card');
+        try {
+            const res = await fetch('/api/portfolio/summary');
+            if (!res.ok) {
+                card.style.display = 'none';
+                return;
+            }
+            const data = await res.json();
+            if (!data.has_history || !data.latest) {
+                card.style.display = 'none';
+                return;
+            }
+            const v = data.latest;
+            const valueEl = document.getElementById('portfolio-value');
+            const pnlEl = document.getElementById('portfolio-pnl');
+            const changeEl = document.getElementById('portfolio-change');
+            const holdingsEl = document.getElementById('portfolio-holdings');
+            const dateEl = document.getElementById('portfolio-snapshot-date');
+
+            valueEl.textContent = formatCurrency(v.total_value);
+            pnlEl.textContent = formatPnl(v.total_pnl, v.pnl_pct);
+            pnlEl.classList.toggle('portfolio-positive', v.total_pnl > 0);
+            pnlEl.classList.toggle('portfolio-negative', v.total_pnl < 0);
+            holdingsEl.textContent = v.holdings_count;
+
+            if (data.change_30d_value !== null && data.change_30d_value !== undefined) {
+                changeEl.textContent = formatPnl(data.change_30d_value, data.change_30d_pct);
+                changeEl.classList.toggle('portfolio-positive', data.change_30d_value > 0);
+                changeEl.classList.toggle('portfolio-negative', data.change_30d_value < 0);
+            } else {
+                changeEl.textContent = '—';
+                changeEl.classList.remove('portfolio-positive', 'portfolio-negative');
+            }
+            dateEl.textContent = t('portfolio.snapshot_today', { date: v.snapshot_date });
+            card.style.display = 'block';
+        } catch (err) {
+            console.error('Failed to load portfolio summary:', err);
+            card.style.display = 'none';
+        }
+    }
+
+    function formatCurrency(n) {
+        if (n == null || isNaN(n)) return '—';
+        return '$' + Number(n).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    }
+
+    function formatPnl(amount, pct) {
+        if (amount == null || isNaN(amount)) return '—';
+        const sign = amount >= 0 ? '+' : '';
+        const pctText = (pct != null && !isNaN(pct))
+            ? ` (${sign}${Number(pct).toFixed(2)}%)`
+            : '';
+        return `${sign}${formatCurrency(amount)}${pctText}`;
     }
 
     // Load stock tickers
@@ -671,6 +758,7 @@
 
     // Init
     loadEvents();
+    loadPortfolioSummary();
     loadStocks();
     loadReports();
     loadSectors();
