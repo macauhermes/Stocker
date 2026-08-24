@@ -285,6 +285,18 @@ const I18N = {
     'watchlists.all_added': '所有股票都已經加入咗',
     'watchlists.symbol_required': '請輸入股票代碼',
 
+    // Price Alerts (v3.4)
+    'alerts.title': '價格提醒',
+    'alerts.add': '新增提醒',
+    'alerts.desc': '設定價格閾值，當股票價格到達指定範圍時自動產生提醒事件。',
+    'alerts.threshold_high': '升至 ≥',
+    'alerts.threshold_low': '跌至 ≤',
+    'alerts.target_price': '目標價 (USD)',
+    'alerts.rearm': '重新武裝',
+    'alerts.enabled': '啟用',
+    'alerts.disabled': '已停用',
+    'alerts.triggered_at': '已觸發：{time}',
+
     // Time
     'time.just_now': '剛剛',
     'time.minutes_ago': '{n} 分鐘前',
@@ -577,6 +589,18 @@ const I18N = {
     'watchlists.delete_confirm': 'Delete "{name}"? Stocks will not be removed.',
     'watchlists.all_added': 'All stocks already added',
     'watchlists.symbol_required': 'Please enter a stock symbol',
+
+    // Price Alerts (v3.4)
+    'alerts.title': 'Price Alerts',
+    'alerts.add': 'New Alert',
+    'alerts.desc': 'Set price thresholds — events fire automatically when prices cross them.',
+    'alerts.threshold_high': 'Rises to ≥',
+    'alerts.threshold_low': 'Falls to ≤',
+    'alerts.target_price': 'Target Price (USD)',
+    'alerts.rearm': 'Rearm',
+    'alerts.enabled': 'Enabled',
+    'alerts.disabled': 'Disabled',
+    'alerts.triggered_at': 'Triggered: {time}',
 
     // Time
     'time.just_now': 'Just now',

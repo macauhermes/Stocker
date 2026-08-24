@@ -48,7 +48,8 @@
 - [ ] 將 in-memory `_cache` 改 Redis (可選)
 - [x] 加 Prometheus metrics endpoint (commit cdf61bd)
 - [x] 增強 Prometheus 業務指標 + /health + /api/metrics/summary (commit ded10a5)
-- [x] CSV export 投資組合 (active tickers + holdings + P&L) (commit pending)
+- [x] CSV export 投資組合 (active tickers + holdings + P&L) (commit 21b5bd1)
+- [x] Price Alerts v3.4 (用戶自訂價格閾值，事件自動觸發) (commit pending — 接力 commit)
 - [ ] 加 user accounts (multi-user)
 
 ## 流程

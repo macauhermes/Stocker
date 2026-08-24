@@ -149,6 +149,21 @@ def init_db():
             )
         """)
 
+        # Price alerts (v3.4 — user-defined thresholds; triggers event when price crosses)
+        # threshold_type: 'high' (price >= threshold) or 'low' (price <= threshold)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS price_alerts (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker_id         INTEGER NOT NULL REFERENCES tickers(id) ON DELETE CASCADE,
+                threshold_type    TEXT    NOT NULL CHECK(threshold_type IN ('high','low')),
+                threshold_price   REAL    NOT NULL,
+                enabled           INTEGER DEFAULT 1,
+                note              TEXT,
+                last_triggered_at TEXT,
+                created_at        TEXT    DEFAULT (datetime('now'))
+            )
+        """)
+
         # Helpful indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_ticker ON daily_prices(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_date   ON daily_prices(date)")
@@ -156,6 +171,8 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_files_report  ON files(report_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_wgt_group     ON watchlist_group_tickers(group_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_wgt_ticker    ON watchlist_group_tickers(ticker_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ticker ON price_alerts(ticker_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_enabled ON price_alerts(enabled)")
 
         # Backward-compatible migration: add archived columns if missing
         for col, ddl in [
@@ -950,5 +967,169 @@ def get_groups_for_ticker(ticker_id: int):
             WHERE wgt.ticker_id = ?
             ORDER BY wg.sort_order, wg.name
         """, (ticker_id,)).fetchall()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Price Alerts (v3.4)
+# ---------------------------------------------------------------------------
+# A price alert fires an event (event_type='price_alert') the first time a
+# ticker's price crosses its threshold.  threshold_type='high' fires when
+# price >= threshold; 'low' fires when price <= threshold.  Each alert
+# triggers at most once per "crossing" — the user must re-enable (or delete)
+# it to re-arm.  last_triggered_at records when it last fired.
+
+def get_alerts(ticker_id: int = None, enabled_only: bool = False):
+    """List alerts. Optionally filter by ticker_id and/or enabled status.
+
+    Joins tickers to include the symbol for client convenience.
+    """
+    conn = get_db()
+    try:
+        sql = """
+            SELECT pa.*, t.symbol, t.name AS ticker_name
+            FROM price_alerts pa
+            JOIN tickers t ON t.id = pa.ticker_id
+            WHERE 1=1
+        """
+        params = []
+        if ticker_id is not None:
+            sql += " AND pa.ticker_id = ?"
+            params.append(ticker_id)
+        if enabled_only:
+            sql += " AND pa.enabled = 1"
+        sql += " ORDER BY t.symbol, pa.threshold_type, pa.threshold_price"
+        return conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+
+def get_alert(alert_id: int):
+    """Return a single alert row by id, or None if not found."""
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT pa.*, t.symbol, t.name AS ticker_name
+            FROM price_alerts pa
+            JOIN tickers t ON t.id = pa.ticker_id
+            WHERE pa.id = ?
+        """, (alert_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def add_alert(ticker_id: int, threshold_type: str, threshold_price: float,
+              note: str = None) -> dict:
+    """Create a new price alert.
+
+    Returns the inserted row (as a dict so the caller can jsonify without
+    touching sqlite3.Row).  Raises ValueError on bad threshold_type.
+    """
+    if threshold_type not in ("high", "low"):
+        raise ValueError(f"threshold_type must be 'high' or 'low', got {threshold_type!r}")
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            """INSERT INTO price_alerts
+               (ticker_id, threshold_type, threshold_price, note)
+               VALUES (?, ?, ?, ?)""",
+            (ticker_id, threshold_type, threshold_price, note),
+        )
+        conn.commit()
+        row = conn.execute("""
+            SELECT pa.*, t.symbol, t.name AS ticker_name
+            FROM price_alerts pa
+            JOIN tickers t ON t.id = pa.ticker_id
+            WHERE pa.id = ?
+        """, (cur.lastrowid,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def update_alert(alert_id: int, **fields):
+    """Update mutable fields of an alert.  Allowed: enabled, threshold_price,
+    threshold_type, note.  Returns the updated row as a dict, or None if not found.
+    """
+    allowed = {"enabled", "threshold_price", "threshold_type", "note"}
+    sets, params = [], []
+    for k, v in fields.items():
+        if k in allowed:
+            sets.append(f"{k} = ?")
+            params.append(v)
+    if not sets:
+        row = get_alert(alert_id)
+        return dict(row) if row else None
+    if "threshold_type" in fields and fields["threshold_type"] not in ("high", "low"):
+        raise ValueError(f"threshold_type must be 'high' or 'low'")
+    params.append(alert_id)
+    conn = get_db()
+    try:
+        conn.execute(
+            f"UPDATE price_alerts SET {', '.join(sets)} WHERE id = ?", params
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    row = get_alert(alert_id)
+    return dict(row) if row else None
+
+
+def delete_alert(alert_id: int) -> bool:
+    """Hard-delete an alert. Returns True if a row was removed."""
+    conn = get_db()
+    try:
+        cur = conn.execute("DELETE FROM price_alerts WHERE id = ?", (alert_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def mark_alert_triggered(alert_id: int):
+    """Stamp last_triggered_at + auto-disable so it doesn't re-fire on every
+    subsequent refresh.  Caller is expected to have already inserted the
+    matching event row.
+    """
+    conn = get_db()
+    try:
+        conn.execute(
+            """UPDATE price_alerts
+               SET last_triggered_at = datetime('now'), enabled = 0
+               WHERE id = ?""",
+            (alert_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_enabled_alerts_for_ticker(ticker_id: int):
+    """Return all enabled alerts for one ticker. Used by the price check loop."""
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM price_alerts WHERE ticker_id = ? AND enabled = 1",
+            (ticker_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_enabled_alerts_for_ticker_with_symbol(ticker_id: int):
+    """Like get_enabled_alerts_for_ticker but joins tickers so the symbol is
+    available — used by alert_checker when firing events so the title can
+    name the ticker.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            """SELECT pa.*, t.symbol, t.name AS ticker_name
+               FROM price_alerts pa
+               JOIN tickers t ON t.id = pa.ticker_id
+               WHERE pa.ticker_id = ? AND pa.enabled = 1""",
+            (ticker_id,),
+        ).fetchall()
     finally:
         conn.close()

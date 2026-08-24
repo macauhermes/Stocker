@@ -515,7 +515,14 @@ def api_refresh_stock(symbol):
         refresh_ticker_data(symbol)
         # User-initiated refresh must show fresh data, not cached snapshot
         cache_invalidate('tickers_with_prices', f'stock_info_{symbol}')
-        return jsonify({'success': True})
+        # v3.4 — evaluate any price alerts against the new price
+        try:
+            from services.alert_checker import check_alerts_for_ticker
+            triggered = check_alerts_for_ticker(symbol)
+        except Exception as ae:
+            logger.warning(f"alert check failed for {symbol}: {ae}")
+            triggered = []
+        return jsonify({'success': True, 'alerts_triggered': triggered})
     except Exception as e:
         logger.error(f"Error refreshing {symbol}: {e}")
         return jsonify({'error': str(e)}), 500
@@ -1143,6 +1150,119 @@ def api_remove_ticker_from_group(group_id, symbol):
 def watchlists_page():
     """Watchlist groups management page."""
     return render_template('watchlists.html')
+
+
+# ── API: Price Alerts (v3.4) ───────────────────────────────────────────
+
+@app.route('/api/alerts', methods=['GET'])
+def api_list_alerts():
+    """List all alerts (or just enabled if ?enabled=1)."""
+    enabled_only = request.args.get('enabled', '0') == '1'
+    sym_filter = request.args.get('symbol', '').strip().upper()
+    if sym_filter:
+        ticker = models.get_ticker(sym_filter)
+        if not ticker:
+            return jsonify([])
+        rows = models.get_alerts(ticker_id=ticker['id'], enabled_only=enabled_only)
+    else:
+        rows = models.get_alerts(enabled_only=enabled_only)
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/alerts', methods=['POST'])
+def api_create_alert():
+    """Create a new price alert.
+
+    Body: {symbol, threshold_type ('high'|'low'), threshold_price, note?}
+    """
+    data = request.get_json(silent=True) or {}
+    symbol = (data.get('symbol') or '').strip().upper()
+    threshold_type = (data.get('threshold_type') or '').strip().lower()
+    threshold_price = data.get('threshold_price')
+    note = data.get('note')
+
+    if not symbol:
+        return jsonify({'error': 'symbol required'}), 400
+    if threshold_type not in ('high', 'low'):
+        return jsonify({'error': "threshold_type must be 'high' or 'low'"}), 400
+    try:
+        threshold_price = float(threshold_price)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'threshold_price must be a number'}), 400
+    if threshold_price <= 0:
+        return jsonify({'error': 'threshold_price must be > 0'}), 400
+
+    ticker = models.get_ticker(symbol)
+    if not ticker:
+        return jsonify({'error': f'symbol {symbol} not in tickers'}), 404
+    if ticker['archived']:
+        return jsonify({'error': f'symbol {symbol} is archived'}), 400
+
+    try:
+        row = models.add_alert(
+            ticker_id=ticker['id'],
+            threshold_type=threshold_type,
+            threshold_price=threshold_price,
+            note=note,
+        )
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
+    return jsonify(row), 201
+
+
+@app.route('/api/alerts/<int:alert_id>', methods=['PUT'])
+def api_update_alert(alert_id):
+    """Update alert fields (enabled, threshold_price, threshold_type, note)."""
+    data = request.get_json(silent=True) or {}
+    try:
+        row = models.update_alert(alert_id, **data)
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
+    if not row:
+        return jsonify({'error': 'alert not found'}), 404
+    return jsonify(row)
+
+
+@app.route('/api/alerts/<int:alert_id>', methods=['DELETE'])
+def api_delete_alert(alert_id):
+    """Hard-delete an alert."""
+    deleted = models.delete_alert(alert_id)
+    if not deleted:
+        return jsonify({'error': 'alert not found'}), 404
+    return jsonify({'success': True})
+
+
+@app.route('/api/alerts/<int:alert_id>/rearm', methods=['POST'])
+def api_rearm_alert(alert_id):
+    """Re-enable a triggered alert so it can fire again."""
+    row = models.update_alert(alert_id, enabled=1)
+    if not row:
+        return jsonify({'error': 'alert not found'}), 404
+    return jsonify(row)
+
+
+@app.route('/api/alerts/check', methods=['POST'])
+def api_check_alerts():
+    """Manual sweep: re-check every enabled alert across all tickers.
+
+    Body (optional): {symbol: 'TSLA'} to limit to one ticker.
+    Returns: list of triggered alerts.
+    """
+    from services.alert_checker import check_alerts_for_ticker, check_alerts_all
+    data = request.get_json(silent=True) or {}
+    symbol = (data.get('symbol') or '').strip().upper()
+    try:
+        triggered = check_alerts_for_ticker(symbol) if symbol else check_alerts_all()
+    except Exception as e:
+        logger.error(f"manual alert check failed: {e}")
+        return jsonify({'error': str(e)}), 500
+    return jsonify({'triggered': triggered, 'count': len(triggered)})
+
+
+@app.route('/alerts')
+def alerts_page():
+    """Price alerts management page."""
+    return render_template('alerts.html')
 
 
 # ── API: SSE stream of live prices (for future SSE client) ────────────

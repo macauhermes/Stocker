@@ -83,6 +83,19 @@ def run_nightly():
         results["tasks"]["refresher"] = {"error": str(e)}
         logger.error("[4/4] 歷史價格刷新失敗: %s", e)
 
+    # ── Task 5: Price Alert Sweep (v3.4) ─────────────────────────
+    logger.info("=" * 50)
+    logger.info("[5/5] 開始檢查價格提醒...")
+    logger.info("=" * 50)
+    try:
+        from services.alert_checker import check_alerts_all
+        triggered = check_alerts_all()
+        results["tasks"]["alerts"] = {"triggered": len(triggered)}
+        logger.info("[5/5] 價格提醒檢查完成: %d 個觸發", len(triggered))
+    except Exception as e:
+        results["tasks"]["alerts"] = {"error": str(e)}
+        logger.error("[5/5] 價格提醒檢查失敗: %s", e)
+
     # ── Summary ────────────────────────────────────────────────
     results["finished_at"] = datetime.now().isoformat()
 

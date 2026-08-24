@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block title %}Stocker — {{ 'alerts.title' | default('價格提醒') }}{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="container">
+        <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h1 style="font-size:1.3rem; margin:0;">
+                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">notifications_active</span>
+                <span>價格提醒</span>
+            </h1>
+            <div style="display:flex; gap:8px;">
+                <button class="btn" onclick="checkAllAlerts()" title="立即檢查所有啟用中的提醒">
+                    <span class="material-icons-outlined">refresh</span>
+                    <span>立即檢查</span>
+                </button>
+                <button class="btn btn-primary" onclick="openAlertModal()">
+                    <span class="material-icons-outlined">add</span>
+                    <span>新增提醒</span>
+                </button>
+            </div>
+        </div>
+
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">
+            設定價格閾值，當股票價格到達指定範圍時自動產生提醒事件。每個提醒只會觸發一次，需重新啟用（rearm）才會再次觸發。
+        </p>
+
+        <!-- Filter: show enabled/disabled -->
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <button class="filter-chip active" id="filter-all" onclick="setFilter('all')">全部</button>
+            <button class="filter-chip" id="filter-enabled" onclick="setFilter('enabled')">啟用中</button>
+            <button class="filter-chip" id="filter-disabled" onclick="setFilter('disabled')">已停用</button>
+        </div>
+
+        <div id="alerts-list"></div>
+    </div>
+</main>
+
+<!-- Create/Edit Alert Modal -->
+<div id="alert-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="alert-modal-title">新增提醒</h2>
+            <button class="modal-close" onclick="closeAlertModal()">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="input-group">
+                <label class="input-label">股票代碼 *</label>
+                <input type="text" id="alert-symbol" class="input" placeholder="TSLA" style="text-transform:uppercase;" autocomplete="off">
+                <div id="symbol-suggestions" class="suggestions-list"></div>
+            </div>
+            <div class="input-group">
+                <label class="input-label">觸發類型 *</label>
+                <div style="display:flex; gap:8px;">
+                    <button class="threshold-btn active" data-type="high" onclick="pickThreshold(this)">
+                        <span class="material-icons-outlined">trending_up</span>
+                        <span>升至 ≥ 目標價</span>
+                    </button>
+                    <button class="threshold-btn" data-type="low" onclick="pickThreshold(this)">
+                        <span class="material-icons-outlined">trending_down</span>
+                        <span>跌至 ≤ 目標價</span>
+                    </button>
+                </div>
+                <input type="hidden" id="alert-threshold-type" value="high">
+            </div>
+            <div class="input-group">
+                <label class="input-label">目標價 (USD) *</label>
+                <input type="number" id="alert-threshold-price" class="input" placeholder="例：300.00" step="0.01" min="0.01">
+            </div>
+            <div class="input-group">
+                <label class="input-label">備註</label>
+                <input type="text" id="alert-note" class="input" placeholder="（選填）例：突破阻力位">
+            </div>
+            <input type="hidden" id="alert-id" value="">
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeAlertModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveAlert()">儲存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm dialog -->
+<div id="confirm-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:340px;">
+        <div class="modal-header">
+            <h2 id="confirm-title">確認</h2>
+        </div>
+        <div class="modal-body">
+            <p id="confirm-message"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeConfirm()">取消</button>
+            <button class="btn btn-danger" id="confirm-ok">確認</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = '/api/alerts';
+let currentFilter = 'all';
+let editingId = null;
+
+// --- Fetch + render ----------------------------------------------------
+async function loadAlerts() {
+    const params = new URLSearchParams();
+    if (currentFilter === 'enabled') params.set('enabled', '1');
+    const url = API + (params.toString() ? '?' + params : '');
+    try {
+        const resp = await fetch(url);
+        const alerts = await resp.json();
+        renderAlerts(alerts);
+    } catch (e) {
+        document.getElementById('alerts-list').innerHTML =
+            '<p style="color:var(--danger);">載入失敗：' + e + '</p>';
+    }
+}
+
+function renderAlerts(alerts) {
+    const container = document.getElementById('alerts-list');
+    if (!alerts.length) {
+        container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:32px;">冇提醒。點擊「新增提醒」開始設定。</p>';
+        return;
+    }
+    let html = '<div class="alert-list">';
+    for (const a of alerts) {
+        if (currentFilter === 'enabled' && !a.enabled) continue;
+        if (currentFilter === 'disabled' && a.enabled) continue;
+        const typeLabel = a.threshold_type === 'high' ? '升至 ≥' : '跌至 ≤';
+        const typeIcon = a.threshold_type === 'high' ? 'trending_up' : 'trending_down';
+        const typeColor = a.threshold_type === 'high' ? 'var(--success)' : 'var(--danger)';
+        const enabledBadge = a.enabled
+            ? '<span class="badge badge-success">啟用</span>'
+            : '<span class="badge badge-muted">已停用</span>';
+        const triggeredAt = a.last_triggered_at
+            ? '<small style="color:var(--text-muted);">已觸發：' + formatDate(a.last_triggered_at) + '</small>'
+            : '';
+        html += `
+            <div class="alert-card" data-id="${a.id}" style="border-left: 4px solid ${typeColor};">
+                <div class="alert-card-header">
+                    <div>
+                        <strong style="font-size:1.05rem;">${a.symbol}</strong>
+                        <span style="color:var(--text-muted); font-size:0.85rem; margin-left:8px;">${a.ticker_name || ''}</span>
+                    </div>
+                    ${enabledBadge}
+                </div>
+                <div class="alert-card-body">
+                    <div style="display:flex; align-items:center; gap:8px; margin:6px 0;">
+                        <span class="material-icons-outlined" style="color:${typeColor};">${typeIcon}</span>
+                        <span>${typeLabel} <strong style="color:${typeColor};">$${Number(a.threshold_price).toFixed(2)}</strong></span>
+                    </div>
+                    ${a.note ? '<div style="color:var(--text-muted); font-size:0.85rem;">備註：' + escapeHtml(a.note) + '</div>' : ''}
+                    ${triggeredAt}
+                </div>
+                <div class="alert-card-actions">
+                    <button class="btn-icon" onclick="toggleAlert(${a.id}, ${a.enabled ? 0 : 1})" title="${a.enabled ? '停用' : '啟用'}">
+                        <span class="material-icons-outlined">${a.enabled ? 'pause' : 'play_arrow'}</span>
+                    </button>
+                    ${!a.enabled ? `<button class="btn-icon" onclick="rearmAlert(${a.id})" title="重新武裝 (rearm)">
+                        <span class="material-icons-outlined">restart_alt</span>
+                    </button>` : ''}
+                    <button class="btn-icon" onclick="editAlert(${a.id})" title="編輯">
+                        <span class="material-icons-outlined">edit</span>
+                    </button>
+                    <button class="btn-icon btn-danger-icon" onclick="confirmDelete(${a.id}, '${a.symbol}')" title="刪除">
+                        <span class="material-icons-outlined">delete</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// --- Filter chips ------------------------------------------------------
+function setFilter(f) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+    document.getElementById('filter-' + f).classList.add('active');
+    loadAlerts();
+}
+
+// --- Threshold type toggle --------------------------------------------
+function pickThreshold(btn) {
+    document.querySelectorAll('.threshold-btn').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('alert-threshold-type').value = btn.dataset.type;
+}
+
+// --- Modal -------------------------------------------------------------
+function openAlertModal(alert = null) {
+    editingId = alert ? alert.id : null;
+    document.getElementById('alert-modal-title').textContent = alert ? '編輯提醒' : '新增提醒';
+    document.getElementById('alert-symbol').value = alert ? alert.symbol : '';
+    document.getElementById('alert-threshold-price').value = alert ? alert.threshold_price : '';
+    document.getElementById('alert-note').value = alert ? (alert.note || '') : '';
+    document.getElementById('alert-id').value = alert ? alert.id : '';
+    // Set threshold type
+    const tt = alert ? alert.threshold_type : 'high';
+    document.querySelectorAll('.threshold-btn').forEach(el => {
+        el.classList.toggle('active', el.dataset.type === tt);
+    });
+    document.getElementById('alert-threshold-type').value = tt;
+    document.getElementById('alert-modal').style.display = 'flex';
+}
+function closeAlertModal() {
+    document.getElementById('alert-modal').style.display = 'none';
+    editingId = null;
+}
+
+// --- CRUD --------------------------------------------------------------
+async function saveAlert() {
+    const symbol = document.getElementById('alert-symbol').value.trim().toUpperCase();
+    const thresholdType = document.getElementById('alert-threshold-type').value;
+    const thresholdPrice = parseFloat(document.getElementById('alert-threshold-price').value);
+    const note = document.getElementById('alert-note').value.trim();
+    const id = editingId;
+
+    if (!symbol) return alert('請輸入股票代碼');
+    if (!thresholdPrice || thresholdPrice <= 0) return alert('請輸入有效的目標價');
+
+    const body = { symbol, threshold_type: thresholdType, threshold_price: thresholdPrice, note };
+    try {
+        const resp = await fetch(id ? `${API}/${id}` : API, {
+            method: id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json();
+            return alert('儲存失敗：' + (err.error || resp.status));
+        }
+        closeAlertModal();
+        loadAlerts();
+    } catch (e) {
+        alert('儲存失敗：' + e);
+    }
+}
+
+async function editAlert(id) {
+    try {
+        const resp = await fetch(`${API}?symbol=&enabled=0`);
+        const all = await resp.json();
+        const a = all.find(x => x.id === id);
+        if (a) openAlertModal(a);
+    } catch (e) { alert('載入失敗：' + e); }
+}
+
+async function toggleAlert(id, enabled) {
+    try {
+        await fetch(`${API}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled }),
+        });
+        loadAlerts();
+    } catch (e) { alert('更新失敗：' + e); }
+}
+
+async function rearmAlert(id) {
+    try {
+        await fetch(`${API}/${id}/rearm`, { method: 'POST' });
+        loadAlerts();
+    } catch (e) { alert('重新武裝失敗：' + e); }
+}
+
+function confirmDelete(id, symbol) {
+    document.getElementById('confirm-message').textContent = `確定要刪除 ${symbol} 嘅提醒？此操作無法復原。`;
+    document.getElementById('confirm-ok').onclick = async () => {
+        try {
+            await fetch(`${API}/${id}`, { method: 'DELETE' });
+            closeConfirm();
+            loadAlerts();
+        } catch (e) { alert('刪除失敗：' + e); }
+    };
+    document.getElementById('confirm-overlay').style.display = 'flex';
+}
+function closeConfirm() { document.getElementById('confirm-overlay').style.display = 'none'; }
+
+// --- Manual check ------------------------------------------------------
+async function checkAllAlerts() {
+    try {
+        const resp = await fetch(`${API}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await resp.json();
+        if (data.count > 0) {
+            alert(`已觸發 ${data.count} 個提醒！\n${data.triggered.map(t => `${t.symbol} ${t.threshold_type} $${t.threshold_price.toFixed(2)} (now $${t.current_price.toFixed(2)})`).join('\n')}`);
+        } else {
+            alert('沒有提醒被觸發。');
+        }
+        loadAlerts();
+    } catch (e) { alert('檢查失敗：' + e); }
+}
+
+// --- Helpers -----------------------------------------------------------
+function alert(msg) { window.alert(msg); }
+function formatDate(s) {
+    if (!s) return '';
+    return s.replace('T', ' ').substring(0, 16);
+}
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Initial load
+loadAlerts();
+</script>
+
+<style>
+.alert-list { display:flex; flex-direction:column; gap:12px; }
+.alert-card {
+    background: var(--card-bg, #1e1e1e);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.alert-card-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+}
+.alert-card-body { font-size:0.92rem; }
+.alert-card-actions {
+    display:flex;
+    gap:6px;
+    margin-top:8px;
+    justify-content:flex-end;
+}
+.btn-icon {
+    background:transparent;
+    border:none;
+    cursor:pointer;
+    padding:6px;
+    color:var(--text-muted);
+    border-radius:4px;
+    min-width:36px;
+    min-height:36px;
+}
+.btn-icon:hover { background:rgba(255,255,255,0.06); color:var(--text); }
+.btn-danger-icon:hover { color:var(--danger); }
+.filter-chip {
+    padding: 6px 12px;
+    border: 1px solid var(--border, #333);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.filter-chip.active {
+    background: var(--primary, #4fc3f7);
+    color: #000;
+    border-color: var(--primary, #4fc3f7);
+}
+.threshold-btn {
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:10px;
+    border:1px solid var(--border, #333);
+    border-radius:6px;
+    background:transparent;
+    color:var(--text-muted);
+    cursor:pointer;
+}
+.threshold-btn.active {
+    background:rgba(79,195,247,0.1);
+    border-color:var(--primary, #4fc3f7);
+    color:var(--primary, #4fc3f7);
+}
+.badge { padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:600; }
+.badge-success { background:rgba(76,175,80,0.2); color:#81c784; }
+.badge-muted { background:rgba(158,158,158,0.2); color:#9e9e9e; }
+.suggestions-list { margin-top:4px; }
+</style>
+{% endblock %}
