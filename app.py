@@ -418,6 +418,99 @@ def api_capture_portfolio_snapshot():
     return jsonify({'success': True, 'snapshot': row}), 201
 
 
+# ── API: Portfolio Per-Ticker Breakdown (v3.4.6) ──────────────────────
+
+@app.route('/api/portfolio/breakdown', methods=['GET'])
+def api_portfolio_breakdown():
+    """Return live per-ticker breakdown of the user's portfolio.
+
+    Unlike /api/portfolio/snapshots (which reads historical rows), this
+    endpoint recomputes from current prices on every call — useful for
+    showing "right now" holdings with unrealized P&L per position.
+
+    Response shape:
+      {
+        "total_value": 15409.38,
+        "total_cost": 10300.00,
+        "total_pnl": 5109.38,
+        "pnl_pct": 49.61,
+        "holdings_count": 3,
+        "holdings": [
+          {
+            "symbol": "TSLA",
+            "shares": 10.0,
+            "cost_basis": 200.0,
+            "current_price": 350.0,
+            "market_value": 3500.0,
+            "cost_value": 2000.0,
+            "unrealized_pl": 1500.0,
+            "unrealized_pl_pct": 75.0,
+            "share_of_portfolio": 22.71
+          },
+          ...
+        ],
+        "timestamp": "2026-08-25T..."
+      }
+
+    Holdings are sorted descending by market_value. Tickers with no
+    current price or zero shares are skipped (matches snapshot policy).
+    """
+    try:
+        total_value, total_cost, holdings_count, breakdown = (
+            portfolio_snapshot.compute_totals()
+        )
+    except Exception as e:
+        logger.error("Portfolio breakdown compute failed: %s", e)
+        from services.metrics import record_portfolio_breakdown
+        try:
+            record_portfolio_breakdown('error')
+        except Exception:
+            pass  # metrics are best-effort; never break the response
+        return jsonify({'error': 'breakdown_compute_failed'}), 500
+
+    # Augment with derived fields (P&L %, share of portfolio) and sort
+    enriched = []
+    for h in breakdown:
+        market_value = h['market_value']
+        cost_value = h['cost_value']
+        unrealized_pl = h['unrealized_pl']
+        # Avoid div-by-zero — both as numeric guards and as None signals
+        unrealized_pl_pct = (
+            round((unrealized_pl / cost_value) * 100, 2) if cost_value > 0 else 0.0
+        )
+        share_of_portfolio = (
+            round((market_value / total_value) * 100, 2) if total_value > 0 else 0.0
+        )
+        enriched.append({
+            **h,
+            'unrealized_pl_pct': unrealized_pl_pct,
+            'share_of_portfolio': share_of_portfolio,
+        })
+
+    # Sort by market value desc (biggest holdings first)
+    enriched.sort(key=lambda x: x['market_value'], reverse=True)
+
+    total_pnl = round(total_value - total_cost, 2)
+    pnl_pct = round((total_pnl / total_cost) * 100, 2) if total_cost > 0 else 0.0
+
+    from services.metrics import record_portfolio_breakdown
+    status = 'ok' if holdings_count > 0 else 'empty'
+    try:
+        record_portfolio_breakdown(status)
+    except Exception:
+        pass  # metrics are best-effort; never break the response
+
+    return jsonify({
+        'total_value': total_value,
+        'total_cost': total_cost,
+        'total_pnl': total_pnl,
+        'pnl_pct': pnl_pct,
+        'holdings_count': holdings_count,
+        'holdings': enriched,
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+    }), 200
+
+
 # ── API: Portfolio Snapshot CSV Export (v3.4.5) ────────────────────────
 
 @app.route('/api/portfolio/snapshots/export.csv', methods=['GET'])

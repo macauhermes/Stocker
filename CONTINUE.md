@@ -52,6 +52,15 @@
 - ✅ 13 個 unit tests (tests/test_portfolio_csv.py) — all passing (208/208 total)
 - ✅ Fix double-charset bug: Flask auto-appends `; charset=utf-8` to text/* mimetypes, 所以唔可以自己加
 
+**v3.4.6 (2026-08-25)**:
+- ✅ `/api/portfolio/breakdown` — 即時由 current prices 計算每個持倉嘅 (market_value, cost_value, unrealized_pl, unrealized_pl_pct, share_of_portfolio)，按市值降序
+- ✅ Reuses `services.portfolio_snapshot.compute_totals()` (no new service code, only HTTP wrapper + enrichment)
+- ✅ Skips tickers with shares=0 or no price (matches snapshot policy)
+- ✅ Prometheus counter `stocker_portfolio_breakdown_requests_total{status=ok|empty|error}` + `record_portfolio_breakdown()` helper
+- ✅ `/api/metrics/summary` 加入 `portfolio_breakdowns: {total, ok, empty, error}` block
+- ✅ Smoke test: 3 個持倉 (TSLA 30股/MSFT 8股/NVDA 5股) 返 share_of_portfolio 67.94% / 25.3% / 6.76% — sum 100%
+- ✅ 10 個 unit tests (tests/test_portfolio_breakdown.py) — all passing (218/218 total)
+
 **v3.4.2 (2026-08-25)**:
 - ✅ Daily portfolio snapshots — services/portfolio_snapshot.py walks active tickers,
   multiplies (price × shares), persists to portfolio_snapshots table keyed by date

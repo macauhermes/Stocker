@@ -177,6 +177,13 @@ PORTFOLIO_EXPORT = Counter(
     ['format']  # 'csv' / 'tsv'
 )
 
+# Portfolio per-ticker breakdown (v3.4.6) — track live breakdown endpoint usage
+PORTFOLIO_BREAKDOWN = Counter(
+    'stocker_portfolio_breakdown_requests_total',
+    'Live portfolio per-ticker breakdown requests via /api/portfolio/breakdown',
+    ['status']  # 'ok' / 'empty' / 'error'
+)
+
 
 # ── Middleware ──────────────────────────────────────────────────────────
 
@@ -290,6 +297,17 @@ def record_portfolio_export(fmt: str):
     like JSON or XLSX.
     """
     PORTFOLIO_EXPORT.labels(format=fmt).inc()
+
+
+def record_portfolio_breakdown(status: str):
+    """Record a per-ticker portfolio breakdown request.
+
+    `status` is 'ok' (had at least one holding), 'empty' (no holdings
+    worth breaking down — shares=0 or no prices), or 'error' (exception).
+    Label lets dashboards spot empty-portfolio users separately from
+    genuine errors.
+    """
+    PORTFOLIO_BREAKDOWN.labels(status=status).inc()
 
 
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
@@ -627,6 +645,15 @@ def metrics_summary():
             'total': sum(c._value.get() for c in PORTFOLIO_EXPORT._metrics.values()),
             'csv': int(PORTFOLIO_EXPORT.labels(format='csv')._value.get()),
             'tsv': int(PORTFOLIO_EXPORT.labels(format='tsv')._value.get()),
+        },
+        # portfolio_breakdowns: sum across status label values for total;
+        # split by status (ok / empty / error) so dashboards can spot
+        # users who have no holdings vs genuine errors.
+        'portfolio_breakdowns': {
+            'total': sum(c._value.get() for c in PORTFOLIO_BREAKDOWN._metrics.values()),
+            'ok': int(PORTFOLIO_BREAKDOWN.labels(status='ok')._value.get()),
+            'empty': int(PORTFOLIO_BREAKDOWN.labels(status='empty')._value.get()),
+            'error': int(PORTFOLIO_BREAKDOWN.labels(status='error')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,
