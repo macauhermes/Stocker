@@ -15,7 +15,16 @@
 4. ✅ 股票搜索 + 預覽 (200ms debounce autocomplete)
 5. ✅ 手機 UI (320px + 44px + FAB + bottom-nav 5 tab)
 6. ✅ 自訂 JSONPath 數據源管理頁 /sources
-7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
+| 7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
+
+**v3.4.17 (2026-08-26) — 報告類型 Tab 補完 + i18n + 類別覆蓋修復**:
+- ✅ **Bug fix**: `filterByType('analyst')` 之前只 query `category='analyst_report'`，完全漏咗 `investment_bank_report` (16 份) 同 `sec_filing` (7 份 SpaceX 招股書) — 呢 23 份報告喺 Dashboard 報告 tab 從未出現過 (用戶要逐個 scroll 全部 report 列表先見到)
+- ✅ 新增 2 個 type tab：「券商分析」(`analyst_report`) + 「投行」(`investment_bank_report` + `sec_filing`)，將 5 個 report category 全部 surface
+- ✅ 將原本 hardcoded CJK 嘅 4 個 tab button 文字 (全部/財報/新聞/分析) 改用 `data-i18n="reports.tab.X"` 屬性 + 10 個 i18n keys (zh + en)
+- ✅ Tab 按鈕結構改用 `<span data-i18n>` 包住 label，保留 material-icons-outlined glyph
+- ✅ Smoke test：bank tab → 10 份報告 (3 investment_bank_report + 7 sec_filing) 全部可見；之前呢類全部無 UI surface
+- ✅ Pure frontend — 改動: templates/index.html (tabs markup + filterByType), static/js/i18n.js (10 keys), README.md (1 行)
+- Commit: <next>
 
 **v3.4.16 (2026-08-25) — 行業新聞 panel 連接 + 之前係 stub 嘅 endpoint 修復**:
 - ✅ `/api/industry/<sector>/news` 由 stub `return jsonify([])` 改為真正 query `reports` table where `category='industry'` + file_path basename 以 `<safe_sector>_industry_` 開頭；123 篇 Consumer Cyclical / 139 篇 Industrials / 159 篇 Technology news 終於 surfacing

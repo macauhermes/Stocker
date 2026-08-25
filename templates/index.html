@@ -175,18 +175,22 @@
     
     <!-- Report Type Tabs -->
     <div class="tabs" style="margin-bottom: 12px;">
-        <button class="tab-btn active" data-type="all" onclick="filterByType('all')">全部</button>
+        <button class="tab-btn active" data-type="all" onclick="filterByType('all')" data-i18n="reports.tab.all">全部</button>
         <button class="tab-btn" data-type="earnings" onclick="filterByType('earnings')">
             <span class="material-icons-outlined">assessment</span>
-            財報
+            <span data-i18n="reports.tab.earnings">財報</span>
         </button>
         <button class="tab-btn" data-type="news" onclick="filterByType('news')">
             <span class="material-icons-outlined">article</span>
-            新聞
+            <span data-i18n="reports.tab.news">新聞</span>
         </button>
         <button class="tab-btn" data-type="analyst" onclick="filterByType('analyst')">
             <span class="material-icons-outlined">analytics</span>
-            分析
+            <span data-i18n="reports.tab.analyst">券商分析</span>
+        </button>
+        <button class="tab-btn" data-type="bank" onclick="filterByType('bank')">
+            <span class="material-icons-outlined">account_balance</span>
+            <span data-i18n="reports.tab.bank">投行</span>
         </button>
     </div>
     
@@ -1047,23 +1051,28 @@
 
     function applyFilters() {
         let filtered = allReports;
-        
+
         // Filter by type
         if (currentType !== 'all') {
             if (currentType === 'earnings') {
                 filtered = filtered.filter(r => r.category === 'earnings');
             } else if (currentType === 'news') {
+                // 行業新聞 = industry collector + raw news category
                 filtered = filtered.filter(r => r.category === 'industry' || r.category === 'news');
             } else if (currentType === 'analyst') {
+                // 券商分析 = analyst_report (券商 equity research)
                 filtered = filtered.filter(r => r.category === 'analyst_report');
+            } else if (currentType === 'bank') {
+                // 投行報告 = investment_bank_report + sec_filing (招股書/上市文件)
+                filtered = filtered.filter(r => r.category === 'investment_bank_report' || r.category === 'sec_filing');
             }
         }
-        
+
         // Filter by sector
         if (currentSector !== 'all') {
             // This would need sector info in reports, for now just show all
         }
-        
+
         renderReports(filtered);
     }
 

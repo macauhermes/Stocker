@@ -110,6 +110,11 @@ const I18N = {
 
     // Reports list
     'reports.empty': '尚無報告',
+    'reports.tab.all': '全部',
+    'reports.tab.earnings': '財報',
+    'reports.tab.news': '新聞',
+    'reports.tab.analyst': '券商分析',
+    'reports.tab.bank': '投行',
 
     // Stock detail
     'detail.back': '返回',
@@ -580,6 +585,11 @@ const I18N = {
 
     // Reports list
     'reports.empty': 'No reports',
+    'reports.tab.all': 'All',
+    'reports.tab.earnings': 'Earnings',
+    'reports.tab.news': 'News',
+    'reports.tab.analyst': 'Broker Research',
+    'reports.tab.bank': 'Bank Reports',
 
     // Stock detail
     'detail.back': 'Back',
