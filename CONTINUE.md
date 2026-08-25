@@ -17,6 +17,13 @@
 6. ✅ 自訂 JSONPath 數據源管理頁 /sources
 7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
 
+**v3.4.12 (2026-08-25) — README API docs 補完**:
+- ✅ README API 端點表補入 14 個 missing routes：完整 `/api/banks/*` 集群 (10 個) + `/api/init-data` + `/api/reports/collect` + `/api/stock/<symbol>/refresh` + `/api/industry/<sector>/news` + `/api/banks/reports/<id>/download`
+- ✅ 初始追蹤清單更新為 TSLA, NVDA, TE, GLW, MRVU, IBM, MSFT, GS, MS, SPCX (與 stock-list 對齊)
+- ✅ 純文檔修正，零 backend / DB / template 改動
+- Commit: <next>
+
+
 **v3.4 補完 (2026-08-25)**:
 - ✅ Prometheus 暴露 stocker_alerts_total{enabled=true|false} + stocker_alerts_triggered_total counter
 - ✅ /api/metrics/summary 加入 `alerts: {enabled, disabled, triggered_total}` 區塊

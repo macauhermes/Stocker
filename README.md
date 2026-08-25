@@ -212,10 +212,24 @@ Stocker/
 | **GET** | **`/watchlists`** | **追蹤分組管理頁** |
 | **GET** | **`/sources`** | **自訂 JSONPath 數據源管理頁** |
 | **GET** | **`/system`** | **系統狀態儀表板（健康 + 業務指標 + Prometheus 計數器）** |
+| POST | `/api/init-data` | 一次性 bootstrap：批量塞入初始 ticker + 行業 |
+| POST | `/api/reports/collect` | 手動觸發 SEC 財報收集任務 |
+| POST | `/api/stock/<symbol>/refresh` | 手動刷新單一 ticker 即時價 + 5 日歷史 |
+| GET | `/api/industry/<sector>/news` | 指定行業嘅新聞列表 |
+| GET/POST | `/api/banks` | 投行列表 / 新增投行 |
+| PUT | `/api/banks/<id>` | 編輯投行資料 |
+| POST | `/api/banks/<id>/toggle` | 啟用 / 停用投行 |
+| POST | `/api/banks/<id>/check` | 立即掃描單一投行嘅新報告 |
+| POST | `/api/banks/check-all` | 掃描全部啟用中嘅投行 |
+| GET | `/api/banks/enabled` | 只返啟用中嘅投行（下拉選單用） |
+| GET | `/api/banks/reports/all[?limit=]` | 全部投行報告（跨投行） |
+| GET | `/api/banks/<id>/reports` | 單一投行嘅報告 |
+| GET | `/api/banks/reports/undownloaded` | 仲未下載嘅報告佇列 |
+| POST | `/api/banks/reports/<id>/download` | 下載 + 標記單一報告為已下載 |
 
 ## 初始追蹤清單
 
-TSLA, NVDA, TE, GLW, MRVU, IBM
+TSLA, NVDA, TE, GLW, MRVU, IBM, MSFT, GS, MS, SPCX (SpaceX 招股書分類)
 
 ## 環境變數
 
