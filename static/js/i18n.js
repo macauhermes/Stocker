@@ -60,6 +60,7 @@ const I18N = {
     'index.tab.stocks': '股票',
     'index.tab.reports': '報告',
     'index.tab.archived': '歸檔',
+    'index.tab.groups': '分組',
     'index.add': '+ 新增',
     'index.add_ticker': '新增追蹤',
     'index.symbol_placeholder': '輸入股票代碼 (如 TSLA)',
@@ -71,6 +72,9 @@ const I18N = {
     'index.added': '已新增',
     'index.add_title': '新增追蹤股票',
     'index.watchlist': '追蹤分組',
+    'index.groups_empty': '尚未建立追蹤分組',
+    'index.groups_create': '建立分組',
+    'index.groups_empty_group': '空',
 
     // Stock table
     'stock.ticker': '代碼',
@@ -526,6 +530,7 @@ const I18N = {
     'index.tab.stocks': 'Stocks',
     'index.tab.reports': 'Reports',
     'index.tab.archived': 'Archived',
+    'index.tab.groups': 'Groups',
     'index.add': '+ Add',
     'index.add_ticker': 'Add Ticker',
     'index.symbol_placeholder': 'Enter symbol (e.g. TSLA)',
@@ -537,6 +542,9 @@ const I18N = {
     'index.added': 'Added',
     'index.add_title': 'Add Ticker',
     'index.watchlist': 'Watchlists',
+    'index.groups_empty': 'No watchlist groups yet',
+    'index.groups_create': 'Create group',
+    'index.groups_empty_group': 'Empty',
 
     // Stock table
     'stock.ticker': 'Ticker',

@@ -765,7 +765,7 @@
         }
         list.innerHTML = '';
         news.forEach(n => {
-            const date = n.publishedAt ? new Date(n.publishedAt).toLocaleDateString('zh-TW') : '—';
+            const date = n.published_at ? new Date(n.published_at).toLocaleDateString('zh-TW') : '—';
             const item = document.createElement('div');
             item.className = 'news-item';
             item.innerHTML = `
