@@ -2008,3 +2008,107 @@
     grid-template-columns: 20px minmax(60px, 1fr) 1fr 32px;
   }
 }
+
+/* ============================================================
+   STOCK LIST FILTERS (v3.4.14) — sector pills + sort + holdings toggle
+   ============================================================ */
+.stocks-filters {
+  margin-bottom: 12px;
+}
+
+.stocks-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+
+.stocks-control-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #a0a8b4);
+}
+
+.stocks-control-select {
+  background: var(--surface-2, #1a1a2e);
+  color: var(--text, #e0e0e0);
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 36px;
+  transition: border-color 120ms ease;
+}
+
+.stocks-control-select:hover,
+.stocks-control-select:focus {
+  border-color: var(--primary, #4fc3f7);
+  outline: none;
+}
+
+.stocks-holdings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border, #333);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text-muted, #888);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.stocks-holdings-btn:hover {
+  color: var(--text, #e0e0e0);
+  border-color: var(--text-muted, #888);
+}
+
+.stocks-holdings-btn.active {
+  background: rgba(79, 195, 247, 0.15);
+  color: var(--primary, #4fc3f7);
+  border-color: var(--primary, #4fc3f7);
+}
+
+.stocks-filter-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+}
+
+/* Sort indicator arrow */
+.stocks-control-select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted, #888) 50%),
+                    linear-gradient(135deg, var(--text-muted, #888) 50%, transparent 50%);
+  background-position: calc(100% - 14px) center, calc(100% - 9px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  appearance: none;
+  padding-right: 28px;
+}
+
+@media (max-width: 480px) {
+  .stocks-controls-row {
+    gap: 8px;
+  }
+  .stocks-control-select {
+    flex: 1;
+    min-width: 0;
+  }
+  .stocks-filter-count {
+    margin-left: 0;
+    width: 100%;
+    text-align: right;
+  }
+}

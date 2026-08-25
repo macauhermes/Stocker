@@ -390,6 +390,18 @@ const I18N = {
     'index.export_holdings_success': '已下載 CSV',
     'index.export_holdings_failed': '匯出失敗：{error}',
 
+    // Index (v3.4.14) — stocks-tab filter row: sector pills + sort + holdings-only
+    'index.stocks_sector_all': '全部行業',
+    'index.stocks_sort_label': '排序',
+    'index.sort_symbol': '代碼 A→Z',
+    'index.sort_change_pct': '今日漲跌幅',
+    'index.sort_price': '現價',
+    'index.sort_market_cap': '市值',
+    'index.sort_shares': '持倉股數',
+    'index.stocks_holdings_only': '💼 只顯示持倉',
+    'index.stocks_filter_count': '顯示 {shown} / {total}',
+    'index.stocks_empty_filtered': '冇符合條件嘅股票',
+
     // System page (/system)
     'nav.system': '系統',
     'nav.system_title': '系統狀態',
@@ -838,6 +850,18 @@ const I18N = {
     'index.export_holdings_title': 'Export all holdings to CSV',
     'index.export_holdings_success': 'CSV downloaded',
     'index.export_holdings_failed': 'Export failed: {error}',
+
+    // Index (v3.4.14) — stocks-tab filter row: sector pills + sort + holdings-only
+    'index.stocks_sector_all': 'All sectors',
+    'index.stocks_sort_label': 'Sort',
+    'index.sort_symbol': 'Symbol A→Z',
+    'index.sort_change_pct': "Today's % change",
+    'index.sort_price': 'Current price',
+    'index.sort_market_cap': 'Market cap',
+    'index.sort_shares': 'Shares held',
+    'index.stocks_holdings_only': '💼 Holdings only',
+    'index.stocks_filter_count': 'Showing {shown} / {total}',
+    'index.stocks_empty_filtered': 'No stocks match the current filters',
 
     // System page (/system)
     'nav.system': 'System',

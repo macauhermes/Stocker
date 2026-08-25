@@ -137,6 +137,27 @@
                 title="匯出所有持倉到 CSV">📤 匯出持倉 CSV</button>
         <span id="tickers-export-toast" class="stocks-toolbar-toast" style="display:none;"></span>
     </div>
+    <!-- Stock list filters (v3.4.14) — sector pills + sort dropdown + holdings-only toggle.
+         Pure frontend; reads from cached allTickers and re-renders on change. -->
+    <div class="stocks-filters">
+        <div id="stocks-sector-pills" class="sector-pills" style="margin-bottom:8px;"></div>
+        <div class="stocks-controls-row">
+            <label class="stocks-control-label">
+                <span class="material-icons-outlined" style="font-size:16px; vertical-align:middle;">sort</span>
+                <span data-i18n="index.stocks_sort_label">排序</span>
+                <select id="stocks-sort-select" class="stocks-control-select">
+                    <option value="symbol" data-i18n="index.sort_symbol">代碼 A→Z</option>
+                    <option value="change_pct" data-i18n="index.sort_change_pct">今日漲跌幅</option>
+                    <option value="price" data-i18n="index.sort_price">現價</option>
+                    <option value="market_cap" data-i18n="index.sort_market_cap">市值</option>
+                    <option value="shares" data-i18n="index.sort_shares">持倉股數</option>
+                </select>
+            </label>
+            <button type="button" id="stocks-holdings-toggle" class="stocks-holdings-btn"
+                    data-i18n="index.stocks_holdings_only">💼 只顯示持倉</button>
+            <span id="stocks-filter-count" class="stocks-filter-count"></span>
+        </div>
+    </div>
     <div id="stock-list" class="stock-list">
         <div class="loading-cell">
             <div class="spinner-sm"></div>
@@ -243,6 +264,11 @@
 <script>
     const miniCharts = {};
     let currentTab = 'stocks';
+    // v3.4.14 — stocks tab filter state
+    let allTickers = [];
+    let stocksSectorFilter = 'all';
+    let stocksSortBy = 'symbol';
+    let stocksHoldingsOnly = false;
     let currentSector = 'all';
     let currentType = 'all';
     let allReports = [];
@@ -706,6 +732,17 @@
         if (btn) btn.addEventListener('click', exportTickersCsv);
     }
 
+    // v3.4.14 — wire stocks-tab filter row controls.
+    function initStocksFilters() {
+        const sortSel = document.getElementById('stocks-sort-select');
+        if (sortSel) {
+            sortSel.addEventListener('change', e => setStocksSort(e.target.value));
+            sortSel.value = stocksSortBy;
+        }
+        const holdBtn = document.getElementById('stocks-holdings-toggle');
+        if (holdBtn) holdBtn.addEventListener('click', toggleStocksHoldingsOnly);
+    }
+
     // Minimal HTML escape — symbols come from the user-entered ticker table
     // which already constrains to alphanumeric + dot, but escape defensively.
     function escapeHtml(s) {
@@ -741,7 +778,10 @@
             const res = await fetch('/api/tickers');
             if (!res.ok) throw new Error('Failed to fetch tickers');
             const tickers = await res.json();
+            allTickers = tickers;            // cache for filter/sort
             renderStocks(tickers);
+            renderSectorPills(tickers);      // v3.4.14 — populate filter UI
+            updateFilterCount(tickers.length, tickers.length);
         } catch (err) {
             console.error(err);
             document.getElementById('stock-list').innerHTML = `
@@ -757,19 +797,95 @@
         }
     }
 
+    // v3.4.14 — render sector pills dynamically from tickers data.
+    // Builds an "全部行業" / "All sectors" pill + one per unique sector sorted by count desc.
+    function renderSectorPills(tickers) {
+        const container = document.getElementById('stocks-sector-pills');
+        if (!container) return;
+        const counts = {};
+        tickers.forEach(tk => {
+            const sec = tk.sector || 'N/A';
+            counts[sec] = (counts[sec] || 0) + 1;
+        });
+        const sectors = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+        let html = `<button class="sector-pill ${stocksSectorFilter === 'all' ? 'active' : ''}" data-sector="all" onclick="setStocksSector('all')">${t('index.stocks_sector_all')}</button>`;
+        sectors.forEach(sec => {
+            html += `<button class="sector-pill ${stocksSectorFilter === sec ? 'active' : ''}" data-sector="${escapeHtml(sec)}" onclick="setStocksSector('${escapeJs(sec)}')">${escapeHtml(sec)} (${counts[sec]})</button>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function setStocksSector(sec) {
+        stocksSectorFilter = sec;
+        // Re-render pills to update active state
+        document.querySelectorAll('#stocks-sector-pills .sector-pill').forEach(p => {
+            p.classList.toggle('active', (p.dataset.sector || 'all') === sec);
+        });
+        applyStockFilters();
+    }
+
+    function setStocksSort(value) {
+        stocksSortBy = value;
+        applyStockFilters();
+    }
+
+    function toggleStocksHoldingsOnly() {
+        stocksHoldingsOnly = !stocksHoldingsOnly;
+        const btn = document.getElementById('stocks-holdings-toggle');
+        if (btn) btn.classList.toggle('active', stocksHoldingsOnly);
+        applyStockFilters();
+    }
+
+    // v3.4.14 — apply current sector filter + holdings-only + sort, then re-render.
+    function applyStockFilters() {
+        let filtered = allTickers.slice();
+        if (stocksSectorFilter !== 'all') {
+            filtered = filtered.filter(tk => (tk.sector || 'N/A') === stocksSectorFilter);
+        }
+        if (stocksHoldingsOnly) {
+            filtered = filtered.filter(tk => (tk.shares_held || 0) > 0);
+        }
+        filtered.sort((a, b) => {
+            switch (stocksSortBy) {
+                case 'change_pct': return (b.change_percent ?? -Infinity) - (a.change_percent ?? -Infinity);
+                case 'price':      return (b.current_price ?? -Infinity) - (a.current_price ?? -Infinity);
+                case 'market_cap': return (b.market_cap ?? -Infinity) - (a.market_cap ?? -Infinity);
+                case 'shares':     return (b.shares_held || 0) - (a.shares_held || 0);
+                case 'symbol':
+                default:           return (a.symbol || '').localeCompare(b.symbol || '');
+            }
+        });
+        renderStocks(filtered);
+        updateFilterCount(filtered.length, allTickers.length);
+    }
+
+    function updateFilterCount(shown, total) {
+        const el = document.getElementById('stocks-filter-count');
+        if (el) el.textContent = (shown === total) ? '' : t('index.stocks_filter_count', { shown, total });
+    }
+
+    // v3.4.14 — small XSS-safe escapers (use the existing escapeHtml when in scope)
+    function escapeJs(s) { return String(s == null ? '' : s).replace(/['"\\]/g, c => '\\' + c); }
+
     function renderStocks(tickers) {
         const container = document.getElementById('stock-list');
         if (!tickers || tickers.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <span class="material-icons-outlined empty-state-icon">show_chart</span>
-                    <div class="empty-state-title">${t('index.empty_stocks')}</div>
-                    <button class="btn btn-primary mt-16" onclick="openAddModal()">
-                        <span class="material-icons-outlined">add</span>
-                        ${t('index.add')}
-                    </button>
-                </div>
-            `;
+            // v3.4.14 — distinguish "no stocks tracked" vs "filtered empty" so users
+            // don't see the "+ Add" CTA when they just toggled filters wrong.
+            const filteredEmpty = allTickers.length > 0 && (stocksSectorFilter !== 'all' || stocksHoldingsOnly);
+            container.innerHTML = filteredEmpty
+                ? `<div class="empty-state">
+                        <span class="material-icons-outlined empty-state-icon">filter_alt_off</span>
+                        <div class="empty-state-title">${t('index.stocks_empty_filtered')}</div>
+                    </div>`
+                : `<div class="empty-state">
+                        <span class="material-icons-outlined empty-state-icon">show_chart</span>
+                        <div class="empty-state-title">${t('index.empty_stocks')}</div>
+                        <button class="btn btn-primary mt-16" onclick="openAddModal()">
+                            <span class="material-icons-outlined">add</span>
+                            ${t('index.add')}
+                        </button>
+                    </div>`;
             return;
         }
         
@@ -1234,6 +1350,7 @@
     loadSectors();
     initPortfolioActions();  // v3.4.8 — wire capture/export buttons
     initTickersExport();  // v3.4.9 — wire /api/tickers/export.csv button
+    initStocksFilters();  // v3.4.14 — wire stocks-tab filter row
     startFreshnessUpdater();  // Auto-update freshness badges every 5s
 
     // ── Smart polling (wealthlens-style) ─────────────────────────────
