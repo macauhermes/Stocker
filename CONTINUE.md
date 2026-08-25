@@ -17,6 +17,14 @@
 6. ✅ 自訂 JSONPath 數據源管理頁 /sources
 7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
 
+**v3.4.14 (2026-08-25) — Stocks-tab filter row**:
+- ✅ Dashboard stock list 加 filter row — sector pills (dynamic from /api/tickers data, count desc) + sort dropdown (5 options: 代碼/漲跌幅/現價/市值/持倉股數) + holdings-only toggle pill + filter count badge
+- ✅ Distinguish empty states: 冇股票 vs 過濾後冇 stock (filter_alt_off icon, no "+ Add" CTA)
+- ✅ 10 zh + 10 en i18n keys — section label, 5 sort options, toggle text, count format `{shown}/{total}`, empty-filtered state
+- ✅ Pure frontend — caches allTickers at module scope, applyStockFilters() filters+sorts+re-renders; 零 backend / DB / schema 改動
+- ✅ JS validated node --check; smoke test: filter row markup all 6 IDs reach browser, 5 sort options rendered, /api/tickers has all 5 required fields (sector/shares_held/change_percent/current_price/market_cap)
+- Commit: f8d9bb1
+
 **v3.4.12 (2026-08-25) — README API docs 補完**:
 - ✅ README API 端點表補入 14 個 missing routes：完整 `/api/banks/*` 集群 (10 個) + `/api/init-data` + `/api/reports/collect` + `/api/stock/<symbol>/refresh` + `/api/industry/<sector>/news` + `/api/banks/reports/<id>/download`
 - ✅ 初始追蹤清單更新為 TSLA, NVDA, TE, GLW, MRVU, IBM, MSFT, GS, MS, SPCX (與 stock-list 對齊)

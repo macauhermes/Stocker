@@ -153,6 +153,28 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - 上市前公司（如 SpaceX SPCX）無 10-K/10-Q 時，招股書即主要財務來源
 - 已內建 SPCX 7 份招股書 (424B4/S-1/EU Prospectus/FWP/8-A12B/Listing Cert)
 
+### 2.14 股票列表篩選器 (v3.4.14)
+
+Dashboard 股票清單頁內嵌 filter row — 純前端、無新 endpoint：
+
+- **行業 pills（sector pills）**：由 `/api/tickers` 嘅 `sector` 欄動態產生，「全部行業」pill + 每個 sector 依股票數降序排列，旁標 `(count)`
+- **排序下拉（5 選項）**：
+  - `symbol`：代碼 A→Z
+  - `change_pct`：今日漲跌幅（desc）
+  - `price`：現價（desc）
+  - `market_cap`：市值（desc）
+  - `shares`：持倉股數（desc）
+- **持倉 toggle**：pill 形按鈕，啟用時顯示 `💼 只顯示持倉`，active state 用品牌色高亮
+- **filter count badge**：右側靜音文字「顯示 {shown} / {total}」，無過濾時自動隱藏
+- **空狀態區分**：
+  - 真係冇追蹤任何股票 → 顯示 `+ Add` CTA
+  - 有股票但 filter 排除晒所有 → 顯示 `filter_alt_off` icon + 「冇符合條件嘅股票」訊息（無 CTA）
+
+**實作細節：**
+- `allTickers` 喺 module scope cache，`loadTickers()` fetch 完即 cache；`applyStockFilters()` 從 cache 重新 filter + sort + re-render
+- sector 同 `shares_held` 都用 fallback (`|| 'N/A'`、`|| 0`)，避免缺值破壞排序
+- 10 個 zh + 10 個 en i18n keys（filter row label + 5 sort options + toggle + count format + empty-filtered state）
+
 ---
 
 ## 3. 數據庫設計
