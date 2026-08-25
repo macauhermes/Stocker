@@ -193,7 +193,23 @@
             <span data-i18n="reports.tab.bank">投行</span>
         </button>
     </div>
-    
+
+    <!-- v3.4.20: Reports filter row — search + source dropdown + count badge -->
+    <div class="stocks-filters" style="margin-bottom:12px;">
+        <div class="stocks-controls-row">
+            <span class="stocks-control-label">
+                <span class="material-icons-outlined" style="font-size:16px;">search</span>
+                <input type="text" id="reports-search" class="reports-search-input"
+                       data-i18n-placeholder="reports.search_placeholder"
+                       placeholder="搜尋報告標題或摘要...">
+            </span>
+            <select id="reports-source-select" class="stocks-control-select" data-i18n-aria-label="reports.source_filter" aria-label="全部來源">
+                <option value="all" data-i18n="reports.source_all">全部來源</option>
+            </select>
+            <span class="stocks-filter-count" id="reports-filter-count"></span>
+        </div>
+    </div>
+
     <div id="report-list" class="report-list">
         <div class="loading-cell">
             <div class="spinner-sm"></div>
@@ -275,6 +291,8 @@
     let stocksHoldingsOnly = false;
     let currentSector = 'all';
     let currentType = 'all';
+    let currentSource = 'all';  // v3.4.20: source dropdown filter
+    let currentSearch = '';     // v3.4.20: title/summary text search
     let allReports = [];
     let archivedLoaded = false;
     let groupsLoaded = false;
@@ -1068,9 +1086,23 @@
             }
         }
 
-        // Filter by sector
+        // Filter by sector (kept as no-op stub for backward compat)
         if (currentSector !== 'all') {
             // This would need sector info in reports, for now just show all
+        }
+
+        // v3.4.20: filter by source dropdown
+        if (currentSource && currentSource !== 'all') {
+            filtered = filtered.filter(r => r.source === currentSource);
+        }
+
+        // v3.4.20: filter by search text (title + summary case-insensitive)
+        if (currentSearch) {
+            const q = currentSearch.toLowerCase();
+            filtered = filtered.filter(r =>
+                (r.title && r.title.toLowerCase().includes(q)) ||
+                (r.summary && r.summary.toLowerCase().includes(q))
+            );
         }
 
         renderReports(filtered);
@@ -1079,11 +1111,14 @@
     // Load reports
     async function loadReports() {
         try {
-            const res = await fetch('/api/reports');
+            // v3.4.20: bump limit 50 → 500 (server cap) so dashboard reports
+            // tab covers the full DB (722 reports). Filters apply client-side.
+            const res = await fetch('/api/reports?limit=500');
             if (!res.ok) throw new Error('Failed to fetch reports');
             const reports = await res.json();
             allReports = reports;
-            renderReports(reports);
+            populateSourceFilter(reports);
+            applyFilters();
         } catch (err) {
             console.error(err);
             document.getElementById('report-list').innerHTML = `
@@ -1095,28 +1130,80 @@
         }
     }
 
+    // v3.4.20: populate source dropdown from unique sources in cached reports
+    function populateSourceFilter(reports) {
+        const sources = new Set();
+        reports.forEach(r => { if (r.source) sources.add(r.source); });
+        const sorted = [...sources].sort();
+        const sel = document.getElementById('reports-source-select');
+        if (!sel) return;
+        // Keep the first "all" option, remove any others we added previously
+        while (sel.options.length > 1) sel.remove(1);
+        sorted.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            sel.appendChild(opt);
+        });
+    }
+
+    // v3.4.20: wire search input + source dropdown event listeners
+    function initReportsFilters() {
+        const searchInput = document.getElementById('reports-search');
+        if (searchInput) {
+            let timer = null;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    currentSearch = searchInput.value.trim();
+                    applyFilters();
+                }, 200);
+            });
+        }
+        const sourceSel = document.getElementById('reports-source-select');
+        if (sourceSel) {
+            sourceSel.addEventListener('change', () => {
+                currentSource = sourceSel.value;
+                applyFilters();
+            });
+        }
+    }
+
     function renderReports(reports) {
         const list = document.getElementById('report-list');
+        const countEl = document.getElementById('reports-filter-count');
+
+        // v3.4.20: update filter count badge
+        if (countEl) {
+            const total = allReports.length;
+            const shown = reports ? reports.length : 0;
+            countEl.textContent = t('reports.filter_count', { shown, total });
+        }
+
         if (!reports || reports.length === 0) {
+            // v3.4.20: distinguish "no data at all" vs "filter excluded everything"
+            const filtersActive = (currentSearch && currentSearch.length > 0) ||
+                                  (currentSource && currentSource !== 'all') ||
+                                  (currentType && currentType !== 'all');
             list.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-outlined empty-state-icon">description</span>
-                    <div class="empty-state-title">${t('reports.empty')}</div>
+                    <span class="material-icons-outlined empty-state-icon">${filtersActive ? 'filter_alt_off' : 'description'}</span>
+                    <div class="empty-state-title">${filtersActive ? t('reports.empty_filtered') : t('reports.empty')}</div>
                 </div>
             `;
             return;
         }
-        
+
         list.innerHTML = '';
         reports.forEach(r => {
             const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '—';
             const date = r.published_at ? new Date(r.published_at).toLocaleDateString('zh-TW') : '—';
-            
+
             // Determine icon based on category
             let icon = 'description';
             let iconBg = 'rgba(73, 79, 223, 0.15)';
             let iconColor = 'var(--blue)';
-            
+
             if (r.category === 'earnings') {
                 icon = 'assessment';
                 iconBg = 'rgba(0, 200, 83, 0.15)';
@@ -1129,6 +1216,19 @@
                 icon = 'analytics';
                 iconBg = 'rgba(73, 79, 223, 0.15)';
                 iconColor = 'var(--blue)';
+            } else if (r.category === 'investment_bank_report') {
+                // v3.4.20: was missing in v3.4.17 — bank reports fell back to
+                // default `description` icon. Use account_balance for parity
+                // with the bank tab button glyph.
+                icon = 'account_balance';
+                iconBg = 'rgba(73, 79, 223, 0.15)';
+                iconColor = 'var(--blue)';
+            } else if (r.category === 'sec_filing') {
+                // v3.4.20: was missing — SEC prospectus docs fell back to
+                // default `description` icon. Use gavel (orange) like files.html.
+                icon = 'gavel';
+                iconBg = 'rgba(255, 145, 0, 0.15)';
+                iconColor = 'var(--orange)';
             }
             
             const card = document.createElement('a');
@@ -1360,6 +1460,7 @@
     initPortfolioActions();  // v3.4.8 — wire capture/export buttons
     initTickersExport();  // v3.4.9 — wire /api/tickers/export.csv button
     initStocksFilters();  // v3.4.14 — wire stocks-tab filter row
+    initReportsFilters();  // v3.4.20 — wire reports-tab search + source dropdown
     startFreshnessUpdater();  // Auto-update freshness badges every 5s
 
     // ── Smart polling (wealthlens-style) ─────────────────────────────

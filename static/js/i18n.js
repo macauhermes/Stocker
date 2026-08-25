@@ -115,6 +115,11 @@ const I18N = {
     'reports.tab.news': '新聞',
     'reports.tab.analyst': '券商分析',
     'reports.tab.bank': '投行',
+    'reports.search_placeholder': '搜尋報告標題或摘要...',  // v3.4.20
+    'reports.source_filter': '全部來源',                    // v3.4.20
+    'reports.source_all': '全部來源',                       // v3.4.20
+    'reports.filter_count': '{shown}/{total} 份',           // v3.4.20
+    'reports.empty_filtered': '沒有符合篩選條件的報告',     // v3.4.20
 
     // Stock detail
     'detail.back': '返回',
@@ -593,6 +598,11 @@ const I18N = {
     'reports.tab.news': 'News',
     'reports.tab.analyst': 'Broker Research',
     'reports.tab.bank': 'Bank Reports',
+    'reports.search_placeholder': 'Search report titles or summaries...',  // v3.4.20
+    'reports.source_filter': 'All sources',                              // v3.4.20
+    'reports.source_all': 'All sources',                                 // v3.4.20
+    'reports.filter_count': '{shown}/{total}',                           // v3.4.20
+    'reports.empty_filtered': 'No reports match the current filters',    // v3.4.20
 
     // Stock detail
     'detail.back': 'Back',

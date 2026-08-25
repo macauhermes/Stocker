@@ -2178,3 +2178,36 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+ * v3.4.20 — Reports tab filter row (search input + source dropdown)
+ * ============================================================ */
+.reports-search-input {
+  background: var(--surface-2, #1a1a2e);
+  color: var(--text, #e0e0e0);
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  min-height: 36px;
+  min-width: 180px;
+  transition: border-color 120ms ease;
+}
+
+.reports-search-input:focus {
+  border-color: var(--primary, #4fc3f7);
+  outline: none;
+}
+
+.reports-search-input::placeholder {
+  color: var(--text-muted, #888);
+}
+
+@media (max-width: 480px) {
+  .reports-search-input {
+    min-width: 0;
+    width: 100%;
+    flex: 1;
+  }
+}
