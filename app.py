@@ -920,7 +920,7 @@ def api_events_upcoming():
 def api_events_sync():
     """Sync earnings/dividend dates from yfinance for all tracked tickers."""
     import yfinance as yf
-    tickers = models.get_active_tickers()
+    tickers = models.get_all_tickers()
     synced = 0
     errors = []
     for t in tickers:

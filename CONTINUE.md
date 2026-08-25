@@ -17,6 +17,15 @@
 6. ✅ 自訂 JSONPath 數據源管理頁 /sources
 7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
 
+**v3.4.15 (2026-08-25) — `/api/events/sync` 500 AttributeError fix**:
+- ✅ `/api/events/sync` 引用咗唔存在嘅 `models.get_active_tickers()` — calendar 嘅「同步」掣由 v3.3 ships 起就壞咗，每次撳都 500 AttributeError
+- ✅ 改用 `models.get_all_tickers()`（已經 filter `archived = 0`，功能一樣）
+- ✅ Smoke test: POST sync 返 `{synced: 16, errors: []}`；calendar 2026-08 → 4 events (NVDA earnings 8/27、IBM/MSFT dividends 等)
+- ✅ Calendar 從 0 events → 16 events，所有 10 隻 tracked tickers 都有 earnings/dividend 行
+- ✅ Touch 1 line in app.py — pure function name fix, zero behavior change
+- ✅ Grepped app.py for other missing model function references — no other latent bugs
+- Commit: d507433
+
 **v3.4.14 (2026-08-25) — Stocks-tab filter row**:
 - ✅ Dashboard stock list 加 filter row — sector pills (dynamic from /api/tickers data, count desc) + sort dropdown (5 options: 代碼/漲跌幅/現價/市值/持倉股數) + holdings-only toggle pill + filter count badge
 - ✅ Distinguish empty states: 冇股票 vs 過濾後冇 stock (filter_alt_off icon, no "+ Add" CTA)
