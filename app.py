@@ -1637,6 +1637,12 @@ def health():
     return metrics.health_check()
 
 
+@app.route('/system')
+def system_page():
+    """System / admin dashboard — surfaces /api/metrics/summary + /health on a page."""
+    return render_template('system.html')
+
+
 @app.route('/api/metrics/summary')
 def api_metrics_summary():
     """Human-readable JSON summary of business metrics (for dashboards)."""

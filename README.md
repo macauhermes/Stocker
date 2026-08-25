@@ -211,6 +211,7 @@ Stocker/
 | **GET** | **`/events`** | **事件月曆頁** |
 | **GET** | **`/watchlists`** | **追蹤分組管理頁** |
 | **GET** | **`/sources`** | **自訂 JSONPath 數據源管理頁** |
+| **GET** | **`/system`** | **系統狀態儀表板（健康 + 業務指標 + Prometheus 計數器）** |
 
 ## 初始追蹤清單
 

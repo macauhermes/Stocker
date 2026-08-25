@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}Stocker — {{ t('system.title') if t is defined else '系統狀態' }}{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="container">
+        <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+            <h1 style="font-size:1.3rem; margin:0;">
+                <span class="material-icons-outlined" style="vertical-align:middle; margin-right:6px;">monitoring</span>
+                <span data-i18n="system.title">系統狀態</span>
+            </h1>
+            <button class="btn" onclick="loadSystemData()">
+                <span class="material-icons-outlined">refresh</span>
+                <span data-i18n="system.refresh">重新整理</span>
+            </button>
+        </div>
+
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;" data-i18n="system.desc">
+            即時顯示 Stocker 應用嘅健康狀態、業務指標同 Prometheus 計數器。數據來自 <code>/api/metrics/summary</code> + <code>/health</code>。
+        </p>
+
+        <!-- Health card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined">favorite</span>
+                    <span data-i18n="system.health_title">健康狀態</span>
+                </div>
+                <span id="health-status-badge" class="status-badge status-loading">
+                    <span class="material-icons-outlined">pending</span>
+                    <span data-i18n="common.loading">載入中...</span>
+                </span>
+            </div>
+            <div id="health-checks" class="metric-grid">
+                <div class="stat-card"><div class="stat-label" data-i18n="system.uptime">運行時間</div><div class="stat-value" id="health-uptime">—</div></div>
+                <div class="stat-card"><div class="stat-label">DB</div><div class="stat-value" id="health-db">—</div></div>
+                <div class="stat-card"><div class="stat-label">tsdb</div><div class="stat-value" id="health-tsdb">—</div></div>
+                <div class="stat-card"><div class="stat-label" data-i18n="system.disk">磁碟空間</div><div class="stat-value" id="health-disk">—</div></div>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+                <span data-i18n="system.checked_at">最後檢查</span>: <span id="health-timestamp">—</span>
+            </div>
+        </div>
+
+        <!-- Tickers + portfolio -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined">show_chart</span>
+                    <span data-i18n="system.tickers_title">追蹤股票</span>
+                </div>
+            </div>
+            <div class="metric-grid">
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.active_tickers">啟用中股票</div>
+                    <div class="stat-value" id="stat-active-tickers">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.total_reports">報告總數</div>
+                    <div class="stat-value" id="stat-total-reports">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.events_active">活躍事件</div>
+                    <div class="stat-value" id="stat-events-active">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.events_upcoming">未來 7 日事件</div>
+                    <div class="stat-value" id="stat-events-upcoming">—</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="stat-label" data-i18n="system.reports_by_category">報告分類</div>
+                <div id="reports-by-category" class="category-bar-list"></div>
+            </div>
+        </div>
+
+        <!-- Portfolio card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined">account_balance_wallet</span>
+                    <span data-i18n="system.portfolio_title">投資組合</span>
+                </div>
+            </div>
+            <div class="metric-grid">
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.snapshots_count">快照總數</div>
+                    <div class="stat-value" id="stat-snapshots">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.latest_value">最新市值</div>
+                    <div class="stat-value" id="stat-portfolio-value">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.latest_pnl">未實現損益</div>
+                    <div class="stat-value" id="stat-portfolio-pnl">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.latest_report">最新報告</div>
+                    <div class="stat-value" id="stat-latest-report" style="font-size:0.85rem;">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature usage card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined">category</span>
+                    <span data-i18n="system.features_title">功能啟用</span>
+                </div>
+            </div>
+            <div class="metric-grid">
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.alerts_enabled">提醒（啟用）</div>
+                    <div class="stat-value" id="stat-alerts-enabled">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.alerts_triggered">提醒（已觸發）</div>
+                    <div class="stat-value" id="stat-alerts-triggered">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.banks_enabled">投行（啟用）</div>
+                    <div class="stat-value" id="stat-banks-enabled">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.custom_sources">自訂數據源</div>
+                    <div class="stat-value" id="stat-custom-sources">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.watchlist_groups">追蹤分組</div>
+                    <div class="stat-value" id="stat-watchlist-groups">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" data-i18n="system.sse_connections">SSE 連線</div>
+                    <div class="stat-value" id="stat-sse">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top sectors + top tickers -->
+        <div class="metric-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="material-icons-outlined">donut_small</span>
+                        <span data-i18n="system.top_sectors">熱門行業</span>
+                    </div>
+                </div>
+                <div id="top-sectors-list" class="rank-list"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="material-icons-outlined">star</span>
+                        <span data-i18n="system.top_tickers">最多報告股票</span>
+                    </div>
+                </div>
+                <div id="top-tickers-list" class="rank-list"></div>
+            </div>
+        </div>
+
+        <!-- Prometheus counters -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined">analytics</span>
+                    <span data-i18n="system.counters_title">Prometheus 計數器</span>
+                </div>
+                <a href="/metrics" target="_blank" class="btn btn-sm" data-i18n-title="system.metrics_raw_title" title="查看原始 Prometheus 格式">
+                    <span class="material-icons-outlined" style="font-size:16px;">open_in_new</span>
+                    <span data-i18n="system.metrics_raw">原始格式</span>
+                </a>
+            </div>
+            <div id="prometheus-counters" class="counter-grid"></div>
+        </div>
+
+        <div style="text-align:center; color:var(--text-muted); font-size:0.75rem; padding:16px 0;">
+            <span data-i18n="system.api_hint">數據來自</span> <code>/api/metrics/summary</code> + <code>/health</code> ·
+            <span data-i18n="system.auto_refresh">每 30 秒自動刷新</span>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _systemRefreshTimer = null;
+let _systemLastData = null;
+
+async function loadSystemData() {
+    const [summary, health] = await Promise.all([
+        fetch('/api/metrics/summary').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/health').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    _systemLastData = { summary, health };
+    renderHealth(health);
+    renderSummary(summary);
+    renderCounters(summary);
+}
+
+function renderHealth(h) {
+    if (!h) {
+        document.getElementById('health-status-badge').innerHTML =
+            '<span class="material-icons-outlined">error_outline</span> ' + t('system.health_unreachable');
+        document.getElementById('health-status-badge').className = 'status-badge status-error';
+        return;
+    }
+    const status = h.status || 'unknown';
+    const badge = document.getElementById('health-status-badge');
+    const okIcon = status === 'healthy' ? 'check_circle' : status === 'degraded' ? 'warning' : 'error';
+    const statusText = status === 'healthy' ? t('system.health_ok')
+                    : status === 'degraded' ? t('system.health_degraded')
+                    : t('system.health_unhealthy');
+    badge.className = 'status-badge status-' + status;
+    badge.innerHTML = `<span class="material-icons-outlined">${okIcon}</span> ${statusText}`;
+
+    document.getElementById('health-uptime').textContent = h.uptime_human || formatUptime(h.uptime_seconds || 0);
+    const checks = h.checks || {};
+    document.getElementById('health-db').textContent = checks.database && checks.database.ok ? '✓ OK' : '✗ ' + (checks.database && checks.database.detail || 'fail');
+    document.getElementById('health-tsdb').textContent = checks.tsdb && checks.tsdb.ok ? '✓ OK' : '✗ ' + (checks.tsdb && checks.tsdb.detail || 'fail');
+    document.getElementById('health-disk').textContent = checks.disk ? checks.disk.detail.replace(/_/g, ' ') : '—';
+    document.getElementById('health-timestamp').textContent = h.timestamp || '—';
+}
+
+function renderSummary(s) {
+    if (!s) return;
+    document.getElementById('stat-active-tickers').textContent = s.tickers_active != null ? s.tickers_active : '—';
+    document.getElementById('stat-total-reports').textContent = s.reports_total != null ? s.reports_total : '—';
+    document.getElementById('stat-events-active').textContent = s.events_active != null ? s.events_active : '—';
+    document.getElementById('stat-events-upcoming').textContent = s.events_upcoming_7d != null ? s.events_upcoming_7d : '—';
+
+    // Reports by category bars
+    const catBar = document.getElementById('reports-by-category');
+    const catDict = s.reports_by_category || {};
+    const catTotal = Object.values(catDict).reduce((a, b) => a + b, 0) || 1;
+    const catLabels = {
+        'earnings': '📊 ' + t('system.cat_earnings'),
+        'analyst_report': '📈 ' + t('system.cat_analyst'),
+        'industry': '🏭 ' + t('system.cat_industry'),
+        'investment_bank_report': '🏦 ' + t('system.cat_bank'),
+        'sec_filing': '📄 ' + t('system.cat_sec'),
+    };
+    catBar.innerHTML = Object.entries(catDict)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, count]) => {
+            const pct = Math.round(count / catTotal * 100);
+            return `<div class="cat-row">
+                <div class="cat-label">${catLabels[cat] || cat}</div>
+                <div class="cat-bar"><div class="cat-fill" style="width:${pct}%;"></div></div>
+                <div class="cat-count">${count}</div>
+            </div>`;
+        }).join('');
+
+    // Portfolio
+    const p = s.portfolio || {};
+    document.getElementById('stat-snapshots').textContent = p.snapshots_count != null ? p.snapshots_count : '—';
+    document.getElementById('stat-portfolio-value').textContent = p.latest_value != null ? '$' + formatNumber(p.latest_value) : '—';
+    const pnl = p.latest_pnl;
+    const pnlEl = document.getElementById('stat-portfolio-pnl');
+    if (pnl != null) {
+        const cls = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+        pnlEl.className = 'stat-value ' + cls;
+        pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + formatNumber(pnl);
+    } else {
+        pnlEl.textContent = '—';
+    }
+    document.getElementById('stat-latest-report').textContent = s.latest_report_at || '—';
+
+    // Feature usage
+    document.getElementById('stat-alerts-enabled').textContent = (s.alerts && s.alerts.enabled) || 0;
+    document.getElementById('stat-alerts-triggered').textContent = (s.alerts && s.alerts.triggered_total) || 0;
+    const banksOn = (s.banks && s.banks.enabled) || 0, banksOff = (s.banks && s.banks.disabled) || 0;
+    document.getElementById('stat-banks-enabled').textContent = banksOn + ' / ' + (banksOn + banksOff);
+    const csOn = (s.custom_sources && s.custom_sources.enabled) || 0, csOff = (s.custom_sources && s.custom_sources.disabled) || 0;
+    document.getElementById('stat-custom-sources').textContent = csOn + ' / ' + (csOn + csOff);
+    document.getElementById('stat-watchlist-groups').textContent = s.watchlist_groups != null ? s.watchlist_groups : '—';
+    document.getElementById('stat-sse').textContent = s.sse_connections != null ? s.sse_connections : '—';
+
+    // Top sectors
+    const sectorList = document.getElementById('top-sectors-list');
+    const sectors = s.top_sectors || [];
+    if (sectors.length === 0) {
+        sectorList.innerHTML = `<div class="empty-mini">${t('system.empty_list')}</div>`;
+    } else {
+        const max = sectors[0].count || 1;
+        sectorList.innerHTML = sectors.map((sec, i) => `
+            <div class="rank-row">
+                <div class="rank-num">${i + 1}</div>
+                <div class="rank-label">${sec.sector}</div>
+                <div class="rank-bar"><div class="rank-fill" style="width:${Math.round(sec.count / max * 100)}%;"></div></div>
+                <div class="rank-count">${sec.count}</div>
+            </div>`).join('');
+    }
+
+    // Top tickers
+    const tickerList = document.getElementById('top-tickers-list');
+    const tickers = s.top_tickers_by_reports || [];
+    if (tickers.length === 0) {
+        tickerList.innerHTML = `<div class="empty-mini">${t('system.empty_list')}</div>`;
+    } else {
+        const max = tickers[0].reports || 1;
+        tickerList.innerHTML = tickers.map((tk, i) => `
+            <div class="rank-row">
+                <div class="rank-num">${i + 1}</div>
+                <div class="rank-label">${tk.symbol}</div>
+                <div class="rank-bar"><div class="rank-fill" style="width:${Math.round(tk.reports / max * 100)}%;"></div></div>
+                <div class="rank-count">${tk.reports}</div>
+            </div>`).join('');
+    }
+}
+
+function renderCounters(s) {
+    if (!s) return;
+    const counters = document.getElementById('prometheus-counters');
+    const groups = [
+        { key: 'ticker_exports', label: t('system.cnt_exports') },
+        { key: 'portfolio_captures', label: t('system.cnt_captures') },
+        { key: 'portfolio_exports', label: t('system.cnt_portfolio_exports') },
+        { key: 'portfolio_breakdowns', label: t('system.cnt_breakdowns') },
+        { key: 'report_searches', label: t('system.cnt_searches') },
+    ];
+    counters.innerHTML = groups.map(g => {
+        const data = s[g.key];
+        if (!data) return '';
+        const total = Math.round(data.total || 0);
+        return `<div class="counter-card">
+            <div class="counter-label">${g.label}</div>
+            <div class="counter-total">${total}</div>
+            <div class="counter-breakdown">${Object.entries(data).filter(([k]) => k !== 'total').map(([k, v]) => `${k}: <strong>${v}</strong>`).join(' · ')}</div>
+        </div>`;
+    }).join('');
+}
+
+function formatNumber(n) {
+    if (n == null) return '—';
+    return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatUptime(secs) {
+    if (!secs) return '—';
+    const d = Math.floor(secs / 86400);
+    const h = Math.floor((secs % 86400) / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+}
+
+// Auto-refresh every 30 seconds
+document.addEventListener('DOMContentLoaded', () => {
+    loadSystemData();
+    _systemRefreshTimer = setInterval(loadSystemData, 30000);
+});
+
+// Pause refresh when page is hidden, resume on focus
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(_systemRefreshTimer);
+    } else {
+        loadSystemData();
+        _systemRefreshTimer = setInterval(loadSystemData, 30000);
+    }
+});
+
+// Re-render on language change
+window.addEventListener('langchange', () => {
+    if (_systemLastData) {
+        renderHealth(_systemLastData.health);
+        renderSummary(_systemLastData.summary);
+        renderCounters(_systemLastData.summary);
+    }
+});
+</script>
+{% endblock %}

@@ -61,6 +61,16 @@
 - ✅ Smoke test: 3 個持倉 (TSLA 30股/MSFT 8股/NVDA 5股) 返 share_of_portfolio 67.94% / 25.3% / 6.76% — sum 100%
 - ✅ 10 個 unit tests (tests/test_portfolio_breakdown.py) — all passing (218/218 total)
 
+**v3.4.10 (2026-08-25)**:
+- ✅ `/system` 系統狀態儀表板 — surface 之前 orphan 嘅 `/api/metrics/summary` + `/health` endpoint
+- ✅ 4 個 stat cards：Health（status badge + uptime + DB/tsdb/disk checks）/ Tickers（active + reports + events + reports by category bar）/ Portfolio（snapshots + latest value + P&L + latest report）/ Features（alerts + banks + custom sources + watchlist groups + SSE）
+- ✅ Top sectors + Top tickers by reports 排行 bar chart
+- ✅ Prometheus counters panel（ticker_exports / portfolio_captures / portfolio_exports / portfolio_breakdowns / report_searches）
+- ✅ 30 秒 auto-refresh + visibilitychange 暫停 + langchange 即時 re-render + 「原始格式」連結去 `/metrics`
+- ✅ Nav icon (`monitoring`) 加喺 base.html 嘅 nav-right (search + system + alerts)
+- ✅ 純前端 + 1 個 route，零 backend / DB / schema 改動 — 46 個 zh + 46 個 en i18n keys
+- ✅ Touch: templates/system.html (新建), static/css/components.css, static/js/i18n.js, templates/base.html, app.py, README.md, SPEC.md
+
 **v3.4.9 (2026-08-25)**:
 - ✅ Dashboard 持股清單新增「📤 匯出持倉 CSV」按鈕，直接重用現有 `/api/tickers/export.csv` endpoint
 - ✅ 前端先 fetch + `response.ok` check，再由 Blob 產生 download；HTTP 4xx/5xx 不會誤報下載成功，並從 Content-Disposition 讀取伺服器檔名

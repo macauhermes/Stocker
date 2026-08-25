@@ -261,6 +261,7 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - `GET /report/<id>` — 報告詳情頁 (PDF + AI split view)
 - `GET /industry` — 行業新聞頁面
 - `GET /files` — 檔案管理頁面
+- `GET /system` — 系統狀態儀表板 (健康 + 業務指標 + Prometheus 計數器, 每 30s 自動刷新)
 
 ### API 路由 (JSON)
 - `GET /api/tickers` — 取得所有活躍 ticker (含即時價格)
