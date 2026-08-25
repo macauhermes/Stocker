@@ -101,6 +101,16 @@
 
 <!-- Stocks Tab -->
 <div class="tab-content active" id="tab-stocks">
+    <!-- Stocks toolbar (v3.4.9) — surfaces the previously-orphan
+         /api/tickers/export.csv endpoint. Pure frontend; server-side
+         endpoint already exists since v3.4.1 but had no UI button. -->
+    <div class="stocks-toolbar">
+        <span class="stocks-toolbar-label" data-i18n="index.stocks_toolbar">持股清單</span>
+        <button type="button" id="tickers-export-btn" class="stocks-toolbar-btn"
+                data-i18n="index.export_holdings_csv" data-i18n-title="index.export_holdings_title"
+                title="匯出所有持倉到 CSV">📤 匯出持倉 CSV</button>
+        <span id="tickers-export-toast" class="stocks-toolbar-toast" style="display:none;"></span>
+    </div>
     <div id="stock-list" class="stock-list">
         <div class="loading-cell">
             <div class="spinner-sm"></div>
@@ -555,6 +565,58 @@
         const exportBtn = document.getElementById('portfolio-export-btn');
         if (captureBtn) captureBtn.addEventListener('click', capturePortfolioSnapshot);
         if (exportBtn) exportBtn.addEventListener('click', exportPortfolioCsv);
+    }
+
+    // Stocks toolbar (v3.4.9) — surfaces /api/tickers/export.csv.
+    // Fetch the bytes first so HTTP errors can surface to the user instead of
+    // showing a false success toast when the server returns 4xx/5xx.
+    let _tickersExportBusy = false;
+    async function exportTickersCsv() {
+        if (_tickersExportBusy) return;
+        _tickersExportBusy = true;
+        const btn = document.getElementById('tickers-export-btn');
+        const originalLabel = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ …'; }
+        try {
+            const response = await fetch('/api/tickers/export.csv');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filenameMatch ? filenameMatch[1] : 'stocker-holdings.csv';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showTickersExportToast('✓ ' + t('index.export_holdings_success'), 'success');
+        } catch (err) {
+            console.error('Tickers export failed:', err);
+            showTickersExportToast(t('index.export_holdings_failed', { error: err.message || 'network' }), 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+            _tickersExportBusy = false;
+        }
+    }
+
+    let _tickersExportToastTimer = null;
+    function showTickersExportToast(msg, kind) {
+        const toast = document.getElementById('tickers-export-toast');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.toggle('stocks-toolbar-toast-error', kind === 'error');
+        toast.classList.toggle('stocks-toolbar-toast-success', kind === 'success');
+        toast.style.display = 'inline-block';
+        if (_tickersExportToastTimer) clearTimeout(_tickersExportToastTimer);
+        _tickersExportToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    function initTickersExport() {
+        const btn = document.getElementById('tickers-export-btn');
+        if (btn) btn.addEventListener('click', exportTickersCsv);
     }
 
     // Minimal HTML escape — symbols come from the user-entered ticker table
@@ -1083,6 +1145,7 @@
     loadReports();
     loadSectors();
     initPortfolioActions();  // v3.4.8 — wire capture/export buttons
+    initTickersExport();  // v3.4.9 — wire /api/tickers/export.csv button
     startFreshnessUpdater();  // Auto-update freshness badges every 5s
 
     // ── Smart polling (wealthlens-style) ─────────────────────────────

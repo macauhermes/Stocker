@@ -41,8 +41,9 @@
             <button class="nav-icon-btn" onclick="toggleSearch()">
                 <span class="material-icons-outlined">search</span>
             </button>
-            <a href="/alerts" class="nav-icon-btn" title="價格提醒" data-i18n-title="alerts.title">
+            <a href="/alerts" class="nav-icon-btn nav-icon-btn-badged" title="價格提醒" data-i18n-title="alerts.title">
                 <span class="material-icons-outlined">notifications_active</span>
+                <span id="alerts-nav-badge" class="nav-badge" style="display:none;" aria-label="enabled alerts count">0</span>
             </a>
             <div class="lang-switcher">
                 <button class="lang-btn ${_lang === 'zh' ? 'active' : ''}" data-lang="zh" onclick="setLang('zh')">中</button>
@@ -168,7 +169,30 @@
         // Apply translations on load
         document.addEventListener('DOMContentLoaded', () => {
             applyTranslations();
+            refreshAlertsBadge();
         });
+
+        // Refresh the top-nav alerts badge with the current enabled-alerts count.
+        // Fires on DOMContentLoaded + every langchange (badge text is a number,
+        // but the fetch re-runs so the count stays current across SPA navigations).
+        async function refreshAlertsBadge() {
+            const badge = document.getElementById('alerts-nav-badge');
+            if (!badge) return;
+            try {
+                const res = await fetch('/api/alerts?enabled=1');
+                if (!res.ok) return;
+                const alerts = await res.json();
+                const n = Array.isArray(alerts) ? alerts.length : 0;
+                if (n > 0) {
+                    badge.textContent = n > 99 ? '99+' : String(n);
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (err) {
+                // Silent — the icon is fine without a count
+            }
+        }
     </script>
     
     {% block scripts %}{% endblock %}

@@ -44,6 +44,30 @@ class TestCSVExport:
         header = next(reader)
         assert header == EXPECTED_HEADER
 
+    def test_content_type_has_single_charset(self, client):
+        """Flask must auto-append charset exactly once (Pitfall 16)."""
+        resp = client.get('/api/tickers/export.csv')
+        assert resp.status_code == 200
+        assert resp.content_type == 'text/csv; charset=utf-8'
+        assert resp.content_type.count('charset=') == 1
+
+    def test_export_counter_is_exposed_in_prometheus(self, client):
+        client.get('/api/tickers/export.csv')
+        metrics = client.get('/metrics')
+        assert metrics.status_code == 200
+        text = metrics.get_data(as_text=True)
+        assert 'stocker_ticker_exports_total' in text
+        assert 'scope="all"' in text
+
+    def test_export_summary_block_present(self, client):
+        client.get('/api/tickers/export.csv')
+        response = client.get('/api/metrics/summary')
+        assert response.status_code == 200
+        data = response.get_json()
+        block = data['ticker_exports']
+        assert set(block) == {'total', 'all', 'group'}
+        assert block['all'] >= 1
+
     def test_filename_includes_timestamp(self, client):
         resp = client.get('/api/tickers/export.csv')
         cd = resp.headers.get('Content-Disposition', '')

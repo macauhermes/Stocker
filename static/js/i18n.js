@@ -372,6 +372,13 @@ const I18N = {
     'portfolio.capture_failed': '拍攝失敗：{error}',
     'portfolio.export_failed': '匯出失敗：{error}',
 
+    // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
+    'index.stocks_toolbar': '持股清單',
+    'index.export_holdings_csv': '📤 匯出持倉 CSV',
+    'index.export_holdings_title': '匯出所有持倉到 CSV',
+    'index.export_holdings_success': '已下載 CSV',
+    'index.export_holdings_failed': '匯出失敗：{error}',
+
     // Time
     'time.just_now': '剛剛',
     'time.minutes_ago': '{n} 分鐘前',
@@ -751,6 +758,13 @@ const I18N = {
     'portfolio.capture_success': '✓ Captured {date} snapshot ({value})',
     'portfolio.capture_failed': 'Capture failed: {error}',
     'portfolio.export_failed': 'Export failed: {error}',
+
+    // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
+    'index.stocks_toolbar': 'Holdings',
+    'index.export_holdings_csv': '📤 Export holdings CSV',
+    'index.export_holdings_title': 'Export all holdings to CSV',
+    'index.export_holdings_success': 'CSV downloaded',
+    'index.export_holdings_failed': 'Export failed: {error}',
 
     // Time
     'time.just_now': 'Just now',

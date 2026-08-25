@@ -77,6 +77,7 @@ TSLA, NVDA, TE, GLW, MRVU, IBM
 - **AI 摘要:** 每份報告生成 ~50字中文摘要
 - **AI 分析結構化:** 分析結果包含多個標題 + 內容段落
 - **報告列表:** 顯示摘要、來源、日期、關聯 ticker
+- **持倉匯出 (v3.4.9):** Dashboard 股票清單可下載現有 `/api/tickers/export.csv` 全部持倉 CSV，並由 `stocker_ticker_exports_total{scope=all|group}` 記錄使用量
 - **報告詳情頁 (核心功能):**
   - **左側:** PDF.js 嵌入式 PDF viewer，支援滾動及頁面導航
   - **右側:** AI 綜合分析，每點為可折疊標題+內容

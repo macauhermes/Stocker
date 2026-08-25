@@ -53,6 +53,32 @@
   color: var(--text);
 }
 
+/* Alerts nav badge — small red dot in the corner showing enabled alert count.
+   Hidden by default; toggled to flex by refreshAlertsBadge() in base.html when
+   the count > 0. Uses position:absolute so the parent <a> needs position:relative
+   (handled by .nav-icon-btn-badged below). */
+.nav-icon-btn-badged {
+  position: relative;
+}
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background-color: var(--red, #ff1744);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--card, #1e1e2e);
+}
+
 .lang-switcher {
   display: flex;
   background: var(--bg);
@@ -1611,3 +1637,90 @@
 .mt-16 { margin-top: 16px; }
 .mb-8 { margin-bottom: 8px; }
 .mb-16 { margin-bottom: 16px; }
+
+/* ============================================================
+   STOCKS TOOLBAR (v3.4.9) — surfaces /api/tickers/export.csv
+   ============================================================ */
+.stocks-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 12px;
+}
+
+.stocks-toolbar-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #a0a8b4);
+  letter-spacing: 0.02em;
+}
+
+.stocks-toolbar-btn {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid rgba(33, 150, 243, 0.35);
+  border-radius: 8px;
+  background: rgba(33, 150, 243, 0.18);
+  color: #82b1ff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+  white-space: nowrap;
+}
+
+.stocks-toolbar-btn:hover:not(:disabled) {
+  background: rgba(33, 150, 243, 0.28);
+  border-color: rgba(33, 150, 243, 0.55);
+}
+
+.stocks-toolbar-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.stocks-toolbar-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.stocks-toolbar-toast {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  white-space: nowrap;
+  animation: stocks-toolbar-toast-in 200ms ease;
+}
+
+.stocks-toolbar-toast.stocks-toolbar-toast-error {
+  background: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+  border-color: rgba(239, 83, 80, 0.35);
+}
+
+.stocks-toolbar-toast.stocks-toolbar-toast-success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+@keyframes stocks-toolbar-toast-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 480px) {
+  .stocks-toolbar {
+    flex-wrap: wrap;
+  }
+  .stocks-toolbar-btn {
+    margin-left: 0;
+    flex: 1 1 100%;
+  }
+}

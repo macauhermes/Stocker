@@ -239,6 +239,7 @@ async function saveAlert() {
         }
         closeAlertModal();
         loadAlerts();
+        if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
     } catch (e) {
         alert(t('alerts.save_error', { msg: String(e) }));
     }
@@ -261,6 +262,7 @@ async function toggleAlert(id, enabled) {
             body: JSON.stringify({ enabled }),
         });
         loadAlerts();
+        if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
     } catch (e) { alert(t('alerts.update_error', { msg: String(e) })); }
 }
 
@@ -268,6 +270,7 @@ async function rearmAlert(id) {
     try {
         await fetch(`${API}/${id}/rearm`, { method: 'POST' });
         loadAlerts();
+        if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
     } catch (e) { alert(t('alerts.rearm_error', { msg: String(e) })); }
 }
 
@@ -278,6 +281,7 @@ function confirmDelete(id, symbol) {
             await fetch(`${API}/${id}`, { method: 'DELETE' });
             closeConfirm();
             loadAlerts();
+            if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
         } catch (e) { alert(t('alerts.delete_error', { msg: String(e) })); }
     };
     document.getElementById('confirm-overlay').style.display = 'flex';

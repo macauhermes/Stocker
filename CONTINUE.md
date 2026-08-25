@@ -61,6 +61,15 @@
 - ✅ Smoke test: 3 個持倉 (TSLA 30股/MSFT 8股/NVDA 5股) 返 share_of_portfolio 67.94% / 25.3% / 6.76% — sum 100%
 - ✅ 10 個 unit tests (tests/test_portfolio_breakdown.py) — all passing (218/218 total)
 
+**v3.4.9 (2026-08-25)**:
+- ✅ Dashboard 持股清單新增「📤 匯出持倉 CSV」按鈕，直接重用現有 `/api/tickers/export.csv` endpoint
+- ✅ 前端先 fetch + `response.ok` check，再由 Blob 產生 download；HTTP 4xx/5xx 不會誤報下載成功，並從 Content-Disposition 讀取伺服器檔名
+- ✅ Fix `text/csv` double-charset：Flask 會自動附加一次 `charset=utf-8`
+- ✅ Prometheus 新增 `stocker_ticker_exports_total{scope=all|group}` counter + `/api/metrics/summary` 的 `ticker_exports` 區塊
+- ✅ 支援繁中 / English i18n（`index.stocks_toolbar`, `index.export_holdings_*`）
+- ✅ 全部修改：`templates/index.html`, `static/css/components.css`, `static/js/i18n.js`, `app.py`, `services/metrics.py`, `README.md`, `SPEC.md`
+- ✅ Smoke test：`GET /api/tickers/export.csv` 200、`Content-Type: text/csv; charset=utf-8`（single charset）、metric all=1/group=0
+
 **v3.4.8 (2026-08-25)**:
 - ✅ Dashboard 投資組合卡片新增「📸 拍攝快照」「📥 匯出 CSV」兩個 quick-action buttons — 終於將之前 orphan 嘅 `POST /api/portfolio/capture` 同 `GET /api/portfolio/snapshots/export.csv` 拉到 UI surface
 - ✅ Buttons 帶 44px 觸控目標、桌面並排 / 手機自動堆疊、loading state 帶 ⏳ spinner、成功 / 失敗 toast 4 秒自動消失

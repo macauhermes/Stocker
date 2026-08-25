@@ -21,6 +21,8 @@
 - **投資組合走勢圖 (v3.4.4)** — Dashboard 投資組合卡片內嵌 Chart.js sparkline，繪製近 30 日 total_value 走勢；< 2 個快照時自動隱藏
 - **投資組合快照匯出 (v3.4.5)** — `/api/portfolio/snapshots/export.csv[?days=&fmt=csv|tsv]` 將每日快照下載成 CSV / TSV (Excel-friendly paste)，總是 200 (header-only on empty)；Prometheus 暴露 `stocker_portfolio_exports_total{format=csv|tsv}`
 - **投資組合持倉明細 (v3.4.6)** — `/api/portfolio/breakdown` 即時由目前股價計算每個持倉嘅市值、成本、未實現損益、佔比 (%)、未實現損益率 (%)，按市值降序；Prometheus 暴露 `stocker_portfolio_breakdown_requests_total{status=ok|empty|error}`
+- **儀表板持倉明細表 (v3.4.7)** — Dashboard 投資組合卡片內嵌 holdings table，列出每個持倉嘅代碼/股數/現價/市值/未實現損益/佔比；零持倉時自動隱藏；窄螢幕 (<480px) 隱藏現價欄避免水平捲動；純前端改動，零 backend 改動
+- **持倉 CSV 匯出按鈕 (v3.4.9)** — Dashboard 股票清單新增下載按鈕，直接使用現有 `/api/tickers/export.csv` 匯出全部持倉；Prometheus 暴露 `stocker_ticker_exports_total{scope=all|group}`
 - **報告搜尋 (v3.4.3)** — `/api/reports?q=&category=&source=&ticker=&limit=&include_total=` AND-combined filters；Prometheus 暴露 `stocker_report_searches_total{has_results=true|false}`
 - **多語言** — 繁體中文 (預設) / English 雙語切換
 - **檔案管理** — 下載報告分類存儲，提供直接下載
@@ -188,8 +190,27 @@ Stocker/
 | **PUT/DELETE** | **`/api/sources/<id>`** | **編輯 / 刪除自訂源** |
 | **GET** | **`/health`** | **健康檢查 (DB / disk / tsdb)** |
 | **GET** | **`/metrics`** | **Prometheus 指標** |
-| **GET** | **`/api/metrics/summary`** | **業務指標摘要 (dashboard JSON)** |
+| **GET** | **`/api/metrics/summary`** | **業務指標摘要（含 alerts、portfolio、ticker_exports）** |
 | **GET** | **`/api/tickers/export.csv`** | **匯出投資組合 CSV (含 P&L)** |
+| **GET** | **`/api/portfolio/snapshots`** | **每日 portfolio snapshots 歷史 (`?days=N`)** |
+| **GET** | **`/api/portfolio/summary`** | **當前最新 snapshot + 30 日 delta** |
+| **POST** | **`/api/portfolio/capture`** | **手動拍攝當前 portfolio snapshot** |
+| **GET** | **`/api/portfolio/breakdown`** | **即時 per-ticker 市值 / P&L / 佔比** |
+| **GET** | **`/api/portfolio/snapshots/export.csv`** | **匯出 snapshots CSV/TSV (`?fmt=tsv`)** |
+| **GET/POST** | **`/api/alerts`** | **價格提醒列表 / 新建** |
+| **PUT/DELETE** | **`/api/alerts/<id>`** | **編輯 / 刪除提醒** |
+| **POST** | **`/api/alerts/<id>/rearm`** | **重新啟動已觸發提醒** |
+| **POST** | **`/api/alerts/check`** | **手動掃描觸發 (全 ticker 或單一)** |
+| **POST** | **`/api/nightly-refresh`** | **手動觸發 5 年歷史價 refresh** |
+| **GET/POST/PUT/DELETE** | **`/api/watchlist-groups[/...]`** | **追蹤分組 CRUD + ticker 增刪** |
+| **GET** | **`/api/events/calendar[?year=&month=]`** | **事件月曆網格** |
+| **GET** | **`/api/events/upcoming[?days=N]`** | **未來 N 日事件列表** |
+| **POST** | **`/api/events/sync`** | **從 yfinance 同步 earnings / dividend 日期** |
+| **GET** | **`/alerts`** | **價格提醒管理頁** |
+| **GET** | **`/banks`** | **投行管理頁** |
+| **GET** | **`/events`** | **事件月曆頁** |
+| **GET** | **`/watchlists`** | **追蹤分組管理頁** |
+| **GET** | **`/sources`** | **自訂 JSONPath 數據源管理頁** |
 
 ## 初始追蹤清單
 

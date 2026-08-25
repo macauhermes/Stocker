@@ -274,8 +274,20 @@ def api_export_tickers_csv():
     group_id = request.args.get('group', type=int)
     if group_id:
         tickers = models.get_watchlist_group_tickers(group_id)
+        export_scope = 'group'  # v3.4.9: track which scope users hit
     else:
         tickers = models.get_all_tickers()
+        export_scope = 'all'
+
+    # v3.4.9: bump the Prometheus counter BEFORE returning so the metric
+    # is always visible on /metrics even if downstream yfinance calls
+    # time out (Pitfall 9 — code after `return` is dead). One increment
+    # per request, regardless of how many tickers the CSV contains.
+    try:
+        from services import metrics as _metrics
+        _metrics.record_ticker_export(export_scope)
+    except Exception as e:
+        logger.warning(f"CSV export: failed to record metric ({export_scope}): {e}")
 
     buf = StringIO()
     writer = csv.writer(buf)
@@ -329,9 +341,12 @@ def api_export_tickers_csv():
 
     csv_text = buf.getvalue()
     filename = f"stocker-{datetime.now().strftime('%Y%m%d-%H%M')}.csv"
+    # v3.4.9: fix double-charset bug (Pitfall 16) — Flask auto-appends
+    # `; charset=utf-8` to text/* mimetypes, so we drop it from the
+    # string. Was producing `Content-Type: text/csv; charset=utf-8; charset=utf-8`.
     return Response(
         csv_text,
-        mimetype='text/csv; charset=utf-8',
+        mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
 

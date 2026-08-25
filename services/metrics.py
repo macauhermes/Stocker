@@ -193,6 +193,21 @@ PORTFOLIO_CAPTURES = Counter(
     ['trigger']  # 'manual' / 'nightly'
 )
 
+# Tickers CSV export (v3.4.9) — track the dashboard "匯出持倉 CSV" button
+# (and any other consumers of /api/tickers/export.csv). Helps spot whether
+# users actually use the export vs. relying on the in-app portfolio view.
+# Two scopes: 'all' = full active tickers list, 'group' = filtered to a watchlist group.
+TICKER_EXPORT = Counter(
+    'stocker_ticker_exports_total',
+    'Ticker holdings CSV export calls via /api/tickers/export.csv',
+    ['scope']  # 'all' / 'group'
+)
+
+# Pre-create label children so /metrics and /api/metrics/summary show 0 (not absent)
+# before any traffic. Mirrors the report_searches pattern (Pitfall 15).
+TICKER_EXPORT.labels(scope='all')
+TICKER_EXPORT.labels(scope='group')
+
 
 # ── Middleware ──────────────────────────────────────────────────────────
 
@@ -329,6 +344,16 @@ def record_portfolio_capture(trigger: str):
     if trigger not in ('manual', 'nightly'):
         trigger = 'manual'  # fail safe — never silently drop an event
     PORTFOLIO_CAPTURES.labels(trigger=trigger).inc()
+
+
+def record_ticker_export(scope: str):
+    """Record a tickers CSV export call (v3.4.9 dashboard "📤 匯出持倉 CSV" button).
+
+    `scope` is 'all' (no ?group filter — full active tickers) or 'group'
+    (filter scoped to a watchlist group_id). Splits the two paths so
+    dashboards can see whether group-aware exports are ever used.
+    """
+    TICKER_EXPORT.labels(scope=scope).inc()
 
 
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
@@ -683,6 +708,15 @@ def metrics_summary():
             'total': sum(c._value.get() for c in PORTFOLIO_CAPTURES._metrics.values()),
             'manual': int(PORTFOLIO_CAPTURES.labels(trigger='manual')._value.get()),
             'nightly': int(PORTFOLIO_CAPTURES.labels(trigger='nightly')._value.get()),
+        },
+        # ticker_exports (v3.4.9): track dashboard "📤 匯出持倉 CSV" button
+        # usage. Two scopes — 'all' (full active list) vs 'group'
+        # (filtered by watchlist group_id). Pre-created labels at import
+        # ensure these counters always appear (Pitfall 15).
+        'ticker_exports': {
+            'total': sum(c._value.get() for c in TICKER_EXPORT._metrics.values()),
+            'all': int(TICKER_EXPORT.labels(scope='all')._value.get()),
+            'group': int(TICKER_EXPORT.labels(scope='group')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,
