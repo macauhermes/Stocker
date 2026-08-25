@@ -24,9 +24,9 @@
         <span class="material-icons-outlined">analytics</span>
         <span data-i18n="files.cat.analyst_report">分析</span>
     </button>
-    <button class="tab-btn" data-category="news" onclick="filterByCategory('news')">
-        <span class="material-icons-outlined">article</span>
-        <span data-i18n="files.cat.news">新聞</span>
+    <button class="tab-btn" data-category="sec_filing" onclick="filterByCategory('sec_filing')">
+        <span class="material-icons-outlined">description</span>
+        <span data-i18n="files.cat.sec_filing">SEC 文件</span>
     </button>
 </div>
 
@@ -101,14 +101,14 @@
                 icon = 'assessment';
                 iconBg = 'rgba(0, 200, 83, 0.15)';
                 iconColor = 'var(--green)';
-            } else if (f.category === 'news') {
-                icon = 'article';
-                iconBg = 'rgba(255, 214, 0, 0.15)';
-                iconColor = 'var(--yellow)';
             } else if (f.category === 'analyst_report') {
                 icon = 'analytics';
                 iconBg = 'rgba(73, 79, 223, 0.15)';
                 iconColor = 'var(--blue)';
+            } else if (f.category === 'sec_filing') {
+                icon = 'gavel';
+                iconBg = 'rgba(255, 145, 0, 0.15)';
+                iconColor = 'var(--orange, #ff9100)';
             }
 
             const item = document.createElement('div');
