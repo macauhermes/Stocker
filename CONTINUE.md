@@ -24,6 +24,18 @@
 - ✅ Tab 按鈕結構改用 `<span data-i18n>` 包住 label，保留 material-icons-outlined glyph
 - ✅ Smoke test：bank tab → 10 份報告 (3 investment_bank_report + 7 sec_filing) 全部可見；之前呢類全部無 UI surface
 - ✅ Pure frontend — 改動: templates/index.html (tabs markup + filterByType), static/js/i18n.js (10 keys), README.md (1 行)
+- Commit: 53ded9e
+
+**v3.4.18 (2026-08-26) — Files page Pattern 8 fix (孖生 v3.4.17 bug class)**:
+- ✅ **Bug fix**: `/files` 頁面嘅 category tabs 之前係 (all/earnings/analyst_report/news)，但 DB `files` table 只有 3 個 category (earnings: 113, analyst_report: 57, sec_filing: 7) —— 從來冇 `news`！7 份 SpaceX 招股書 (SPCX_S-1 × 4 個 + SPCX_EU-Prospectus × 3 個) 永久隱形，只可以喺「全部」tab 見到，用戶唔知道揀咩
+- ✅ 同一個 bug class 係 v3.4.17 嘅孖生兄弟：UI filter 同 DB category 不對齊 (overlap，但唔同 page)
+- ✅ 將 dead `news` tab 換成 `sec_filing` tab (matches actual DB content)
+- ✅ `formatCategory()` i18n key `files.cat.sec_filing` 已經喺 i18n.js 存在 (zh + en)，直接重用無需新 key
+- ✅ 新增 sec_filing icon mapping: `gavel` Material icon + 橘色 `rgba(255,145,0,.15)` background
+- ✅ 1 file 改動 (templates/files.html, +7/-7 lines)，零 backend / DB / CSS / i18n 改動
+- ✅ Smoke test: /files 200, /api/files 返 177 files (analyst_report: 57, earnings: 113, sec_filing: 7)，sec_filing tab 可見 SPCX_S-1 + SPCX_EU-Prospectus 招股書
+- ✅ JS validated: node --check 4374 chars OK，mojibake clean (U+FFFD/U+00AD 0 hits)
+- Commit: ddd9caf
 - Commit: <next>
 
 **v3.4.16 (2026-08-25) — 行業新聞 panel 連接 + 之前係 stub 嘅 endpoint 修復**:
