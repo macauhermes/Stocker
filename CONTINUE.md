@@ -17,6 +17,15 @@
 6. ✅ 自訂 JSONPath 數據源管理頁 /sources
 7. ✅ SPCX 7 份 SEC 招股書 (data/files/sec_filing/)
 
+**v3.4.16 (2026-08-25) — 行業新聞 panel 連接 + 之前係 stub 嘅 endpoint 修復**:
+- ✅ `/api/industry/<sector>/news` 由 stub `return jsonify([])` 改為真正 query `reports` table where `category='industry'` + file_path basename 以 `<safe_sector>_industry_` 開頭；123 篇 Consumer Cyclical / 139 篇 Industrials / 159 篇 Technology news 終於 surfacing
+- ✅ Normalise sector name 跟 `services/industry_collector.safe_sector` 用 `re.sub(r'[^\w\-]', '_', sector[:40]).strip('_')`，所以「Consumer Cyclical」(space) match 到 file_path「Consumer_Cyclical」(underscore)
+- ✅ `/industry` sector 詳情 panel 拆成兩個：上面「行業新聞」card + 下面「行業報告」card，兩個 endpoint 平行 fetch (`Promise.allSettled`)，獨立 loading + empty state
+- ✅ Prometheus 新增 `stocker_industry_news_requests_total{status=ok|empty}` counter + `/api/metrics/summary` 嘅 `industry_news: {total, ok, empty}` block
+- ✅ 4 個新 zh + 4 個新 en i18n keys (industry.news / industry.no_news / industry.news_error / industry.news_count)
+- ✅ `.card-meta` CSS class (右側 muted "{n} 篇" 計數 badge)
+- ✅ Touch: app.py (1 endpoint), services/metrics.py (1 metric + summary block), templates/industry.html (1 new card + parallel fetch), static/css/components.css (.card-meta), static/js/i18n.js (8 keys), README.md (1 條)
+
 **v3.4.15 (2026-08-25) — `/api/events/sync` 500 AttributeError fix**:
 - ✅ `/api/events/sync` 引用咗唔存在嘅 `models.get_active_tickers()` — calendar 嘅「同步」掣由 v3.3 ships 起就壞咗，每次撳都 500 AttributeError
 - ✅ 改用 `models.get_all_tickers()`（已經 filter `archived = 0`，功能一樣）

@@ -24,6 +24,23 @@
 
 <!-- Reports Panel (shown when a sector is selected) -->
 <div id="reports-panel" style="display:none; margin-top:16px;">
+    <!-- Industry News section (v3.4.16) — dedicated panel for category='industry'
+         rows from /api/industry/<sector>/news. Visually separate from the
+         broader sector reports below so users can distinguish nightly-collected
+         industry news from per-ticker earnings / analyst / SEC filings. -->
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined" style="color:var(--yellow)">article</span>
+                <span id="news-title"></span>
+            </div>
+            <span id="news-count" class="card-meta"></span>
+        </div>
+        <div id="news-list" class="report-list"></div>
+    </div>
+
+    <!-- Sector Reports (existing) — earnings / analyst reports / SEC filings
+         that mention any ticker in this sector. Broader than industry news. -->
     <div class="card">
         <div class="card-header">
             <div class="card-title">
@@ -114,17 +131,30 @@
         return icons[sector] || 'business';
     }
 
-    // Select a sector → load its reports
+    // Select a sector → load its news + reports in parallel
+    // (v3.4.16: news comes from /api/industry/<sector>/news, reports from
+    // /api/sectors/<sector>/reports — two visually separate panels.)
     async function selectSector(sectorName) {
         activeSector = sectorName;
         renderSectors();
 
         const panel = document.getElementById('reports-panel');
-        const title = document.getElementById('reports-title');
-        const list = document.getElementById('reports-list');
+        const newsTitle = document.getElementById('news-title');
+        const newsList = document.getElementById('news-list');
+        const newsCount = document.getElementById('news-count');
+        const reportsTitle = document.getElementById('reports-title');
+        const reportsList = document.getElementById('reports-list');
 
-        title.textContent = sectorName + ' — ' + t('industry.reports');
-        list.innerHTML = `
+        newsTitle.textContent = sectorName + ' — ' + t('industry.news');
+        newsCount.textContent = '';
+        newsList.innerHTML = `
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span>${t('common.loading')}</span>
+            </div>
+        `;
+        reportsTitle.textContent = sectorName + ' — ' + t('industry.reports');
+        reportsList.innerHTML = `
             <div class="loading-cell">
                 <div class="spinner-sm"></div>
                 <span>${t('common.loading')}</span>
@@ -133,13 +163,33 @@
         panel.style.display = 'block';
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-        try {
-            const res = await fetch('/api/sectors/' + encodeURIComponent(sectorName) + '/reports');
-            const reports = await res.json();
-            renderReports(reports);
-        } catch (e) {
-            console.error('Failed to load reports:', e);
-            list.innerHTML = `
+        // Kick off both fetches in parallel — sector reports may take longer
+        // (LIKE search across all reports), news is filtered by file_path prefix.
+        const sectorEnc = encodeURIComponent(sectorName);
+        const [newsRes, reportsRes] = await Promise.allSettled([
+            fetch('/api/industry/' + sectorEnc + '/news').then(r => r.ok ? r.json() : []),
+            fetch('/api/sectors/' + sectorEnc + '/reports').then(r => r.ok ? r.json() : []),
+        ]);
+
+        // News panel
+        if (newsRes.status === 'fulfilled') {
+            const news = newsRes.value;
+            newsCount.textContent = t('industry.news_count', { n: news.length });
+            renderReports(news, newsList, { isNews: true });
+        } else {
+            newsList.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('industry.news_error')}</div>
+                </div>
+            `;
+        }
+
+        // Reports panel (broader per-ticker search)
+        if (reportsRes.status === 'fulfilled') {
+            renderReports(reportsRes.value, reportsList, { isNews: false });
+        } else {
+            reportsList.innerHTML = `
                 <div class="empty-state">
                     <span class="material-icons-outlined empty-state-icon">error</span>
                     <div class="empty-state-title">${t('industry.report_error')}</div>
@@ -148,19 +198,19 @@
         }
     }
 
-    function renderReports(reports) {
-        const list = document.getElementById('reports-list');
+    function renderReports(reports, listEl, opts = {}) {
+        const isNews = opts.isNews || false;
         if (!reports.length) {
-            list.innerHTML = `
+            listEl.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-outlined empty-state-icon">description</span>
-                    <div class="empty-state-title">${t('industry.no_reports')}</div>
+                    <span class="material-icons-outlined empty-state-icon">${isNews ? 'article' : 'description'}</span>
+                    <div class="empty-state-title">${isNews ? t('industry.no_news') : t('industry.no_reports')}</div>
                 </div>
             `;
             return;
         }
 
-        list.innerHTML = reports.map(r => {
+        listEl.innerHTML = reports.map(r => {
             const summary = (r.summary || r.title || '').substring(0, 80);
             const source = r.source || '—';
             const date = r.published_at || r.created_at || '';

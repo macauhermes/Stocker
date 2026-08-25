@@ -176,6 +176,11 @@ const I18N = {
     'industry.report_error': '載入報告失敗',
     'industry.close': '關閉',
     'industry.nav': '行業',
+    // Industry News panel (v3.4.16)
+    'industry.news': '行業新聞',
+    'industry.no_news': '該行業暫無新聞',
+    'industry.news_error': '載入行業新聞失敗',
+    'industry.news_count': '{n} 篇',
 
     // Files
     'files.title': '檔案管理',
@@ -637,6 +642,11 @@ const I18N = {
     'industry.report_error': 'Failed to load reports.',
     'industry.close': 'Close',
     'industry.nav': 'Industry',
+    // Industry News panel (v3.4.16)
+    'industry.news': 'Industry News',
+    'industry.no_news': 'No news found for this sector.',
+    'industry.news_error': 'Failed to load industry news.',
+    'industry.news_count': '{n}',
 
     // Files
     'files.title': 'File Manager',

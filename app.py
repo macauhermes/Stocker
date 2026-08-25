@@ -644,8 +644,59 @@ def api_sector_reports(sector):
 
 @app.route('/api/industry/<sector>/news', methods=['GET'])
 def api_industry_news(sector):
-    """Return industry-level news for a sector. (Stub — returns empty list for now.)"""
-    return jsonify([])
+    """Return industry-level news for a sector.
+
+    Queries the reports table for category='industry' rows where the
+    file_path basename starts with '<safe_sector>_industry_'. Each
+    sector's nightly collection (services/industry_collector.collect_sector_news)
+    writes TXT files with that prefix, where safe_sector is built via
+    re.sub(r'[^\\w\\-]', '_', sector[:40]).strip('_') — so spaces in
+    the sector name become underscores.
+
+    NOTE: previously a stub returning [] — v3.4.16 surfaces real data
+    so the industry page can show a dedicated news panel separate from
+    broader sector reports.
+    """
+    import re as _re
+    from urllib.parse import unquote as _unquote
+    sector_name = _unquote(sector)
+    # Normalize the sector the same way industry_collector does so URL-encoded
+    # "Consumer Cyclical" (with space) matches file_path prefix "Consumer_Cyclical"
+    # (with underscore).
+    safe_sector = _re.sub(r'[^\w\-]', '_', sector_name[:40]).strip('_')
+    from models import get_db
+    conn = get_db()
+    try:
+        prefix = f"{safe_sector}_industry_"
+        # Fetch all industry-category rows then filter by basename prefix
+        # in Python — easier than SQL LIKE on absolute paths.
+        rows = conn.execute(
+            "SELECT id, title, source, summary, url, file_path, "
+            "category, published_at, created_at "
+            "FROM reports "
+            "WHERE category = 'industry' "
+            "AND file_path IS NOT NULL "
+            "AND file_path != '' "
+            "ORDER BY created_at DESC LIMIT 500"
+        ).fetchall()
+        result = []
+        for r in rows:
+            fp = r['file_path'] or ''
+            basename = fp.rsplit('/', 1)[-1]
+            # Match exact prefix (underscore is critical: avoids "Industrials"
+            # matching "Industrial" via prefix-only check)
+            if basename.startswith(prefix):
+                result.append(dict(r))
+                if len(result) >= 50:
+                    break
+        # Track metric — counts hits regardless of whether results found
+        try:
+            metrics.record_industry_news_request(sector_name, 'ok' if result else 'empty')
+        except Exception:
+            pass
+        return jsonify(result)
+    finally:
+        conn.close()
 
 
 @app.route('/api/industry/data', methods=['GET'])

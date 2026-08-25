@@ -25,6 +25,7 @@
 - **儀表板持倉明細表 (v3.4.7)** — Dashboard 投資組合卡片內嵌 holdings table，列出每個持倉嘅代碼/股數/現價/市值/未實現損益/佔比；零持倉時自動隱藏；窄螢幕 (<480px) 隱藏現價欄避免水平捲動；純前端改動，零 backend 改動
 - **持倉 CSV 匯出按鈕 (v3.4.9)** — Dashboard 股票清單新增下載按鈕，直接使用現有 `/api/tickers/export.csv` 匯出全部持倉；Prometheus 暴露 `stocker_ticker_exports_total{scope=all|group}`
 - **報告搜尋 (v3.4.3)** — `/api/reports?q=&category=&source=&ticker=&limit=&include_total=` AND-combined filters；Prometheus 暴露 `stocker_report_searches_total{has_results=true|false}`
+- **行業新聞面板 (v3.4.16)** — `/industry` 頁 sector 詳情加咗個獨立「行業新聞」 panel，wires 之前係 stub 嘅 `/api/industry/<sector>/news` endpoint（依家 query `category='industry'` 嘅 reports by file_path prefix）；Prometheus 暴露 `stocker_industry_news_requests_total{status=ok|empty}`
 - **多語言** — 繁體中文 (預設) / English 雙語切換
 - **檔案管理** — 下載報告分類存儲，提供直接下載
 

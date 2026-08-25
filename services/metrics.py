@@ -127,6 +127,26 @@ APP_START_TIME = Gauge(
     'Unix timestamp when Stocker started'
 )
 
+# ── Industry News (v3.4.16) ──────────────────────────────────────────────
+
+INDUSTRY_NEWS_REQUESTS = Counter(
+    'stocker_industry_news_requests_total',
+    'Industry news endpoint requests per sector (split by result status)',
+    ['status']  # 'ok' | 'empty' — tracks whether the sector had any news
+)
+
+
+def record_industry_news_request(sector: str, status: str):
+    """Increment the industry news request counter for a sector.
+
+    Called from app.py:api_industry_news. status is 'ok' (≥1 result)
+    or 'empty' (no industry-category rows matched the sector prefix).
+    The sector itself is intentionally NOT a label — too many sectors
+    would explode cardinality. Status split lets dashboards spot
+    sectors that have never been collected.
+    """
+    INDUSTRY_NEWS_REQUESTS.labels(status=status).inc()
+
 # Set start time on import
 APP_START_TIME.set(time.time())
 
@@ -717,6 +737,14 @@ def metrics_summary():
             'total': sum(c._value.get() for c in TICKER_EXPORT._metrics.values()),
             'all': int(TICKER_EXPORT.labels(scope='all')._value.get()),
             'group': int(TICKER_EXPORT.labels(scope='group')._value.get()),
+        },
+        # industry_news (v3.4.16): /api/industry/<sector>/news requests.
+        # Sum across status labels for total; split by ok/empty so we
+        # can spot sectors that have never been collected.
+        'industry_news': {
+            'total': sum(c._value.get() for c in INDUSTRY_NEWS_REQUESTS._metrics.values()),
+            'ok': int(INDUSTRY_NEWS_REQUESTS.labels(status='ok')._value.get()),
+            'empty': int(INDUSTRY_NEWS_REQUESTS.labels(status='empty')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,

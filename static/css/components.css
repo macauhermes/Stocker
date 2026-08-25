@@ -245,6 +245,14 @@
   color: var(--text-muted);
 }
 
+/* Subtitle / count badge inside card-header (used by industry.html
+   to show "{n} 篇" next to the panel title). */
+.card-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 /* ============================================================
    BUTTONS
    ============================================================ */
