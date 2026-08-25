@@ -63,6 +63,32 @@
         </div>
         <div id="portfolio-holdings-empty" class="portfolio-holdings-empty" style="display:none;" data-i18n="portfolio.holdings_empty">暫無持倉</div>
     </div>
+    <!-- Daily snapshots log table (v3.4.11) — surfaces /api/portfolio/snapshots
+         on the dashboard. The sparkline shows the trend, this table shows every
+         individual daily row with full per-snapshot P&L details. Hidden when
+         there are 0 snapshots. -->
+    <div id="portfolio-snapshots-log-wrapper" class="portfolio-snapshots-log-wrapper" style="display:none;">
+        <div class="portfolio-snapshots-log-header">
+            <span class="portfolio-snapshots-log-title" data-i18n="portfolio.snapshots_log_title">📋 快照日誌</span>
+            <span class="portfolio-snapshots-log-meta" id="portfolio-snapshots-log-meta"></span>
+        </div>
+        <div class="portfolio-snapshots-log-table-wrap">
+            <table class="portfolio-snapshots-log-table" id="portfolio-snapshots-log-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="portfolio.snapshots_log_date">日期</th>
+                        <th class="num" data-i18n="portfolio.snapshots_log_value">市值</th>
+                        <th class="num" data-i18n="portfolio.snapshots_log_cost">成本</th>
+                        <th class="num" data-i18n="portfolio.snapshots_log_pnl">損益</th>
+                        <th class="num" data-i18n="portfolio.snapshots_log_pnl_pct">損益%</th>
+                        <th class="num" data-i18n="portfolio.snapshots_log_holdings">持倉數</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-snapshots-log-tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
     <div class="portfolio-meta">
         <span class="material-icons-outlined">schedule</span>
         <span id="portfolio-snapshot-date" data-i18n="portfolio.dashboard_no_history">尚未有投資組合歷史快照</span>
@@ -477,6 +503,66 @@
         }
     }
 
+    // Portfolio snapshots log table (v3.4.11) — surfaces /api/portfolio/snapshots
+    // as a daily-row log table. Sorted DESC by date so newest is on top. Each row
+    // shows full snapshot details (value, cost, P&L, P&L%, holdings_count). The
+    // sparkline shows the trend; this table shows every individual datapoint.
+    async function loadPortfolioSnapshotsLog() {
+        const wrapper = document.getElementById('portfolio-snapshots-log-wrapper');
+        if (!wrapper) return;
+        const tbody = document.getElementById('portfolio-snapshots-log-tbody');
+        const metaEl = document.getElementById('portfolio-snapshots-log-meta');
+        try {
+            // 365-day window matches the CSV export default. Server returns
+            // {snapshots, count} — only show rows that actually captured data
+            // (holdings_count > 0 makes a meaningful row; zero-holding days are
+            // 拍攝 attempts with no current prices and clutter the table).
+            const res = await fetch('/api/portfolio/snapshots?days=365');
+            if (!res.ok) {
+                wrapper.style.display = 'none';
+                return;
+            }
+            const data = await res.json();
+            const snapshots = (data && data.snapshots) || [];
+            // Filter out zero-holding rows — those are capture attempts where
+            // no ticker had a usable current price, the row doesn't add info.
+            const meaningful = snapshots.filter(s => (s.holdings_count || 0) > 0);
+            if (meaningful.length === 0) {
+                wrapper.style.display = 'none';
+                return;
+            }
+
+            // Sort DESC by date (server returns ASC; newest on top is more useful).
+            meaningful.sort((a, b) => (b.snapshot_date || '').localeCompare(a.snapshot_date || ''));
+
+            tbody.innerHTML = meaningful.map(s => {
+                const value = Number(s.total_value) || 0;
+                const cost = Number(s.total_cost) || 0;
+                const pnl = Number(s.total_pnl) || 0;
+                const pnlPct = Number(s.pnl_pct) || 0;
+                const plClass = pnl > 0 ? 'pnl-positive' : (pnl < 0 ? 'pnl-negative' : '');
+                const plSign = pnl >= 0 ? '+' : '−';
+                const pnlAbs = Math.abs(pnl);
+                const pnlPctAbs = Math.abs(pnlPct);
+                return `<tr>
+                    <td>${escapeHtml(s.snapshot_date || '—')}</td>
+                    <td class="num">${formatCurrency(value)}</td>
+                    <td class="num">${formatCurrency(cost)}</td>
+                    <td class="num ${plClass}">${plSign}${formatCurrency(pnlAbs)}</td>
+                    <td class="num ${plClass}">${plSign}${pnlPctAbs.toFixed(2)}%</td>
+                    <td class="num">${s.holdings_count || 0}</td>
+                </tr>`;
+            }).join('');
+
+            // Meta line: total count
+            metaEl.textContent = t('portfolio.snapshots_log_count_total', { n: meaningful.length });
+            wrapper.style.display = 'block';
+        } catch (err) {
+            console.error('Failed to load portfolio snapshots log:', err);
+            wrapper.style.display = 'none';
+        }
+    }
+
     // Portfolio quick actions (v3.4.8) — manual capture + CSV export.
     // Wires the previously-orphan /api/portfolio/capture and
     // /api/portfolio/snapshots/export.csv to the dashboard card so users
@@ -508,11 +594,12 @@
                 }),
                 'success'
             );
-            // Refresh summary + sparkline + holdings so the new row shows up.
+            // Refresh summary + sparkline + holdings + snapshots log so the new row shows up.
             await Promise.all([
                 loadPortfolioSummary(),
                 loadPortfolioSparkline(),
                 loadPortfolioHoldings(),
+                loadPortfolioSnapshotsLog(),
             ]);
         } catch (err) {
             console.error('Capture failed:', err);
@@ -1141,6 +1228,7 @@
     loadPortfolioSummary();
     loadPortfolioSparkline();
     loadPortfolioHoldings();
+    loadPortfolioSnapshotsLog();  // v3.4.11 — daily snapshots log table
     loadStocks();
     loadReports();
     loadSectors();
@@ -1337,6 +1425,7 @@
         loadPortfolioSummary();
         loadPortfolioSparkline();
         loadPortfolioHoldings();
+        loadPortfolioSnapshotsLog();
     });
 </script>
 {% endblock %}

@@ -1189,6 +1189,94 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* Portfolio snapshots log (v3.4.11) — daily-row table that mirrors the
+   /api/portfolio/snapshots endpoint. Wider than the per-ticker holdings table
+   (6 cols vs 6) but uses the same .portfolio-holdings-* sibling classes for
+   header/meta so they look like a natural continuation of the widget. */
+.portfolio-snapshots-log-wrapper {
+  margin-top: 12px;
+  padding: 12px 0 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.portfolio-snapshots-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.portfolio-snapshots-log-title {
+  color: var(--text-muted, #8a96a3);
+  font-weight: 500;
+}
+
+.portfolio-snapshots-log-meta {
+  color: var(--text-muted, #6b7480);
+  font-size: 0.78rem;
+}
+
+.portfolio-snapshots-log-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.portfolio-snapshots-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.portfolio-snapshots-log-table th,
+.portfolio-snapshots-log-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: left;
+}
+
+.portfolio-snapshots-log-table th {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text-muted, #8a96a3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.portfolio-snapshots-log-table th.num,
+.portfolio-snapshots-log-table td.num {
+  text-align: right;
+}
+
+.portfolio-snapshots-log-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.portfolio-snapshots-log-table tbody tr:hover {
+  background: rgba(33, 150, 243, 0.06);
+}
+
+.portfolio-snapshots-log-table td.pnl-positive {
+  color: #4caf50;
+  font-weight: 500;
+}
+
+.portfolio-snapshots-log-table td.pnl-negative {
+  color: #ef5350;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  /* Hide cost column on small screens — value + P&L + P&L% are enough info
+     to know how the portfolio is doing; cost is mostly internal accounting. */
+  .portfolio-snapshots-log-table th:nth-child(3),
+  .portfolio-snapshots-log-table td:nth-child(3) {
+    display: none;
+  }
+}
+
 .event-icon {
   font-size: 1.2rem;
 }

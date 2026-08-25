@@ -372,6 +372,17 @@ const I18N = {
     'portfolio.capture_failed': '拍攝失敗：{error}',
     'portfolio.export_failed': '匯出失敗：{error}',
 
+    // Portfolio v3.4.11 — daily snapshots log table on dashboard
+    'portfolio.snapshots_log_title': '📋 快照日誌',
+    'portfolio.snapshots_log_date': '日期',
+    'portfolio.snapshots_log_value': '市值',
+    'portfolio.snapshots_log_cost': '成本',
+    'portfolio.snapshots_log_pnl': '損益',
+    'portfolio.snapshots_log_pnl_pct': '損益%',
+    'portfolio.snapshots_log_holdings': '持倉數',
+    'portfolio.snapshots_log_empty': '尚無歷史快照 — 每日 20:00 自動拍攝',
+    'portfolio.snapshots_log_count_total': '共 {n} 個快照',
+
     // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
     'index.stocks_toolbar': '持股清單',
     'index.export_holdings_csv': '📤 匯出持倉 CSV',
@@ -809,6 +820,17 @@ const I18N = {
     'portfolio.capture_success': '✓ Captured {date} snapshot ({value})',
     'portfolio.capture_failed': 'Capture failed: {error}',
     'portfolio.export_failed': 'Export failed: {error}',
+
+    // Portfolio v3.4.11 — daily snapshots log table on dashboard
+    'portfolio.snapshots_log_title': '📋 Snapshot Log',
+    'portfolio.snapshots_log_date': 'Date',
+    'portfolio.snapshots_log_value': 'Value',
+    'portfolio.snapshots_log_cost': 'Cost',
+    'portfolio.snapshots_log_pnl': 'P&L',
+    'portfolio.snapshots_log_pnl_pct': 'P&L %',
+    'portfolio.snapshots_log_holdings': 'Holdings',
+    'portfolio.snapshots_log_empty': 'No snapshots yet — captured nightly at 20:00',
+    'portfolio.snapshots_log_count_total': '{n} snapshots total',
 
     // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
     'index.stocks_toolbar': 'Holdings',
