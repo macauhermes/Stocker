@@ -23,7 +23,10 @@
 - **投資組合快照匯出 (v3.4.5)** — `/api/portfolio/snapshots/export.csv[?days=&fmt=csv|tsv]` 將每日快照下載成 CSV / TSV (Excel-friendly paste)，總是 200 (header-only on empty)；Prometheus 暴露 `stocker_portfolio_exports_total{format=csv|tsv}`
 - **投資組合持倉明細 (v3.4.6)** — `/api/portfolio/breakdown` 即時由目前股價計算每個持倉嘅市值、成本、未實現損益、佔比 (%)、未實現損益率 (%)，按市值降序；Prometheus 暴露 `stocker_portfolio_breakdown_requests_total{status=ok|empty|error}`
 - **儀表板持倉明細表 (v3.4.7)** — Dashboard 投資組合卡片內嵌 holdings table，列出每個持倉嘅代碼/股數/現價/市值/未實現損益/佔比；零持倉時自動隱藏；窄螢幕 (<480px) 隱藏現價欄避免水平捲動；純前端改動，零 backend 改動
+- **投資組合快捷操作 (v3.4.8)** — Dashboard 投資組合卡片新增「📸 拍攝快照」「📥 匯出 CSV」兩個按鈕；將之前 orphan 嘅 `POST /api/portfolio/capture` 同 `GET /api/portfolio/snapshots/export.csv` 拉到 UI surface；44px 觸控目標 + loading spinner + 成功/失敗 toast；Prometheus 暴露 `stocker_portfolio_captures_total{trigger=manual|nightly}`
 - **持倉 CSV 匯出按鈕 (v3.4.9)** — Dashboard 股票清單新增下載按鈕，直接使用現有 `/api/tickers/export.csv` 匯出全部持倉；Prometheus 暴露 `stocker_ticker_exports_total{scope=all|group}`
+- **系統狀態儀表板 (v3.4.10)** — `/system` 管理員頁 surface 之前 orphan 嘅 `/api/metrics/summary` + `/health`：4 個 stat cards (Health / Tickers / Portfolio / Features)、Top sectors + Top tickers 排行、Prometheus counters panel；30s auto-refresh + visibilitychange 暫停 + langchange 即時 re-render
+- **Portfolio Snapshots Log Table (v3.4.11)** — Dashboard 投資組合卡片加 6 欄每日 snapshot log (日期 / 總值 / 成本 / P&L / P&L% / 持倉數)，重用現有 `/api/portfolio/snapshots` endpoint；純前端，零 backend / DB / route 改動
 - **報告搜尋 (v3.4.3)** — `/api/reports?q=&category=&source=&ticker=&limit=&include_total=` AND-combined filters；Prometheus 暴露 `stocker_report_searches_total{has_results=true|false}`
 - **行業新聞面板 (v3.4.16)** — `/industry` 頁 sector 詳情加咗個獨立「行業新聞」 panel，wires 之前係 stub 嘅 `/api/industry/<sector>/news` endpoint（依家 query `category='industry'` 嘅 reports by file_path prefix）；Prometheus 暴露 `stocker_industry_news_requests_total{status=ok|empty}`
 - **多語言** — 繁體中文 (預設) / English 雙語切換
