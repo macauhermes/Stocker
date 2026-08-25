@@ -961,8 +961,24 @@ def api_events_calendar():
 
 @app.route('/api/events/upcoming', methods=['GET'])
 def api_events_upcoming():
-    """Get upcoming events within N days. ?days=90"""
+    """Get upcoming events within N days. ?days=90&include_past=true (v3.4.19)"""
     days = request.args.get('days', 90, type=int)
+    include_past = request.args.get('include_past', 'false').lower() == 'true'
+    if include_past:
+        # Widened window: past 90 days + next (days-90) days
+        conn = models.get_db()
+        try:
+            events = conn.execute(
+                """SELECT e.*, t.symbol FROM events e
+                   JOIN tickers t ON t.id = e.ticker_id
+                   WHERE e.event_date >= date('now', '-90 days')
+                     AND e.event_date <= date('now', ? || ' days')
+                   ORDER BY e.event_date ASC""",
+                (str(days),),
+            ).fetchall()
+        finally:
+            conn.close()
+        return jsonify([dict(e) for e in events])
     events = models.get_upcoming_events(days)
     return jsonify([dict(e) for e in events])
 

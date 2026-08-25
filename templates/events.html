@@ -31,6 +31,26 @@
         <!-- Upcoming Events List -->
         <div style="margin-top:24px;">
             <h3 style="font-size:1rem; margin-bottom:12px; color:var(--text-secondary);" data-i18n="events.upcoming">📋 即將到來</h3>
+
+            <!-- v3.4.19: Type filter row — pills + count badge -->
+            <div class="events-filter-row">
+                <div id="events-type-pills" class="sector-pills events-type-pills">
+                    <button class="sector-pill active" data-type="all" onclick="filterEventType('all')">
+                        <span data-i18n="events.type.all">全部</span>
+                    </button>
+                    <button class="sector-pill" data-type="earnings" onclick="filterEventType('earnings')">
+                        📊 <span data-i18n="events.type.earnings">盈報</span>
+                    </button>
+                    <button class="sector-pill" data-type="dividend" onclick="filterEventType('dividend')">
+                        💰 <span data-i18n="events.type.dividend">派息</span>
+                    </button>
+                    <button class="sector-pill" data-type="sec_filing" onclick="filterEventType('sec_filing')">
+                        📄 <span data-i18n="events.type.sec_filing">SEC</span>
+                    </button>
+                </div>
+                <span id="events-filter-count" class="events-filter-count"></span>
+            </div>
+
             <div id="upcoming-list"></div>
         </div>
     </div>
@@ -143,6 +163,8 @@
 
 <script>
 let currentYear, currentMonth;
+let allUpcomingEvents = [];   // v3.4.19: cached for client-side filter
+let currentEventType = 'all';
 const DAYS = t('events.days') || ['日', '一', '二', '三', '四', '五', '六'];
 
 function initCalendar() {
@@ -214,16 +236,60 @@ async function loadCalendar() {
 }
 
 async function loadUpcoming() {
-    const resp = await fetch('/api/events/upcoming?days=90');
+    // v3.4.19: include past 90 days + upcoming window so dividends surface
+    const resp = await fetch('/api/events/upcoming?days=365&include_past=true');
     const events = await resp.json();
-    const list = document.getElementById('upcoming-list');
+    allUpcomingEvents = events || [];
+    renderUpcoming();
+}
 
-    if (events.length === 0) {
-        list.innerHTML = `<div class="empty-state">${t('events.empty')}<br><small>${t('events.empty_hint')}</small></div>`;
+function filterEventType(type) {
+    currentEventType = type;
+    // Update pill active state
+    document.querySelectorAll('#events-type-pills .sector-pill').forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-type') === type);
+    });
+    renderUpcoming();
+}
+
+function renderUpcoming() {
+    const list = document.getElementById('upcoming-list');
+    const countEl = document.getElementById('events-filter-count');
+
+    // Apply type filter
+    const filtered = currentEventType === 'all'
+        ? allUpcomingEvents
+        : allUpcomingEvents.filter(e => (e.event_type || 'other') === currentEventType);
+
+    // Update count badge — show "shown/total" only when filter is active
+    if (countEl) {
+        if (currentEventType === 'all') {
+            countEl.textContent = '';
+        } else {
+            countEl.textContent = t('events.filter_count', {
+                shown: filtered.length,
+                total: allUpcomingEvents.length
+            });
+        }
+    }
+
+    if (filtered.length === 0) {
+        // Distinguish empty-all vs filtered-out
+        const hasAllEvents = allUpcomingEvents.length > 0;
+        const icon = hasAllEvents ? 'filter_alt_off' : 'event_busy';
+        const title = hasAllEvents
+            ? t('events.filtered_empty')
+            : t('events.empty');
+        const hint = hasAllEvents ? '' : `<br><small>${t('events.empty_hint')}</small>`;
+        list.innerHTML = `<div class="empty-state">
+            <span class="material-icons-outlined" style="font-size:48px; opacity:0.4;">${icon}</span>
+            <div style="margin-top:8px;">${title}</div>
+            ${hint}
+        </div>`;
         return;
     }
 
-    list.innerHTML = events.slice(0, 20).map(e => {
+    list.innerHTML = filtered.slice(0, 30).map(e => {
         const type = e.event_type || 'other';
         const dateStr = e.event_date ? e.event_date.substring(5) : '';
         return `<div class="upcoming-item">

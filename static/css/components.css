@@ -2120,3 +2120,61 @@
     text-align: right;
   }
 }
+
+/* ============================================================
+ * v3.4.19 — Events page type filter row
+ * ============================================================ */
+.events-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.events-type-pills {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0 !important;  /* override .sector-pills default margin */
+}
+
+/* Type-specific active colors for events pills */
+.events-type-pills .sector-pill[data-type="earnings"].active {
+  background: #ffc107;
+  border-color: #ffc107;
+  color: #16162a;
+}
+
+.events-type-pills .sector-pill[data-type="dividend"].active {
+  background: #4caf50;
+  border-color: #4caf50;
+  color: #16162a;
+}
+
+.events-type-pills .sector-pill[data-type="sec_filing"].active {
+  background: #4fc3f7;
+  border-color: #4fc3f7;
+  color: #16162a;
+}
+
+.events-filter-count {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 480px) {
+  .events-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .events-filter-count {
+    margin-left: 0;
+    text-align: right;
+    width: 100%;
+  }
+}
