@@ -2,11 +2,20 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 6047abe (v3.4.31)
-**Latest commit**: 6047abe [P3] i18n: hardcoded CJK in 3 templates — wire to i18n.js (v3.4.31)
-**Server**: localhost:5000（python app.py 跑緊）
-**Branch**: main
-**Remote**: git@github.com:macauhermes/Stocker.git
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5344056 (v3.4.32)
+|**Latest commit**: 5344056 [P3] fix: /industry sector reports — add 3 missing icon mappings (v3.4.32)
+|**Server**: localhost:5000（python app.py 跑緊）
+|**Branch**: main
+|**Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.32 (2026-08-27) — /industry sector reports icon mapping gap**:
+- ✅ Pattern 8b bug class (same as v3.4.20 but for industry.html): `/industry` page sector reports panel 嘅 `renderReports()` 只覆蓋 2 個 category (`earnings`, `industry|news`) — `analyst_report` / `investment_bank_report` / `sec_filing` 全部 fall back 落 generic 藍色 `description` 圖示
+- ✅ Technology sector reports 22 份 `analyst_report` 全部顯示默認藍色 description 圖示（應該係 analytics/blue 跟 index.html 一致）
+- ✅ 3 個新 `else if` branches added，parity 100% 跟 index.html renderReports() (analytics/blue + account_balance/blue + gavel/orange)
+- ✅ Pure frontend — Touch: templates/industry.html (+20 lines, +0/-0)，0 backend / DB / i18n changes
+- ✅ Smoke test: /industry 200, JS node --check OK, mojibake clean, 3 v3.4.32 markers 喺 served HTML
+- ✅ Template-only → no restart needed
+- Commit: 5344056
 
 **v3.4.31 (2026-08-27) — Hardcoded CJK in 3 templates → i18n wiring fix**:
 - ✅ Pattern 5 audit fix: 5 個 hardcoded CJK strings 喺 3 個 templates — 之前英文 mode 全部 fall back 喺中文
