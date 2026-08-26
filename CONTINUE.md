@@ -8,6 +8,21 @@
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
 
+**v3.4.33 (2026-08-27) — Hardcoded CJK in JS toast/badge strings (Pattern 5d)**:
+- ✅ Sibling subagent WIP salvage — 3 files modified (i18n.js + index.html + industry.html), `git status` showed uncommitted changes when cron tick fired
+- ✅ Salvage check #5 passed: 5 zh + 5 en i18n keys added (index.refresh_reason_us_market_open/extended_hours/off_hours/weekend, index.preview_loading, industry.collect_done/failed/network_error); .preview-loading CSS class exists in variables.css; node --check OK on both modified templates; gremlin check clean
+- ✅ **Bug class**: Pattern 5d — hardcoded CJK strings inside JS `showToast()` / badge `textContent =` calls bypassed `applyI18n()` entirely (applyI18n only rewrites static HTML markup, not runtime JS string output)
+- ✅ 5 hardcoded CJK strings wired:
+  1. `templates/index.html:1475-78` — refresh-badge `reasonMap = {us_market_open:'盤中',...}` literal map → `t('index.refresh_reason_' + d.reason)`
+  2. `templates/index.html:1614` — previewBox `<div class="preview-loading">載入中…</div>` → `t('index.preview_loading')`
+  3. `templates/industry.html:435` — `showToast('收集完成！', 'success')` → `t('industry.collect_done')`
+  4. `templates/industry.html:439` — `showToast(data.error || '收集失敗', ...)` → `t('industry.collect_failed')`
+  5. `templates/industry.html:442` — `showToast('網絡錯誤', 'error')` → `t('industry.network_error')`
+- ✅ Detection recipe: grep `templates/ static/js/ -rnE "(showToast\\(['\\\"]|textContent\\s*=\\s*['\\\"])" -B 1 | grep -E "[一-鿿]+"` — each match is a JS-side hardcoded CJK string that applyI18n() can never touch
+- ✅ Touch: static/js/i18n.js (+22 lines), templates/index.html (+5/-4), templates/industry.html (+3/-3). Template-only → no restart needed
+- ✅ Smoke test: / 200 + preview_loading wired; /industry 200 + 3 industry.collect_* wired; i18n.js node --check OK
+- Commit: 3cb2328
+
 **v3.4.32 (2026-08-27) — /industry sector reports icon mapping gap**:
 - ✅ Pattern 8b bug class (same as v3.4.20 but for industry.html): `/industry` page sector reports panel 嘅 `renderReports()` 只覆蓋 2 個 category (`earnings`, `industry|news`) — `analyst_report` / `investment_bank_report` / `sec_filing` 全部 fall back 落 generic 藍色 `description` 圖示
 - ✅ Technology sector reports 22 份 `analyst_report` 全部顯示默認藍色 description 圖示（應該係 analytics/blue 跟 index.html 一致）
