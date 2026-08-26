@@ -3,10 +3,20 @@
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
 |**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5344056 (v3.4.32)
-|**Latest commit**: 5344056 [P3] fix: /industry sector reports — add 3 missing icon mappings (v3.4.32)
+|**Latest commit**: a490cd3 [P3] i18n: locale-aware date formatting (v3.4.34 Pattern 5e)
 |**Server**: localhost:5000（python app.py 跑緊）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.34 (2026-08-27) — Locale-aware date formatting (Pattern 5e)**:
+- ✅ Pattern 5e bug class: 11 hardcoded `toLocaleDateString('zh-TW')` calls across 7 templates — 喺 English mode dates 仍然 render 中文格式 ("2026/8/27") 而唔係用戶期望嘅英文格式 ("Aug 27, 2026")
+- ✅ Root cause 同 Pattern 5d 一樣: applyI18n() 只 rewrites static markup 經 `data-i18n`, 唔能夠攔截 dynamic JS Date formatting — 兩者都係 "hardcoded i18n assumption in JS" 嘅 sub-class
+- ✅ Fix: 加 `formatDate(date, opts)` + `formatDateTime(date, opts)` 喺 `static/js/i18n.js` — 用 `_lang` 揀 locale (Chinese mode → 'zh-TW', English mode → 'en-US')，null/invalid → '—'
+- ✅ 11 個 hardcoded call sites 全部 replace: index.html (3: event banner / reports / archived) + files.html (1) + report_detail.html (1) + stock_detail.html (4: event banner / news / reports / events) + industry.html (1) + banks.html (1)
+- ✅ Detection recipe: `grep -rnE "toLocaleDateString\\('zh-TW'\\)|toLocaleString\\('zh-TW'\\)" templates/ static/js/` — 任何命中都係 locale-bug（除非係刻意嘅 zh-only page)
+- ✅ Verification: node --check OK (i18n.js + 6 template scripts), gremlin clean (7 files), 6 pages 200 (/, /industry, /banks, /files, /stock/TSLA, /report/1), served HTML 有 formatDate(...) call sites, served i18n.js 有 function definition
+- ✅ Pure frontend — Touch: static/js/i18n.js (+26), 6 templates (+11/-11)。Template-only → no restart needed
+- Commit: a490cd3
 
 **v3.4.33 (2026-08-27) — Hardcoded CJK in JS toast/badge strings (Pattern 5d)**:
 - ✅ Sibling subagent WIP salvage — 3 files modified (i18n.js + index.html + industry.html), `git status` showed uncommitted changes when cron tick fired
