@@ -2,8 +2,8 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit <next> (v3.4.22)
-**Latest commit**: <next> [P3] feat: 行業報告 filter row v3.4.22 — category pills + sort + count badge
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4af10ad (v3.4.23)
+**Latest commit**: 4af10ad [P3] feat: files page filter row v3.4.23 — ticker pills + search + sort + count badge
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -15,6 +15,16 @@
 - ✅ Pure frontend — 改動: templates/industry.html (filter row markup + 2 functions), static/js/i18n.js (20 keys), static/css/components.css (4 type-specific active colors), README.md (1 行)
 - ✅ Smoke test: Technology sector 50 reports (39 earnings + 11 analyst), filter 'earnings' → 39 reports, 'analyst_report' → 11, 'sec_filing' → 0 (empty-filtered state), sort desc/asc 都正確
 - Commit: <next>
+
+**v3.4.23 (2026-08-26) — Files page filter row**:
+- ✅ Pattern 4b 第四個應用: /files 頁面加 filter row — 9 個 ticker pills (all + TSLA/TE/IBM/GLW/NVDA/MSFT/MS/GS/SPCX) 動態由 /api/files 數據構造 (count desc 排序) + search input (200ms debounce) + sort dropdown (newest/oldest/name/size_desc) + count badge
+- ✅ 10 個 zh + 10 個 en i18n keys (files.search_placeholder / files.sort_* / files.count_* / files.no_filter_match / files.try_other_filter)
+- ✅ CSS reuses .events-filter-row / .sector-pills / .stocks-control-select；加 .files-ticker-pills .active cyan (#29b6f6) 區分上面 category tabs + .files-search-input 240px (≤480px 160px)
+- ✅ escHtml helper + langchange re-render + empty-state distinguishes "no data" (folder_open) vs "filter excluded all" (filter_alt_off + hint)
+- ✅ Salvaged sibling subagent WIP — 5/5 i18n keys + 2/2 CSS classes 全部喺 i18n.js/components.css 已存在；JS node --check 10620 chars OK；mojibake clean
+- ✅ Pure frontend — 改動: templates/files.html (+212/-21 lines), static/js/i18n.js (20 keys), static/css/components.css (39 lines)
+- ✅ Smoke test: /api/files 200 (177 files), /files 200 (11/11 expected filter row IDs/classes/i18n keys 喺 HTML), template-only change → no restart needed
+- Commit: 4af10ad
 
 **已完成嘅改進 (v3.2)**:
 1. ✅ 多源數據備援鏈 (multi_source.py) — yfinance → Yahoo → Stooq → CoinGecko → 自訂 JSONPath
