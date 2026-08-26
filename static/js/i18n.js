@@ -77,6 +77,13 @@ const I18N = {
     'index.groups_empty_group': '空',
     'index.groups_manage': '管理分組',
 
+    // v3.4.33 — Pattern 5d: hardcoded CJK in JS toast/badge strings
+    'index.refresh_reason_us_market_open': '盤中',
+    'index.refresh_reason_us_extended_hours': '盤後',
+    'index.refresh_reason_us_off_hours': '收盤',
+    'index.refresh_reason_weekend': '週末',
+    'index.preview_loading': '載入中…',
+
     // Stock table
     'stock.ticker': '代碼',
     'stock.name': '名稱',
@@ -203,6 +210,10 @@ const I18N = {
     'industry.title': '行業新聞與報告',
     'industry.collect': '收集行業新聞',
     'industry.collecting': '收集中...',
+    // v3.4.33 — Pattern 5d: hardcoded CJK in collectNews() toast strings
+    'industry.collect_done': '收集完成！',
+    'industry.collect_failed': '收集失敗',
+    'industry.network_error': '網絡錯誤',
     'industry.select': '選擇行業查看報告',
     'industry.reports': '報告',
     'industry.tickers': '追蹤標的',
@@ -622,6 +633,13 @@ const I18N = {
     'index.groups_empty_group': 'Empty',
     'index.groups_manage': 'Manage groups',
 
+    // v3.4.33 — Pattern 5d: hardcoded CJK in JS toast/badge strings
+    'index.refresh_reason_us_market_open': 'Market open',
+    'index.refresh_reason_us_extended_hours': 'Extended hours',
+    'index.refresh_reason_us_off_hours': 'Off hours',
+    'index.refresh_reason_weekend': 'Weekend',
+    'index.preview_loading': 'Loading…',
+
     // Stock table
     'stock.ticker': 'Ticker',
     'stock.name': 'Name',
@@ -748,6 +766,10 @@ const I18N = {
     'industry.title': 'Industry News & Reports',
     'industry.collect': 'Collect Industry News',
     'industry.collecting': 'Collecting...',
+    // v3.4.33 — Pattern 5d: hardcoded CJK in collectNews() toast strings
+    'industry.collect_done': 'Collection complete!',
+    'industry.collect_failed': 'Collection failed',
+    'industry.network_error': 'Network error',
     'industry.select': 'Select a sector to view reports',
     'industry.reports': 'Reports',
     'industry.tickers': 'Tickers',

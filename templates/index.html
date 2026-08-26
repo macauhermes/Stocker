@@ -1472,11 +1472,12 @@
             const r = await fetch('/api/refresh-interval');
             const d = await r.json();
             pollInterval = d.interval || 60;
-            // Update visible badge if present
+            // Update visible badge if present (v3.4.33 — wired to i18n keys)
             const badge = document.getElementById('refresh-badge');
             if (badge) {
-                const reasonMap = {us_market_open:'盤中',us_extended_hours:'盤後',us_off_hours:'收盤',weekend:'週末'};
-                badge.textContent = `${reasonMap[d.reason] || d.reason} • ${pollInterval}s`;
+                const reasonKey = 'index.refresh_reason_' + d.reason;
+                const reasonLabel = t(reasonKey);
+                badge.textContent = `${reasonLabel !== reasonKey ? reasonLabel : d.reason} • ${pollInterval}s`;
                 badge.dataset.reason = d.reason;
             }
         } catch (e) { console.debug('refresh interval fetch failed', e); }
@@ -1610,7 +1611,7 @@
 
     async function loadPreview(sym) {
         try {
-            previewBox.innerHTML = '<div class="preview-loading">載入中…</div>';
+            previewBox.innerHTML = '<div class="preview-loading">' + t('index.preview_loading') + '</div>';
             previewBox.style.display = 'block';
             const r = await fetch('/api/tickers/preview', {
                 method: 'POST',
