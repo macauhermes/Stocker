@@ -2242,3 +2242,42 @@
   border-color: #ffc107;
   color: #16162a;
 }
+
+/* ============================================================
+ * v3.4.23 — Files page filter row
+ * Reuses .events-filter-row + .sector-pills + .stocks-control-select.
+ * Adds: ticker-pill active color (blue tone to differ from the
+ * category tabs above), search input sizing (240px wide, 36px tall).
+ * ============================================================ */
+.files-ticker-pills .sector-pill.active {
+  background: #29b6f6;
+  border-color: #29b6f6;
+  color: #16162a;
+}
+
+.files-search-input {
+  width: 240px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #2a2a3a);
+  background: var(--bg-elev, #1e1e2e);
+  color: var(--text, #e0e0e8);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.files-search-input::placeholder {
+  color: var(--text-muted, #80808f);
+}
+
+.files-search-input:focus {
+  border-color: var(--blue, #29b6f6);
+}
+
+@media (max-width: 480px) {
+  .files-search-input {
+    width: 160px;
+  }
+}

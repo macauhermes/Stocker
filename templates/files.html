@@ -30,6 +30,25 @@
     </button>
 </div>
 
+<!-- v3.4.23: filter row — ticker pills + search input + sort dropdown + count badge.
+     Hidden until first data load via initFilesFilterRow(). Reuses .events-filter-row
+     + .sector-pills + .stocks-control-select from v3.4.14/19/22. -->
+<div id="files-filter-row" class="events-filter-row" style="display:none;">
+    <div id="files-ticker-pills" class="sector-pills events-type-pills files-ticker-pills"></div>
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <input type="text" id="files-search-input" class="input files-search-input"
+               data-i18n-placeholder="files.search_placeholder"
+               placeholder="搜尋檔名..." />
+        <select id="files-sort-select" class="stocks-control-select">
+            <option value="newest" data-i18n="files.sort_newest">最新優先</option>
+            <option value="oldest" data-i18n="files.sort_oldest">最早優先</option>
+            <option value="name" data-i18n="files.sort_name">檔名排序</option>
+            <option value="size_desc" data-i18n="files.sort_size_desc">檔案最大</option>
+        </select>
+        <span id="files-filter-count" class="events-filter-count"></span>
+    </div>
+</div>
+
 <!-- File List -->
 <div id="file-list" class="file-list">
     <div class="loading-cell">
@@ -43,6 +62,10 @@
 <script>
     let allFiles = [];
     let activeCategory = 'all';
+    // v3.4.23 — filter row state (ticker pills + search + sort + count)
+    let activeTicker = 'all';
+    let searchQuery = '';
+    let sortMode = 'newest';
 
     function filterByCategory(category) {
         activeCategory = category;
@@ -52,35 +75,110 @@
         renderFiles();
     }
 
-    // Load files
-    async function loadFiles() {
-        try {
-            const res = await fetch('/api/files');
-            if (!res.ok) throw new Error('Failed to fetch files');
-            allFiles = await res.json();
-            renderFiles();
-        } catch (err) {
-            console.error(err);
-            document.getElementById('file-list').innerHTML = `
-                <div class="empty-state">
-                    <span class="material-icons-outlined empty-state-icon">error</span>
-                    <div class="empty-state-title">${t('files.load_error')}</div>
-                </div>
-            `;
+    // v3.4.23 — Build ticker pills dynamically from data (sorted by count desc)
+    function buildFilesFilterRow() {
+        const pillsContainer = document.getElementById('files-ticker-pills');
+        const filterRow = document.getElementById('files-filter-row');
+        if (!allFiles || allFiles.length === 0) {
+            filterRow.style.display = 'none';
+            return;
         }
+        filterRow.style.display = 'flex';
+
+        // Count by ticker (parsed from filename prefix, e.g. "TSLA_10-K_...")
+        const counts = { all: allFiles.length };
+        allFiles.forEach(f => {
+            const fname = f.filename || '';
+            const sym = fname.split('_')[0].toUpperCase();
+            if (sym && /^[A-Z]{1,5}$/.test(sym)) {
+                counts[sym] = (counts[sym] || 0) + 1;
+            }
+        });
+
+        // Tickers sorted by count desc
+        const tickers = Object.entries(counts)
+            .filter(([k]) => k !== 'all')
+            .sort((a, b) => b[1] - a[1])
+            .map(([k]) => k);
+
+        // Build pills: all + tickers
+        const allPill = `<button class="sector-pill ${activeTicker === 'all' ? 'active' : ''}" data-ticker="all">
+            ${t('common.all')} <span style="opacity:.6; margin-left:4px;">${counts.all}</span>
+        </button>`;
+        const tickerPills = tickers.map(tk =>
+            `<button class="sector-pill ${activeTicker === tk ? 'active' : ''}" data-ticker="${escHtml(tk)}">
+                ${escHtml(tk)} <span style="opacity:.6; margin-left:4px;">${counts[tk]}</span>
+            </button>`
+        ).join('');
+
+        pillsContainer.innerHTML = allPill + tickerPills;
     }
 
+    // v3.4.23 — Apply ticker + category + search + sort + render
     function renderFiles() {
         const container = document.getElementById('file-list');
-        const filtered = activeCategory === 'all'
-            ? allFiles
-            : allFiles.filter(f => f.category === activeCategory);
-
-        if (!filtered || filtered.length === 0) {
+        const countBadge = document.getElementById('files-filter-count');
+        if (!allFiles || allFiles.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <span class="material-icons-outlined empty-state-icon">folder_open</span>
                     <div class="empty-state-title">${t('files.empty')}</div>
+                </div>
+            `;
+            countBadge.textContent = '';
+            return;
+        }
+
+        // 1. Category filter (existing)
+        let filtered = activeCategory === 'all'
+            ? allFiles.slice()
+            : allFiles.filter(f => f.category === activeCategory);
+
+        // 2. Ticker pill filter
+        if (activeTicker !== 'all') {
+            filtered = filtered.filter(f => {
+                const sym = (f.filename || '').split('_')[0].toUpperCase();
+                return sym === activeTicker;
+            });
+        }
+
+        // 3. Search query (filename case-insensitive substring)
+        const q = searchQuery.trim().toLowerCase();
+        if (q) {
+            filtered = filtered.filter(f => (f.filename || '').toLowerCase().includes(q));
+        }
+
+        // 4. Sort
+        filtered.sort((a, b) => {
+            switch (sortMode) {
+                case 'newest':
+                    return (new Date(b.created_at || 0).getTime()) - (new Date(a.created_at || 0).getTime());
+                case 'oldest':
+                    return (new Date(a.created_at || 0).getTime()) - (new Date(b.created_at || 0).getTime());
+                case 'name':
+                    return (a.filename || '').localeCompare(b.filename || '');
+                case 'size_desc':
+                    return (b.file_size || 0) - (a.file_size || 0);
+                default:
+                    return 0;
+            }
+        });
+
+        // Count badge — distinguish "filter excluded all" vs "no data"
+        const filterActive = activeTicker !== 'all' || q || activeCategory !== 'all';
+        if (filterActive) {
+            countBadge.textContent = t('files.count_filtered', { shown: filtered.length, total: allFiles.length });
+        } else {
+            countBadge.textContent = t('files.count_total', { total: allFiles.length });
+        }
+
+        if (!filtered || filtered.length === 0) {
+            const isFiltered = filterActive;
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">${isFiltered ? 'filter_alt_off' : 'folder_open'}</span>
+                    <div class="empty-state-title">${isFiltered ? t('files.no_filter_match') : t('files.empty')}</div>
+                    ${isFiltered ? `<div class="empty-state-text">${t('files.try_other_filter')}</div>` : ''}
                 </div>
             `;
             return;
@@ -150,10 +248,82 @@
         return map[cat] || cat || '—';
     }
 
+    // v3.4.23 — HTML escape helper (mirrors index.html)
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Load files
+    async function loadFiles() {
+        try {
+            const res = await fetch('/api/files');
+            if (!res.ok) throw new Error('Failed to fetch files');
+            allFiles = await res.json();
+            buildFilesFilterRow();
+            renderFiles();
+        } catch (err) {
+            console.error(err);
+            document.getElementById('file-list').innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('files.load_error')}</div>
+                </div>
+            `;
+        }
+    }
+
+    // v3.4.23 — Wire up filter row event listeners (search debounce, pill click, sort change)
+    function initFilesFilterRow() {
+        // Ticker pill click (event delegation — pills are re-rendered each filter change)
+        const pillsContainer = document.getElementById('files-ticker-pills');
+        if (pillsContainer) {
+            pillsContainer.addEventListener('click', (e) => {
+                const pill = e.target.closest('.sector-pill');
+                if (!pill) return;
+                activeTicker = pill.dataset.ticker;
+                pillsContainer.querySelectorAll('.sector-pill').forEach(p => {
+                    p.classList.toggle('active', p.dataset.ticker === activeTicker);
+                });
+                renderFiles();
+            });
+        }
+
+        // Sort dropdown
+        const sortSelect = document.getElementById('files-sort-select');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                sortMode = e.target.value;
+                renderFiles();
+            });
+        }
+
+        // Search input — 200ms debounce
+        const searchInput = document.getElementById('files-search-input');
+        if (searchInput) {
+            let _debounceTimer = null;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(_debounceTimer);
+                _debounceTimer = setTimeout(() => {
+                    searchQuery = e.target.value;
+                    renderFiles();
+                }, 200);
+            });
+        }
+    }
+
     // Init
     loadFiles();
+    initFilesFilterRow();
 
-    // Reload on language change
-    window.addEventListener('langchange', () => loadFiles());
+    // Reload on language change (re-render pill labels + sort options + count)
+    window.addEventListener('langchange', () => {
+        buildFilesFilterRow();
+        renderFiles();
+    });
 </script>
 {% endblock %}

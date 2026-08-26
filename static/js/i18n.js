@@ -224,6 +224,17 @@ const I18N = {
     'files.cat.sec_filing': 'SEC 文件',
     'files.cat.industry': '行業報告',
 
+    // Files page filter row (v3.4.23)
+    'files.search_placeholder': '搜尋檔名...',
+    'files.sort_newest': '最新優先',
+    'files.sort_oldest': '最早優先',
+    'files.sort_name': '檔名排序',
+    'files.sort_size_desc': '檔案最大',
+    'files.count_filtered': '顯示 {shown} / {total} 份',
+    'files.count_total': '共 {total} 份',
+    'files.no_filter_match': '冇符合篩選嘅檔案',
+    'files.try_other_filter': '試下揀另一個檔案',
+
     // Events Calendar
     'events.title': '事件日曆',
     'events.sync': '同步',
@@ -719,6 +730,17 @@ const I18N = {
     'files.cat.news': 'News',
     'files.cat.sec_filing': 'SEC Filing',
     'files.cat.industry': 'Industry Report',
+
+    // Files page filter row (v3.4.23)
+    'files.search_placeholder': 'Search filename...',
+    'files.sort_newest': 'Newest first',
+    'files.sort_oldest': 'Oldest first',
+    'files.sort_name': 'Filename',
+    'files.sort_size_desc': 'Largest size',
+    'files.count_filtered': 'Showing {shown} / {total}',
+    'files.count_total': '{total} total',
+    'files.no_filter_match': 'No files match the filter',
+    'files.try_other_filter': 'Try a different file',
 
     // Events Calendar
     'events.title': 'Events Calendar',
