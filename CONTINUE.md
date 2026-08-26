@@ -2,11 +2,25 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit <next> (v3.4.30)
-**Latest commit**: <next> [P3] fix: /system page 漏 render 嘅 industry_news counter (v3.4.30)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 6047abe (v3.4.31)
+**Latest commit**: 6047abe [P3] i18n: hardcoded CJK in 3 templates — wire to i18n.js (v3.4.31)
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.31 (2026-08-27) — Hardcoded CJK in 3 templates → i18n wiring fix**:
+- ✅ Pattern 5 audit fix: 5 個 hardcoded CJK strings 喺 3 個 templates — 之前英文 mode 全部 fall back 喺中文
+  1. `templates/index.html:236` — Groups tab 嘅 "管理分組" link 冇 data-i18n 包住
+  2. `templates/stock_detail.html:43` — compare button 嘅 `title="比較"` 冇 data-i18n-title
+  3. `templates/stock_detail.html:56` — line chart button 嘅 `title="折線圖"` 冇 data-i18n-title
+  4. `templates/stock_detail.html:59` — candlestick button 嘅 `title="陰陽燭"` 冇 data-i18n-title
+  5. `templates/system.html:150` — info icon `title="這些操作..."` — 已有 data-i18n-title 但 i18n key 之前已存在 (system.actions_warning)
+- ✅ applyI18n() 喺 i18n.js:1152 只 query `[data-i18n-title]` selector set title attribute — 冇 attribute 嘅 element 永遠唔會被翻譯
+- ✅ 加 2 個 i18n keys (`index.groups_manage` zh + en)，其餘 4 個 keys (`stock.compare` / `stock.chart_line` / `stock.chart_candlestick` / `system.actions_warning`) 已經喺 i18n.js 存在但從未被任何 markup reference
+- ✅ Touch: templates/index.html (+1/-1), templates/stock_detail.html (+3/-3), static/js/i18n.js (+2 keys). Template-only → no restart needed
+- ✅ Smoke test: / 200 + data-i18n="index.groups_manage" markup 喺度; /stock/TSLA 200 + 3 個 chart button tooltips 全部有 data-i18n-title; /system 200 + data-i18n-title="system.actions_warning" markup 喺度; node --check i18n.js OK; gremlin check OK
+- ✅ 順手 cleanup: NOPE_NOT_REAL smoke-test ticker 由 2026-08-26 13:11 已經 archived (無 orphan reports/files, data-only, 唔需要 commit)
+- Commit: 6047abe
 
 **v3.4.30 (2026-08-26) — /system industry_news counter surfacing**:
 - ✅ Pattern 1 應用: `/api/metrics/summary` 由 v3.4.16 起一直有 `industry_news` counter block (services/metrics.py:806) — but `renderCounters()` in templates/system.html:357 嘅 `groups` array 漏咗呢個 key, 結果 /system admin page 嘅 Prometheus counters panel 永遠唔顯示行業新聞請求 stats
