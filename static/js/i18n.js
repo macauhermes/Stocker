@@ -499,6 +499,20 @@ const I18N = {
     'system.api_hint': '數據來自',
     'system.auto_refresh': '每 30 秒自動刷新',
 
+    'system.actions_title': '管理操作',
+    'system.actions_warning': '這些操作可能需要數分鐘，會佔用伺服器資源',
+    'system.action_nightly_refresh': '刷新價格（5 年歷史）',
+    'system.action_nightly_refresh_desc': '手動觸發 nightly_tasks，刷新所有追蹤股票的歷史價格',
+    'system.action_check_banks': '檢查投行報告',
+    'system.action_check_banks_desc': '掃描所有啟用投行的最新研究報告',
+    'system.action_collect_reports': '收集行業報告',
+    'system.action_collect_reports_desc': '從 SEC + 行業新聞源收集所有追蹤股票嘅報告',
+    'system.action_running': '執行中...',
+    'system.action_success': '操作完成',
+    'system.action_failed': '操作失敗',
+    'system.cnt_manual_triggers': '手動操作',
+
+
     // Time
     'time.just_now': '剛剛',
     'time.minutes_ago': '{n} 分鐘前',
@@ -1005,6 +1019,20 @@ const I18N = {
     'system.empty_list': 'No data yet',
     'system.api_hint': 'Data from',
     'system.auto_refresh': 'Auto-refresh every 30s',
+
+    'system.actions_title': 'Admin actions',
+    'system.actions_warning': 'These actions may take several minutes and consume server resources',
+    'system.action_nightly_refresh': 'Refresh prices (5y history)',
+    'system.action_nightly_refresh_desc': 'Manually trigger nightly_tasks to refresh all tracked tickers\' historical prices',
+    'system.action_check_banks': 'Check investment banks',
+    'system.action_check_banks_desc': 'Scrape all enabled banks for new research reports',
+    'system.action_collect_reports': 'Collect industry reports',
+    'system.action_collect_reports_desc': 'Pull reports from SEC + industry news sources for all tracked tickers',
+    'system.action_running': 'Running...',
+    'system.action_success': 'Action completed',
+    'system.action_failed': 'Action failed',
+    'system.cnt_manual_triggers': 'Manual triggers',
+
 
     // Time
     'time.just_now': 'Just now',

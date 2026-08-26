@@ -138,6 +138,42 @@
             </div>
         </div>
 
+        <!-- Admin actions card (v3.4.24) — surfaces /api/nightly-refresh, /api/banks/check-all, /api/reports/collect -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined">build</span>
+                    <span data-i18n="system.actions_title">管理操作</span>
+                </div>
+                <span class="material-icons-outlined" data-i18n-title="system.actions_warning"
+                      style="color:var(--text-muted); font-size:18px;"
+                      title="這些操作可能需要數分鐘，會佔用伺服器資源">info</span>
+            </div>
+            <div class="metric-grid">
+                <button class="action-btn" id="btn-nightly-refresh" onclick="triggerNightlyRefresh()">
+                    <span class="material-icons-outlined action-icon" style="color:var(--blue);">update</span>
+                    <div class="action-content">
+                        <div class="action-label" data-i18n="system.action_nightly_refresh">刷新價格（5 年歷史）</div>
+                        <div class="action-desc" data-i18n="system.action_nightly_refresh_desc">手動觸發 nightly_tasks，刷新所有追蹤股票的歷史價格</div>
+                    </div>
+                </button>
+                <button class="action-btn" id="btn-check-banks" onclick="triggerCheckBanks()">
+                    <span class="material-icons-outlined action-icon" style="color:var(--green);">account_balance</span>
+                    <div class="action-content">
+                        <div class="action-label" data-i18n="system.action_check_banks">檢查投行報告</div>
+                        <div class="action-desc" data-i18n="system.action_check_banks_desc">掃描所有啟用投行的最新研究報告</div>
+                    </div>
+                </button>
+                <button class="action-btn" id="btn-collect-reports" onclick="triggerCollectReports()">
+                    <span class="material-icons-outlined action-icon" style="color:var(--orange);">library_books</span>
+                    <div class="action-content">
+                        <div class="action-label" data-i18n="system.action_collect_reports">收集行業報告</div>
+                        <div class="action-desc" data-i18n="system.action_collect_reports_desc">從 SEC + 行業新聞源收集所有追蹤股票嘅報告</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
         <!-- Top sectors + top tickers -->
         <div class="metric-grid">
             <div class="card">
@@ -346,6 +382,37 @@ function formatUptime(secs) {
     if (d > 0) return `${d}d ${h}h ${m}m`;
     if (h > 0) return `${h}h ${m}m`;
     return `${m}m`;
+}
+
+
+// --- Manual admin triggers (v3.4.24) ---
+async function triggerAction(btnId, url, successMsg) {
+    const btn = document.getElementById(btnId);
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-sm"></div><div class="action-content"><div class="action-label">' + t('system.action_running') + '</div></div>';
+    try {
+        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await resp.json();
+        if (!resp.ok || data.error) throw new Error(data.error || resp.status);
+        showToast(successMsg, 'success');
+        loadSystemData();  // refresh counters
+    } catch (e) {
+        showToast(t('system.action_failed') + ': ' + String(e.message || e), 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+async function triggerNightlyRefresh() {
+    return triggerAction('btn-nightly-refresh', '/api/nightly-refresh', t('system.action_success'));
+}
+async function triggerCheckBanks() {
+    return triggerAction('btn-check-banks', '/api/banks/check-all', t('system.action_success'));
+}
+async function triggerCollectReports() {
+    return triggerAction('btn-collect-reports', '/api/reports/collect', t('system.action_success'));
 }
 
 // Auto-refresh every 30 seconds

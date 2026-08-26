@@ -2281,3 +2281,59 @@
     width: 160px;
   }
 }
+
+/* v3.4.24 — Admin action buttons on /system page */
+.action-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    text-align: left;
+    min-height: 60px;
+    font-family: inherit;
+}
+.action-btn:hover:not(:disabled) {
+    background: rgba(73, 79, 223, 0.08);
+    border-color: var(--blue);
+}
+.action-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+.action-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.action-content {
+    flex: 1;
+    min-width: 0;
+}
+.action-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+    color: var(--text);
+}
+.action-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+@media (max-width: 480px) {
+    .action-btn {
+        padding: 12px;
+    }
+    .action-icon { font-size: 20px; }
+    .action-label { font-size: 0.85rem; }
+    .action-desc { font-size: 0.7rem; }
+}

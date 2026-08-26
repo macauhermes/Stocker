@@ -924,6 +924,7 @@ def api_collect_reports():
     """Trigger report collection."""
     try:
         result = collect_reports()
+        metrics.record_manual_trigger('collect_reports')
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error collecting reports: {e}")
@@ -1224,6 +1225,7 @@ def api_check_all_banks():
     from services.bank_report_scraper import check_all_banks
     try:
         result = check_all_banks()
+        metrics.record_manual_trigger('check_banks')
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error checking banks: {e}")

@@ -229,6 +229,22 @@ TICKER_EXPORT.labels(scope='all')
 TICKER_EXPORT.labels(scope='group')
 
 
+# Manual admin triggers (v3.4.24) — track button presses on /system page.
+# 'action' is one of: 'nightly_refresh', 'check_banks', 'collect_reports'.
+# Helps spot whether users actually use the admin triggers vs. waiting for
+# the nightly cron sweep.
+MANUAL_TRIGGERS = Counter(
+    'stocker_manual_triggers_total',
+    'Manual admin trigger button presses on /system page',
+    ['action']  # 'nightly_refresh' / 'check_banks' / 'collect_reports'
+)
+
+# Pre-create label children so /metrics shows 0 (not absent) before any traffic.
+MANUAL_TRIGGERS.labels(action='nightly_refresh')
+MANUAL_TRIGGERS.labels(action='check_banks')
+MANUAL_TRIGGERS.labels(action='collect_reports')
+
+
 # ── Middleware ──────────────────────────────────────────────────────────
 
 def init_metrics(app):
@@ -374,6 +390,21 @@ def record_ticker_export(scope: str):
     dashboards can see whether group-aware exports are ever used.
     """
     TICKER_EXPORT.labels(scope=scope).inc()
+
+
+def record_manual_trigger(action: str):
+    """Record a manual admin trigger button press (v3.4.24 /system page).
+
+    `action` is one of: 'nightly_refresh' (POST /api/nightly-refresh),
+    'check_banks' (POST /api/banks/check-all), or 'collect_reports'
+    (POST /api/reports/collect). Splits so dashboards can spot which
+    admin actions users actually use vs. waiting for nightly cron.
+    """
+    if action not in ('nightly_refresh', 'check_banks', 'collect_reports'):
+        action = 'nightly_refresh'  # fail safe — never silently drop an event
+    MANUAL_TRIGGERS.labels(action=action).inc()
+
+
 
 
 # ── Metrics Endpoint Handler ───────────────────────────────────────────
@@ -745,6 +776,15 @@ def metrics_summary():
             'total': sum(c._value.get() for c in INDUSTRY_NEWS_REQUESTS._metrics.values()),
             'ok': int(INDUSTRY_NEWS_REQUESTS.labels(status='ok')._value.get()),
             'empty': int(INDUSTRY_NEWS_REQUESTS.labels(status='empty')._value.get()),
+        },
+        # manual_triggers (v3.4.24): /system page admin button presses.
+        # Three actions: nightly_refresh / check_banks / collect_reports.
+        # Pre-created labels at import ensure these counters always appear.
+        'manual_triggers': {
+            'total': sum(c._value.get() for c in MANUAL_TRIGGERS._metrics.values()),
+            'nightly_refresh': int(MANUAL_TRIGGERS.labels(action='nightly_refresh')._value.get()),
+            'check_banks': int(MANUAL_TRIGGERS.labels(action='check_banks')._value.get()),
+            'collect_reports': int(MANUAL_TRIGGERS.labels(action='collect_reports')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,
