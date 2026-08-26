@@ -2,13 +2,23 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5344056 (v3.4.32)
-|**Latest commit**: 0260bca [P3] i18n: locale-aware date formatting in /banks last_check (v3.4.35 Pattern 5e follow-up)
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 975f827 (v3.4.36)
+|**Latest commit**: 975f827 [P3] i18n: watchlist group ticker count uses t() + langchange re-renders (v3.4.36)
 |**Server**: localhost:5000（python app.py 跑緊）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
 
-|**v3.4.35 (2026-08-27) — Pattern 5e follow-up: banks.html last_check locale**:
+**v3.4.36 (2026-08-27) — Watchlist group ticker count i18n fix (Pattern 5d)**:
+- ✅ Pattern 5d bug class: `templates/index.html:1418` 內 JS template literal `<span>${g.ticker_count} 股</span>` 用 hardcoded CJK 「股」字 — applyI18n() 只 rewrites static HTML markup, 完全唔 touch runtime-injected DOM
+- ✅ 結果: 即使切到 English mode, 每個 watchlist group 嘅 "{n} 股" count 都永遠 stay 喺中文
+- ✅ i18n key `watchlists.ticker_count: '{n} 股'` (zh) / `'{n} stocks'` (en) 已經喺 i18n.js 存在 (v3.3 已加), 但係從未被 reference
+- ✅ 改成 `t('watchlists.ticker_count', {n: g.ticker_count})` — `{n}` placeholder substitution 由 i18n.js:1135 replace() helper 處理
+- ✅ Companion fix: `loadGroupsDashboard()` 之前 missing 喺 langchange handler — 即使用戶切 language, groups dashboard 都唔會 re-render。V3.4.36 加返 `loadGroupsDashboard()` 落 `window.addEventListener('langchange', ...)` 嘅 callback 列表
+- ✅ Detection recipe (refined): `for tpl in templates/ static/js/; do grep -nE '[一-鿿]' $tpl/*.html $tpl/*.js; done | grep -v 'data-i18n' | grep -v 'static/js/i18n.js'` — 任何命中都係 hardcoded CJK string in JS context 需要 fix
+- ✅ Touch: templates/index.html (+3/-1). Template-only → no restart needed, / 200 OK
+- Commit: 975f827
+
+**v3.4.35 (2026-08-27) — Pattern 5e follow-up: banks.html last_check locale**:
 |- ✅ Pattern 5e audit caught 1 remaining site that v3.4.34 grep missed: `templates/banks.html:172` — `new Date(bank.last_check).toLocaleDateString()` had NO locale argument, silently fell back to browser default 喺英文 mode 都出中文/瀏覽器默認格式
 |- ✅ 改成 `formatDate(bank.last_check)` (i18n.js:1150 helper) — 但 v3.4.34 grep 用 `toLocaleDateString\('zh-TW'\)` 嘅 regex **根本 miss 咗冇 arg 嘅 call**，所以呢個 bug survive 咗 1 個 tick
 |- ✅ Detection recipe 修正: `grep -rnE 'new Date\([^)]*\)\.toLocale(?:Date|Time)?String\(\)' templates/ static/js/` (空 arg 都 catch) — 0 hits 證明 clean
