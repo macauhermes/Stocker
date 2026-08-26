@@ -129,6 +129,20 @@
                 <span data-i18n="detail.news">最近新聞</span>
             </div>
         </div>
+        <div id="news-filter-row" class="events-filter-row" style="display:none;">
+            <div class="sector-pills" id="news-publisher-pills"></div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-muted);">
+                    <span class="material-icons-outlined" style="font-size:16px;">sort</span>
+                    <span data-i18n="detail.news_sort_label">排序</span>
+                    <select id="news-sort-select" class="stocks-control-select">
+                        <option value="newest" data-i18n="detail.news_sort_newest">最新優先</option>
+                        <option value="oldest" data-i18n="detail.news_sort_oldest">最早優先</option>
+                    </select>
+                </label>
+                <span id="news-count" class="stocks-filter-count" data-i18n-template="detail.news_count" data-shown="0" data-total="0"></span>
+            </div>
+        </div>
         <div id="news-list" class="news-list">
             <div class="loading-cell">
                 <div class="spinner-sm"></div>
@@ -751,33 +765,144 @@
         } // end _zoomListenersAttached guard
     }
 
-    // Render news
+    // News state (module scope so filter/sort survive re-renders)
+    let allNews = [];
+    let newsPublisherFilter = 'all';
+    let newsSortOrder = 'newest';
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function renderNews(news) {
-        const list = document.getElementById('news-list');
-        if (!news || news.length === 0) {
-            list.innerHTML = `
-                <div class="empty-state" style="padding:24px;">
-                    <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">article</span>
-                    <div style="margin-top:8px; color:var(--text-muted);" data-i18n="detail.no_news">暫無新聞</div>
-                </div>
-            `;
+        allNews = Array.isArray(news) ? news.slice() : [];
+        applyNewsFilters();
+        renderNewsFilterRow();
+    }
+
+    function renderNewsFilterRow() {
+        const row = document.getElementById('news-filter-row');
+        const pillsEl = document.getElementById('news-publisher-pills');
+        if (!row || !pillsEl) return;
+
+        if (allNews.length === 0) {
+            row.style.display = 'none';
             return;
         }
+        row.style.display = '';
+
+        // Build publisher counts (sorted desc, then alphabetical)
+        const counts = {};
+        allNews.forEach(n => {
+            const pub = n.publisher || n.source || t('detail.news_unknown_publisher') || '—';
+            counts[pub] = (counts[pub] || 0) + 1;
+        });
+        const pubs = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
+
+        let html = `<button type="button" class="sector-pill ${newsPublisherFilter === 'all' ? 'active' : ''}" data-pub="all">${escHtml(t('detail.news_publisher_all'))} <span class="pill-count">${allNews.length}</span></button>`;
+        pubs.forEach(p => {
+            const active = newsPublisherFilter === p ? ' active' : '';
+            html += `<button type="button" class="sector-pill${active}" data-pub="${escHtml(p)}">${escHtml(p)} <span class="pill-count">${counts[p]}</span></button>`;
+        });
+        pillsEl.innerHTML = html;
+
+        // Wire pill click handlers
+        pillsEl.querySelectorAll('.sector-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                newsPublisherFilter = btn.getAttribute('data-pub');
+                applyNewsFilters();
+                renderNewsFilterRow();
+            });
+        });
+    }
+
+    function applyNewsFilters() {
+        const list = document.getElementById('news-list');
+        const countEl = document.getElementById('news-count');
+        if (!list) return;
+
+        let filtered = allNews.slice();
+
+        // Publisher filter
+        if (newsPublisherFilter !== 'all') {
+            filtered = filtered.filter(n => {
+                const pub = n.publisher || n.source || '';
+                return pub === newsPublisherFilter;
+            });
+        }
+
+        // Sort
+        filtered.sort((a, b) => {
+            const da = a.published_at ? new Date(a.published_at).getTime() : 0;
+            const db = b.published_at ? new Date(b.published_at).getTime() : 0;
+            return newsSortOrder === 'oldest' ? da - db : db - da;
+        });
+
+        // Update count badge
+        if (countEl) {
+            countEl.setAttribute('data-shown', filtered.length);
+            countEl.setAttribute('data-total', allNews.length);
+            const fmt = t('detail.news_count');
+            countEl.textContent = fmt.replace('{shown}', filtered.length).replace('{total}', allNews.length);
+        }
+
+        // Render
+        const filtersActive = newsPublisherFilter !== 'all';
+        if (filtered.length === 0) {
+            if (allNews.length === 0) {
+                // No data
+                list.innerHTML = `
+                    <div class="empty-state" style="padding:24px;">
+                        <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">article</span>
+                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="detail.no_news">暫無新聞</div>
+                    </div>
+                `;
+            } else {
+                // Filter excluded everything
+                list.innerHTML = `
+                    <div class="empty-state" style="padding:24px;">
+                        <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">filter_alt_off</span>
+                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="detail.news_no_match">冇符合篩選嘅新聞</div>
+                        <div style="margin-top:4px; color:var(--text-muted); font-size:0.78rem;" data-i18n="detail.news_try_other">試下揀「全部」或另一個來源</div>
+                    </div>
+                `;
+            }
+            return;
+        }
+
         list.innerHTML = '';
-        news.forEach(n => {
+        filtered.forEach(n => {
             const date = n.published_at ? new Date(n.published_at).toLocaleDateString('zh-TW') : '—';
             const item = document.createElement('div');
             item.className = 'news-item';
+            const safeTitle = escHtml(n.title || (typeof t === 'function' ? t('detail.news_untitled') : '無標題') || '無標題');
+            const safePub = escHtml(n.publisher || n.source || '—');
+            const safeLink = n.link ? escHtml(n.link) : '';
             item.innerHTML = `
                 <div class="news-item-title">
-                    ${n.link ? '<a href="' + n.link + '" target="_blank" style="color:var(--text);">' + (n.title || '無標題') + '</a>' : (n.title || '無標題')}
+                    ${safeLink ? '<a href="' + safeLink + '" target="_blank" rel="noopener noreferrer" style="color:var(--text);">' + safeTitle + '</a>' : safeTitle}
                 </div>
                 <div class="news-item-meta">
-                    <span>${n.publisher || n.source || '—'}</span>
+                    <span>${safePub}</span>
                     <span>${date}</span>
                 </div>
             `;
             list.appendChild(item);
+        });
+    }
+
+    function initNewsFilters() {
+        const sortSelect = document.getElementById('news-sort-select');
+        if (!sortSelect) return;
+        sortSelect.addEventListener('change', () => {
+            newsSortOrder = sortSelect.value;
+            applyNewsFilters();
         });
     }
 
@@ -850,6 +975,7 @@
     // Init
     loadDetail();
     loadChartData();
+    initNewsFilters();
 
     // Close compare dropdown on outside click
     document.addEventListener('click', (e) => {

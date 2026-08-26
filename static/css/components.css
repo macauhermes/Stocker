@@ -2337,3 +2337,22 @@
     .action-label { font-size: 0.85rem; }
     .action-desc { font-size: 0.7rem; }
 }
+
+/* ============================================================
+   NEWS FILTER ROW (stock_detail.html v3.4.25)
+   ============================================================ */
+.pill-count {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    font-size: 0.72rem;
+    color: inherit;
+    line-height: 16px;
+    vertical-align: middle;
+}
+.sector-pill.active .pill-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}

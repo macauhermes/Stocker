@@ -149,6 +149,16 @@ const I18N = {
     'detail.event_dismissed': '已標記已知悉',
     'detail.event_dismiss_error': '操作失敗',
 
+    // News filter row (v3.4.25)
+    'detail.news_sort_label': '排序',
+    'detail.news_sort_newest': '最新優先',
+    'detail.news_sort_oldest': '最早優先',
+    'detail.news_publisher_all': '全部來源',
+    'detail.news_count': '{shown}/{total} 條',
+    'detail.news_no_match': '冇符合篩選嘅新聞',
+    'detail.news_try_other': '試下揀「全部來源」或另一個來源',
+    'detail.news_untitled': '無標題',
+
     // Reports
     'report.title': '報告',
     'report.summary': '摘要',
@@ -669,6 +679,16 @@ const I18N = {
     'detail.refreshed': 'Updated',
     'detail.event_dismissed': 'Dismissed',
     'detail.event_dismiss_error': 'Action failed',
+
+    // News filter row (v3.4.25)
+    'detail.news_sort_label': 'Sort',
+    'detail.news_sort_newest': 'Newest first',
+    'detail.news_sort_oldest': 'Oldest first',
+    'detail.news_publisher_all': 'All sources',
+    'detail.news_count': '{shown}/{total}',
+    'detail.news_no_match': 'No news match the filter',
+    'detail.news_try_other': 'Try "All sources" or pick another publisher',
+    'detail.news_untitled': 'Untitled',
 
     // Reports
     'report.title': 'Reports',
