@@ -367,6 +367,26 @@
                 icon = 'article';
                 iconBg = 'rgba(255, 214, 0, 0.15)';
                 iconColor = 'var(--yellow)';
+            } else if (r.category === 'analyst_report') {
+                // v3.4.32: missing icon mapping (Pattern 8b) — analyst reports
+                // in sector reports fell back to default `description` icon.
+                // Parity with index.html renderReports() mapping.
+                icon = 'analytics';
+                iconBg = 'rgba(73, 79, 223, 0.15)';
+                iconColor = 'var(--blue)';
+            } else if (r.category === 'investment_bank_report') {
+                // v3.4.32: missing icon mapping (Pattern 8b) — bank reports
+                // in sector reports fell back to default `description` icon.
+                icon = 'account_balance';
+                iconBg = 'rgba(73, 79, 223, 0.15)';
+                iconColor = 'var(--blue)';
+            } else if (r.category === 'sec_filing') {
+                // v3.4.32: missing icon mapping (Pattern 8b) — SEC prospectus
+                // docs in sector reports fell back to default icon. Orange like
+                // files.html for parity.
+                icon = 'gavel';
+                iconBg = 'rgba(255, 145, 0, 0.15)';
+                iconColor = 'var(--orange)';
             }
 
             return `
