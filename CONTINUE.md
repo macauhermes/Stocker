@@ -28,7 +28,18 @@
 |- ✅ Smoke test: `POST /api/nightly-refresh {"period":"1mo"}` 200 + 10 tickers refreshed, 22 rows each; metrics show `stocker_nightly_refresh_total{status="success"}=1` + `stocker_manual_triggers_total{action="nightly_refresh"}=1`
 |- ✅ Grep 全 codebase for 同款 `t.symbol else t.X` pattern — 0 other occurrences
 |- Touch: services/nightly_refresher.py (+5/-2), app.py (+2 lines)
-| Commit: <next>
+| Commit: 7fa504d
+
+**v3.4.27 (2026-08-26) — stock_detail Events Timeline section**:
+- ✅ 新加 stock_detail.html 嘅 Events Timeline card (喺 Holdings Section 上面) — render `/api/stock/<sym>/detail` 嘅 events array 為 full list (type icon + date + type label + title)
+- ✅ Past 同 dismissed events 自動 dim (opacity 0.45)；type-specific icon color (earnings 黃 / dividend 綠 / sec_filing 橘 / other 紫)
+- ✅ Upcoming event 加藍色 "即將" tag；dismissed event 加灰色 "已知悉" tag
+- ✅ Empty state: event_busy icon + "暫無事件" message
+- ✅ 同步 fix event banner bug — banner 之前用 `data.events[0]`，可能係 past dividend；改成搵下一個 future non-dismissed event 先 display banner
+- ✅ 5 個 zh + 5 個 en i18n keys (detail.events_title / events_empty / events_count / events_upcoming_tag / events_dismissed_tag)
+- ✅ 新加 CSS classes (stock-events-list, event-row, event-row-dim, event-row-icon-{type}, event-row-date/type/title, event-row-tag, event-row-tag-dismissed) — 含 ≤480px mobile responsive
+- ✅ Pure frontend — 改 templates/stock_detail.html (+81/-6), static/css/components.css (+111), static/js/i18n.js (+14)。Template-only → no restart needed
+- ✅ Smoke test: /stock/TSLA 200 + 10 markup markers; /stock/NVDA 2 events (6/4 past dividend dim + 8/27 earnings "即將" tag); JS node --check OK; gremlin clean
 
 **v3.4.22 (2026-08-26) — 行業報告 filter row**:
 - ✅ `/industry` sector 報告 panel 加 filter row：category pills (全部/財報/分析師/招股書/新聞) + sort dropdown (最新/最早優先) + count badge
