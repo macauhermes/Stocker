@@ -2,11 +2,24 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4af10ad (v3.4.23)
-**Latest commit**: 4af10ad [P3] feat: files page filter row v3.4.23 — ticker pills + search + sort + count badge
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit af7bb87 (v3.4.25)
+**Latest commit**: af7bb87 [P3] feat: stock_detail news filter row v3.4.25 — publisher pills + sort + count badge
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.25 (2026-08-26) — Stock detail 新聞 filter row**:
+- ✅ Pattern 4b 第五個應用: stock_detail.html 新聞 panel 加 filter row — publisher pills (動態由 7 個 source 構造, count desc 排序) + sort dropdown (newest/oldest) + count badge `{shown}/{total} 條`
+- ✅ JS: 將 `renderNews()` 拆做 `allNews` module-scope cache + `applyNewsFilters()` + `renderNewsFilterRow()`; langchange 時 `loadDetail()` re-render 自動 reload filter state
+- ✅ 8 zh + 8 en i18n keys (`detail.news_*` namespace): sort_label / sort_newest / sort_oldest / publisher_all / count / no_match / try_other / untitled
+- ✅ Empty-state 區分: 冇 news (article icon) vs filter 排除晒 (filter_alt_off icon + 「試下揀「全部來源」或另一個來源」提示)
+- ✅ escHtml helper 防 XSS — publisher name + title + link 全 escape
+- ✅ CSS: 新增 .pill-count 計數 chip inside .sector-pill; active 時變白色半透明 background
+- ✅ Reuses .events-filter-row / .sector-pills / .stocks-control-select / .stocks-filter-count (zero new wrapper classes)
+- ✅ Smoke test: TSLA 10 news / 7 publishers (Benzinga/Motley Fool/Stocktwits/Yahoo Finance/GuruFocus.com/24/7 Wall St./Trefis); NVDA + MSFT pages 都 200 + 全部新 markup ID 喺度; JS node --check OK; mojibake clean
+- ✅ Pure frontend — 改動: templates/stock_detail.html (+165/-11), static/js/i18n.js (16 keys), static/css/components.css (+19)
+- ✅ Template-only change → no restart needed, server 200 OK
+- Commit: af7bb87
 
 **v3.4.22 (2026-08-26) — 行業報告 filter row**:
 - ✅ `/industry` sector 報告 panel 加 filter row：category pills (全部/財報/分析師/招股書/新聞) + sort dropdown (最新/最早優先) + count badge
