@@ -30,6 +30,21 @@
 |- Touch: services/nightly_refresher.py (+5/-2), app.py (+2 lines)
 | Commit: 7fa504d
 
+**v3.4.28 (2026-08-26) — stock_detail Related Reports section**:
+- ✅ Pattern 1 應用: stock_detail.html 加 Related Reports card (喺 Events 上面), 消費 `/api/reports?ticker=X&limit=5` endpoint (v3.4.3 ships, 之前從來冇 UI surface)
+- ✅ 每隻追蹤中嘅 ticker 喺 DB 都有 6-30 份 10-K/10-Q/分析師/招股書報告, stock detail page 之前要 scroll 去 /report/<id> 先見到
+- ✅ Parallel fetch via loadRelatedReports() — 唔 block 其他 sections render
+- ✅ renderRelatedReports() 用 5 個 category-specific icon mapping (mirrors index.html renderReports() v3.4.20 fix): earnings=assessment/green, industry|news=article/orange, analyst_report=analytics/purple, investment_bank_report=account_balance/blue, sec_filing=gavel/orange
+- ✅ 每張 card 連結去 /report/<id>, hover highlight border + lift
+- ✅ Empty state: folder_open icon + 「暫無報告」title + hint 講之後會有
+- ✅ Load error state: error icon + common.load_error message
+- ✅ 4 zh + 4 en i18n keys (detail.reports_title / reports_count / reports_empty_title / reports_empty_hint)
+- ✅ CSS: .related-reports-list flex column + .report-card hover effect
+- ✅ Salvaged sibling subagent WIP — verified 5/5 i18n keys + 2/2 CSS classes 喺 i18n.js/components.css 已存在; JS node --check OK; mojibake clean
+- ✅ Pure frontend — Touch: templates/stock_detail.html (+134), static/js/i18n.js (+8), static/css/components.css (+16 lines). Template-only → no restart needed, server 200 OK
+- ✅ Smoke test: /stock/TSLA 200 + 7 expected markup markers; /api/reports?ticker=TSLA&limit=5 返 5 reports (1 analyst + 4 earnings); MRVU/SPCX/NVDA 全 200 + 6+ markup IDs
+- Commit: 9cbbd90
+
 **v3.4.27 (2026-08-26) — stock_detail Events Timeline section**:
 - ✅ 新加 stock_detail.html 嘅 Events Timeline card (喺 Holdings Section 上面) — render `/api/stock/<sym>/detail` 嘅 events array 為 full list (type icon + date + type label + title)
 - ✅ Past 同 dismissed events 自動 dim (opacity 0.45)；type-specific icon color (earnings 黃 / dividend 綠 / sec_filing 橘 / other 紫)
