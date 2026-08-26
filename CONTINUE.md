@@ -18,8 +18,17 @@
 - ✅ Reuses .events-filter-row / .sector-pills / .stocks-control-select / .stocks-filter-count (zero new wrapper classes)
 - ✅ Smoke test: TSLA 10 news / 7 publishers (Benzinga/Motley Fool/Stocktwits/Yahoo Finance/GuruFocus.com/24/7 Wall St./Trefis); NVDA + MSFT pages 都 200 + 全部新 markup ID 喺度; JS node --check OK; mojibake clean
 - ✅ Pure frontend — 改動: templates/stock_detail.html (+165/-11), static/js/i18n.js (16 keys), static/css/components.css (+19)
-- ✅ Template-only change → no restart needed, server 200 OK
-- Commit: af7bb87
+| ✅ Template-only change → no restart needed, server 200 OK
+| Commit: af7bb87
+|**v3.4.26 (2026-08-26) — /api/nightly-refresh 500 Bug Fix**:
+|- ✅ Pattern 6 latent-bug detection: `POST /api/nightly-refresh` 由 v3.3 ships 起就壞咗, 每次撳 `/system` admin `nightly_refresh` button 500 AttributeError
+|- ✅ `sqlite3.Row has no attribute 'symbol'` — `services/nightly_refresher.py:70` 用咗 `t.symbol` 屬性訪問, 但 sqlite3.Row 只支援 bracket access (Pitfall 12/14)
+|- ✅ 改成 `td = dict(t); symbol = td["symbol"]` — 一次性 dict() wrap, 之後兩個 column 都用 bracket access, 唔再 attribute access
+|- ✅ Companion metric fix: app.py `/api/nightly-refresh` success path 加 `metrics.record_manual_trigger('nightly_refresh')` — v3.4.24 ships `manual_triggers` Counter 但漏咗 wire `nightly_refresh` action, 只 wire `check_banks` + `collect_reports`. 而家 3 個 action 全部 counter 都會跟住 button press inc
+|- ✅ Smoke test: `POST /api/nightly-refresh {"period":"1mo"}` 200 + 10 tickers refreshed, 22 rows each; metrics show `stocker_nightly_refresh_total{status="success"}=1` + `stocker_manual_triggers_total{action="nightly_refresh"}=1`
+|- ✅ Grep 全 codebase for 同款 `t.symbol else t.X` pattern — 0 other occurrences
+|- Touch: services/nightly_refresher.py (+5/-2), app.py (+2 lines)
+| Commit: <next>
 
 **v3.4.22 (2026-08-26) — 行業報告 filter row**:
 - ✅ `/industry` sector 報告 panel 加 filter row：category pills (全部/財報/分析師/招股書/新聞) + sort dropdown (最新/最早優先) + count badge

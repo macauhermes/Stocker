@@ -1428,6 +1428,8 @@ def api_nightly_refresh():
         period = request.json.get('period', '5y') if request.is_json else '5y'
         result = refresh_all_tickers(period=period, sleep_between=1.0)
         metrics.record_nightly_refresh('success')
+        # Also count as a manual admin trigger on /system (v3.4.24 parity)
+        metrics.record_manual_trigger('nightly_refresh')
         return jsonify(result)
     except Exception as e:
         logger.error(f"Nightly refresh failed: {e}")

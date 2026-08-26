@@ -67,8 +67,11 @@ def refresh_all_tickers(period="5y", sleep_between=2.0):
     logger.info("nightly_refresher: starting for %d tickers (period=%s)", len(tickers), period)
 
     for t in tickers:
-        symbol = t["symbol"] if isinstance(t, dict) else t.symbol
-        ticker_id = t["id"] if isinstance(t, dict) else t.id
+        # sqlite3.Row supports only bracket access (Pitfall 12/14) — attribute access
+        # raises AttributeError. Wrap once at top so both fields work via dict syntax.
+        td = dict(t)
+        symbol = td["symbol"]
+        ticker_id = td["id"]
 
         ticker_result = {
             "total_rows": 0,
