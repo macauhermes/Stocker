@@ -151,6 +151,23 @@
         </div>
     </div>
 
+    <!-- Events Section (v3.4.27) -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">event</span>
+                <span data-i18n="detail.events_title">事件時間表</span>
+            </div>
+            <span id="events-count-badge" class="card-meta" style="display:none;"></span>
+        </div>
+        <div id="events-list" class="stock-events-list">
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span data-i18n="common.loading">載入中...</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Holdings Section -->
     <div class="card">
         <div class="card-header">
@@ -422,14 +439,20 @@
                 document.getElementById('input-cost-basis').value = data.cost_basis;
             }
 
-            // Events
-            if (data.events && data.events.length > 0) {
-                const evt = data.events[0];
-                currentEventId = evt.id;
-                const d = new Date(evt.event_date).toLocaleDateString('zh-TW');
-                document.getElementById('event-banner-text').textContent = evt.title + ' — ' + d;
+            // Events — show next non-dismissed UPCOMING event in banner
+            // (data is sorted by event_date ASC; first item could be a past dividend)
+            const today = new Date().toISOString().slice(0, 10);
+            const nextUpcoming = (data.events || []).find(e => !e.dismissed && e.event_date >= today);
+            if (nextUpcoming) {
+                currentEventId = nextUpcoming.id;
+                const d = new Date(nextUpcoming.event_date).toLocaleDateString('zh-TW');
+                document.getElementById('event-banner-text').textContent = nextUpcoming.title + ' — ' + d;
                 document.getElementById('event-banner').style.display = 'flex';
+            } else {
+                currentEventId = null;
             }
+            // Render full events list (all events for this ticker, dismissed shown muted)
+            renderEvents(data.events || []);
         } catch (err) {
             console.error('Failed to load detail:', err);
             showToast(t('detail.load_stock_error'), 'error');
@@ -895,6 +918,52 @@
             `;
             list.appendChild(item);
         });
+    }
+
+    // === Events (v3.4.27) — full events list for this ticker ===
+    function renderEvents(events) {
+        const list = document.getElementById('events-list');
+        const badge = document.getElementById('events-count-badge');
+        if (!list) return;
+
+        if (!events || events.length === 0) {
+            list.innerHTML = `<div class="empty-state">
+                <span class="material-icons-outlined" style="font-size:36px; opacity:0.4;">event_busy</span>
+                <div style="margin-top:8px;">${t('detail.events_empty')}</div>
+            </div>`;
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+
+        // Sort by date ascending (already from server) but defensive
+        const sorted = events.slice().sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
+        const today = new Date().toISOString().slice(0, 10);
+
+        if (badge) {
+            badge.style.display = '';
+            badge.textContent = t('detail.events_count', {n: sorted.length});
+        }
+
+        list.innerHTML = sorted.map(e => {
+            const type = e.event_type || 'other';
+            const isPast = e.event_date < today;
+            const isDismissed = e.dismissed;
+            const typeIcon = type === 'earnings' ? 'assessment' : type === 'dividend' ? 'payments' : type === 'sec_filing' ? 'gavel' : 'event_note';
+            const typeLabel = type === 'earnings' ? t('events.type.earnings')
+                : type === 'dividend' ? t('events.type.dividend')
+                : type === 'sec_filing' ? t('events.type.sec_filing')
+                : type;
+            const dateStr = e.event_date ? new Date(e.event_date).toLocaleDateString('zh-TW') : '—';
+            const dim = (isPast || isDismissed) ? ' event-row-dim' : '';
+            const upcomingTag = (!isPast && !isDismissed) ? ' <span class="event-row-tag">' + t('detail.events_upcoming_tag') + '</span>' : '';
+            const dismissedTag = isDismissed ? ' <span class="event-row-tag event-row-tag-dismissed">' + t('detail.events_dismissed_tag') + '</span>' : '';
+            return `<div class="event-row${dim}">
+                <span class="event-row-icon event-row-icon-${type}"><span class="material-icons-outlined" style="font-size:18px;">${typeIcon}</span></span>
+                <span class="event-row-date">${dateStr}</span>
+                <span class="event-row-type">${typeLabel}</span>
+                <span class="event-row-title">${escHtml(e.title || '')}${upcomingTag}${dismissedTag}</span>
+            </div>`;
+        }).join('');
     }
 
     function initNewsFilters() {

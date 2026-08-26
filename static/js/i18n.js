@@ -159,6 +159,13 @@ const I18N = {
     'detail.news_try_other': '試下揀「全部來源」或另一個來源',
     'detail.news_untitled': '無標題',
 
+    // Events list (v3.4.27)
+    'detail.events_title': '事件時間表',
+    'detail.events_empty': '暫無事件',
+    'detail.events_count': '{n} 個事件',
+    'detail.events_upcoming_tag': '即將',
+    'detail.events_dismissed_tag': '已知悉',
+
     // Reports
     'report.title': '報告',
     'report.summary': '摘要',
@@ -689,6 +696,13 @@ const I18N = {
     'detail.news_no_match': 'No news match the filter',
     'detail.news_try_other': 'Try "All sources" or pick another publisher',
     'detail.news_untitled': 'Untitled',
+
+    // Events list (v3.4.27)
+    'detail.events_title': 'Events Timeline',
+    'detail.events_empty': 'No events yet',
+    'detail.events_count': '{n} events',
+    'detail.events_upcoming_tag': 'upcoming',
+    'detail.events_dismissed_tag': 'dismissed',
 
     // Reports
     'report.title': 'Reports',
