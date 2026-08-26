@@ -40,7 +40,7 @@
             <div style="display:flex; align-items:center; gap:8px;">
                 <!-- Compare button -->
                 <div style="position:relative;" id="compare-wrapper">
-                    <button id="btn-compare" onclick="toggleCompare()" title="比較" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem; display:flex; align-items:center; gap:2px;">
+                    <button id="btn-compare" onclick="toggleCompare()" data-i18n-title="stock.compare" title="比較" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem; display:flex; align-items:center; gap:2px;">
                         <span class="material-icons-outlined" style="font-size:16px;">compare_arrows</span>
                     </button>
                     <div id="compare-dropdown" style="display:none; position:absolute; top:100%; right:0; z-index:50; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:8px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
@@ -53,10 +53,10 @@
                     </div>
                 </div>
                 <div class="chart-type-btns" style="display:flex; gap:2px; background:var(--bg); border-radius:6px; padding:2px;">
-                    <button class="chart-type-btn active" data-type="line" onclick="setChartType('line')" title="折線圖" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
+                    <button class="chart-type-btn active" data-type="line" onclick="setChartType('line')" data-i18n-title="stock.chart_line" title="折線圖" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
                         <span class="material-icons-outlined" style="font-size:16px;">show_chart</span>
                     </button>
-                    <button class="chart-type-btn" data-type="candlestick" onclick="setChartType('candlestick')" title="陰陽燭" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
+                    <button class="chart-type-btn" data-type="candlestick" onclick="setChartType('candlestick')" data-i18n-title="stock.chart_candlestick" title="陰陽燭" style="padding:4px 8px; border:none; border-radius:4px; background:transparent; color:var(--text-muted); cursor:pointer; font-size:0.7rem;">
                         <span class="material-icons-outlined" style="font-size:16px;">candlestick_chart</span>
                     </button>
                 </div>

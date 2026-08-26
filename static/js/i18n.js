@@ -75,6 +75,7 @@ const I18N = {
     'index.groups_empty': '尚未建立追蹤分組',
     'index.groups_create': '建立分組',
     'index.groups_empty_group': '空',
+    'index.groups_manage': '管理分組',
 
     // Stock table
     'stock.ticker': '代碼',
@@ -619,6 +620,7 @@ const I18N = {
     'index.groups_empty': 'No watchlist groups yet',
     'index.groups_create': 'Create group',
     'index.groups_empty_group': 'Empty',
+    'index.groups_manage': 'Manage groups',
 
     // Stock table
     'stock.ticker': 'Ticker',
