@@ -1,12 +1,20 @@
 你是陳仔0號的 Hermes Agent。被 cron 每 1 小時叫醒。
 
-## 當前狀態（截至最後一次手動執行 2026-06-13）
+## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit ded10a5 (v3.3.1)
-**Latest commit**: ded10a5 [P3] enhance Prometheus metrics + add /health + /api/metrics/summary
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit <next> (v3.4.22)
+**Latest commit**: <next> [P3] feat: 行業報告 filter row v3.4.22 — category pills + sort + count badge
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.22 (2026-08-26) — 行業報告 filter row**:
+- ✅ `/industry` sector 報告 panel 加 filter row：category pills (全部/財報/分析師/招股書/新聞) + sort dropdown (最新/最早優先) + count badge
+- ✅ Pills 動態由 data 構造 (count desc 排序)；10 個 zh + 10 個 en i18n keys (industry.filter_* / industry.sort_* / industry.count_* / industry.no_filter_match / industry.try_other_filter)
+- ✅ Distinguish empty states: 冇 reports vs filter 排除晒 (用 filter_alt_off icon + 提示「試下揀另一個類別」)
+- ✅ Pure frontend — 改動: templates/industry.html (filter row markup + 2 functions), static/js/i18n.js (20 keys), static/css/components.css (4 type-specific active colors), README.md (1 行)
+- ✅ Smoke test: Technology sector 50 reports (39 earnings + 11 analyst), filter 'earnings' → 39 reports, 'analyst_report' → 11, 'sec_filing' → 0 (empty-filtered state), sort desc/asc 都正確
+- Commit: <next>
 
 **已完成嘅改進 (v3.2)**:
 1. ✅ 多源數據備援鏈 (multi_source.py) — yfinance → Yahoo → Stooq → CoinGecko → 自訂 JSONPath

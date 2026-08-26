@@ -2211,3 +2211,34 @@
     flex: 1;
   }
 }
+
+/* ============================================================
+ * v3.4.22 — Industry sector reports filter row
+ * Reuses .events-filter-row + .sector-pills + .stocks-control-select
+ * from v3.4.19/v3.4.14. Just adds type-specific active color for
+ * analyst_report pill (industry panel can show analyst as well as
+ * earnings / sec_filing / industry).
+ * ============================================================ */
+.industry-reports-pills .sector-pill[data-category="analyst_report"].active {
+  background: #4fc3f7;
+  border-color: #4fc3f7;
+  color: #16162a;
+}
+
+.industry-reports-pills .sector-pill[data-category="sec_filing"].active {
+  background: #ff9100;
+  border-color: #ff9100;
+  color: #16162a;
+}
+
+.industry-reports-pills .sector-pill[data-category="earnings"].active {
+  background: #00c853;
+  border-color: #00c853;
+  color: #16162a;
+}
+
+.industry-reports-pills .sector-pill[data-category="industry"].active {
+  background: #ffc107;
+  border-color: #ffc107;
+  color: #16162a;
+}

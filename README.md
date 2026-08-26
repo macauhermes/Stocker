@@ -30,6 +30,7 @@
 - **報告搜尋 (v3.4.3)** — `/api/reports?q=&category=&source=&ticker=&limit=&include_total=` AND-combined filters；Prometheus 暴露 `stocker_report_searches_total{has_results=true|false}`
 - **行業新聞面板 (v3.4.16)** — `/industry` 頁 sector 詳情加咗個獨立「行業新聞」 panel，wires 之前係 stub 嘅 `/api/industry/<sector>/news` endpoint（依家 query `category='industry'` 嘅 reports by file_path prefix）；Prometheus 暴露 `stocker_industry_news_requests_total{status=ok|empty}`
 - **報告類型 Tab 補完 (v3.4.17)** — Dashboard 報告 tab 加「券商分析」(analyst_report) + 「投行」(investment_bank_report + sec_filing) 兩個新 type tabs，並將原本 hardcoded CJK 嘅 4 個 tab 文字改用 i18n key（`reports.tab.{all,earnings,news,analyst,bank}`）；修正 `filterByType('analyst')` 漏 investment_bank_report 同 sec_filing 兩類報告嘅 bug——之前呢兩類（合共 23 份）從未喺 UI surface 出過
+- **行業報告 filter row (v3.4.22)** — `/industry` 頁 sector 報告 panel 加 category filter pills (全部/財報/分析師/招股書/新聞) + sort dropdown (最新/最早優先) + count badge；動態從 data 數 category 種類同 count desc 排序；filter 後空 state 用 `filter_alt_off` icon 區分「冇數據」vs「篩選排除晒」；純前端，零 backend / DB / route 改動
 - **多語言** — 繁體中文 (預設) / English 雙語切換
 - **檔案管理** — 下載報告分類存儲，提供直接下載
 

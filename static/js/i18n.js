@@ -196,6 +196,19 @@ const I18N = {
     'industry.news_error': '載入行業新聞失敗',
     'industry.news_count': '{n} 篇',
 
+    // Sector reports filter row (v3.4.22)
+    'industry.filter_all': '全部',
+    'industry.filter_earnings': '財報',
+    'industry.filter_analyst': '分析師',
+    'industry.filter_sec': '招股書',
+    'industry.filter_industry': '新聞',
+    'industry.sort_newest': '最新優先',
+    'industry.sort_oldest': '最早優先',
+    'industry.count_filtered': '顯示 {shown} / {total} 份',
+    'industry.count_total': '共 {total} 份',
+    'industry.no_filter_match': '冇符合篩選嘅報告',
+    'industry.try_other_filter': '試下揀另一個類別',
+
     // Files
     'files.title': '檔案管理',
     'files.filename': '檔案名稱',
@@ -678,6 +691,19 @@ const I18N = {
     'industry.no_news': 'No news found for this sector.',
     'industry.news_error': 'Failed to load industry news.',
     'industry.news_count': '{n}',
+
+    // Sector reports filter row (v3.4.22)
+    'industry.filter_all': 'All',
+    'industry.filter_earnings': 'Earnings',
+    'industry.filter_analyst': 'Analyst',
+    'industry.filter_sec': 'SEC',
+    'industry.filter_industry': 'News',
+    'industry.sort_newest': 'Newest first',
+    'industry.sort_oldest': 'Oldest first',
+    'industry.count_filtered': 'Showing {shown} / {total}',
+    'industry.count_total': '{total} total',
+    'industry.no_filter_match': 'No reports match the filter',
+    'industry.try_other_filter': 'Try a different category',
 
     // Files
     'files.title': 'File Manager',
