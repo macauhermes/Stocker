@@ -2467,3 +2467,19 @@
     background: rgba(255, 255, 255, 0.25);
     color: #fff;
 }
+
+/* Related Reports (v3.4.28) — stacked card list on stock_detail page */
+.related-reports-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.related-reports-list .report-card {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+.related-reports-list .report-card:hover {
+    border-color: var(--blue);
+    transform: translateY(-1px);
+}

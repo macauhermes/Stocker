@@ -151,6 +151,26 @@
         </div>
     </div>
 
+    <!-- Related Reports Section (v3.4.28) — surfaces the previously-orphan
+         /api/reports?ticker=X endpoint on the stock detail page. Shows the
+         top 5 most recent reports for this ticker (10-K/10-Q/analyst/etc.)
+         parsed by file_path prefix. Each card links to /report/<id>. -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons-outlined">description</span>
+                <span data-i18n="detail.reports_title">相關報告</span>
+            </div>
+            <span id="reports-count-badge" class="card-meta" style="display:none;"></span>
+        </div>
+        <div id="related-reports-list" class="related-reports-list">
+            <div class="loading-cell">
+                <div class="spinner-sm"></div>
+                <span data-i18n="common.loading">載入中...</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Events Section (v3.4.27) -->
     <div class="card">
         <div class="card-header">
@@ -430,6 +450,11 @@
 
             // News
             renderNews(data.news || []);
+
+            // Related Reports — parallel fetch (v3.4.28) so this section
+            // doesn't block the rest of the page. Uses the existing
+            // /api/reports?ticker=X&limit=5 endpoint (shipped v3.4.3).
+            loadRelatedReports();
 
             // Holdings
             if (data.shares_held != null) {
@@ -918,6 +943,115 @@
             `;
             list.appendChild(item);
         });
+    }
+
+    // === Related Reports (v3.4.28) — surfaces /api/reports?ticker=X
+    // Shows top 5 most recent reports for this ticker with category-specific
+    // icon + color (mirrors index.html renderReports() mappings). Each card
+    // links to /report/<id> for the full detail page. ===
+    async function loadRelatedReports() {
+        const list = document.getElementById('related-reports-list');
+        const badge = document.getElementById('reports-count-badge');
+        if (!list) return;
+        try {
+            const res = await fetch('/api/reports?ticker=' + encodeURIComponent(SYMBOL) + '&limit=5');
+            if (!res.ok) throw new Error('Failed to fetch reports');
+            const data = await res.json();
+            const reports = (data && data.results) || [];
+            renderRelatedReports(reports);
+        } catch (err) {
+            console.error('loadRelatedReports:', err);
+            list.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">error</span>
+                    <div class="empty-state-title">${t('common.load_error')}</div>
+                </div>
+            `;
+            if (badge) badge.style.display = 'none';
+        }
+    }
+
+    function renderRelatedReports(reports) {
+        const list = document.getElementById('related-reports-list');
+        const badge = document.getElementById('reports-count-badge');
+        if (!list) return;
+
+        if (!reports || reports.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">folder_open</span>
+                    <div class="empty-state-title">${t('detail.reports_empty_title')}</div>
+                    <div class="empty-state-text">${t('detail.reports_empty_hint')}</div>
+                </div>
+            `;
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+
+        list.innerHTML = '';
+        reports.forEach(r => {
+            // Icon mapping (mirrors index.html renderReports() v3.4.20)
+            let icon = 'description';
+            let iconBg = 'rgba(73, 79, 223, 0.15)';
+            let iconColor = 'var(--blue)';
+            if (r.category === 'earnings') {
+                icon = 'assessment';
+                iconBg = 'rgba(0, 200, 83, 0.15)';
+                iconColor = 'var(--green)';
+            } else if (r.category === 'industry' || r.category === 'news') {
+                icon = 'article';
+                iconBg = 'rgba(255, 145, 0, 0.15)';
+                iconColor = 'var(--orange)';
+            } else if (r.category === 'analyst_report') {
+                icon = 'analytics';
+                iconBg = 'rgba(156, 39, 176, 0.15)';
+                iconColor = 'var(--purple, #9c27b0)';
+            } else if (r.category === 'investment_bank_report') {
+                icon = 'account_balance';
+                iconBg = 'rgba(73, 79, 223, 0.15)';
+                iconColor = 'var(--blue)';
+            } else if (r.category === 'sec_filing') {
+                icon = 'gavel';
+                iconBg = 'rgba(255, 145, 0, 0.15)';
+                iconColor = 'var(--orange)';
+            }
+
+            const date = r.published_at || r.created_at;
+            const dateStr = date ? new Date(date).toLocaleDateString('zh-TW') : '—';
+            const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '';
+
+            const card = document.createElement('a');
+            card.href = '/report/' + r.id;
+            card.className = 'report-card';
+            card.innerHTML = `
+                <div class="report-card-header">
+                    <div class="report-icon" style="background:${iconBg}">
+                        <span class="material-icons-outlined" style="color:${iconColor}">${icon}</span>
+                    </div>
+                    <div style="flex:1; min-width:0;">
+                        <div class="report-title">${escapeHtml(r.title || t('common.untitled'))}</div>
+                        ${summary ? `<div class="report-summary">${escapeHtml(summary)}</div>` : ''}
+                    </div>
+                </div>
+                <div class="report-meta">
+                    <span class="report-source">
+                        <span class="material-icons-outlined" style="font-size:14px">source</span>
+                        ${escapeHtml(r.source || '—')}
+                    </span>
+                    <span class="report-date">
+                        <span class="material-icons-outlined" style="font-size:14px">schedule</span>
+                        ${dateStr}
+                    </span>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+
+        // Show count badge if backend returned a total (e.g. ?include_total=1)
+        if (badge && reports.length > 0) {
+            badge.textContent = t('detail.reports_count', { n: reports.length });
+            badge.style.display = 'inline-flex';
+        }
     }
 
     // === Events (v3.4.27) — full events list for this ticker ===

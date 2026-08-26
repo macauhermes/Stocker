@@ -165,6 +165,10 @@ const I18N = {
     'detail.events_count': '{n} 個事件',
     'detail.events_upcoming_tag': '即將',
     'detail.events_dismissed_tag': '已知悉',
+    'detail.reports_title': '相關報告',
+    'detail.reports_count': '{n} 份',
+    'detail.reports_empty_title': '暫無報告',
+    'detail.reports_empty_hint': '之後有 10-K、10-Q 或分析師報告就會喺度顯示',
 
     // Reports
     'report.title': '報告',
@@ -703,6 +707,10 @@ const I18N = {
     'detail.events_count': '{n} events',
     'detail.events_upcoming_tag': 'upcoming',
     'detail.events_dismissed_tag': 'dismissed',
+    'detail.reports_title': 'Related Reports',
+    'detail.reports_count': '{n}',
+    'detail.reports_empty_title': 'No reports yet',
+    'detail.reports_empty_hint': '10-K, 10-Q, and analyst reports will appear here once collected',
 
     // Reports
     'report.title': 'Reports',
