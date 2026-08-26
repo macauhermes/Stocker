@@ -2,11 +2,19 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4972929 (v3.4.29)
-**Latest commit**: 4972929 [P1] fix: refresh_ticker_data() sqlite3.Row AttributeError + wire observability (v3.4.29)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit <next> (v3.4.30)
+**Latest commit**: <next> [P3] fix: /system page 漏 render 嘅 industry_news counter (v3.4.30)
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.30 (2026-08-26) — /system industry_news counter surfacing**:
+- ✅ Pattern 1 應用: `/api/metrics/summary` 由 v3.4.16 起一直有 `industry_news` counter block (services/metrics.py:806) — but `renderCounters()` in templates/system.html:357 嘅 `groups` array 漏咗呢個 key, 結果 /system admin page 嘅 Prometheus counters panel 永遠唔顯示行業新聞請求 stats
+- ✅ 加 `industry_news` group 到 renderCounters(), 順序排在 ticker_refresh 後面 (邏輯 grouping: ticker refresh → 行業新聞 → manual triggers)
+- ✅ 2 個新 zh + 2 個新 en i18n keys (`system.cnt_industry_news`: '行業新聞請求' / 'Industry news requests')
+- ✅ Smoke test: `/api/metrics/summary` 返 `industry_news: {total: 0, ok: 0, empty: 0}` (新加嗰陣 zero, 證明 labels pre-created) — 而家 8 個 counter groups 全部 surface (之前只有 7)
+- ✅ Touch: templates/system.html (+1 line), static/js/i18n.js (+2 keys). Template-only → no restart needed
+- Commit: <next>
 
 **v3.4.25 (2026-08-26) — Stock detail 新聞 filter row**:
 - ✅ Pattern 4b 第五個應用: stock_detail.html 新聞 panel 加 filter row — publisher pills (動態由 7 個 source 構造, count desc 排序) + sort dropdown (newest/oldest) + count badge `{shown}/{total} 條`
