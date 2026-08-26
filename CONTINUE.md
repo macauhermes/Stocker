@@ -3,12 +3,20 @@
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
 |**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5344056 (v3.4.32)
-|**Latest commit**: a490cd3 [P3] i18n: locale-aware date formatting (v3.4.34 Pattern 5e)
+|**Latest commit**: 0260bca [P3] i18n: locale-aware date formatting in /banks last_check (v3.4.35 Pattern 5e follow-up)
 |**Server**: localhost:5000（python app.py 跑緊）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
 
-**v3.4.34 (2026-08-27) — Locale-aware date formatting (Pattern 5e)**:
+|**v3.4.35 (2026-08-27) — Pattern 5e follow-up: banks.html last_check locale**:
+|- ✅ Pattern 5e audit caught 1 remaining site that v3.4.34 grep missed: `templates/banks.html:172` — `new Date(bank.last_check).toLocaleDateString()` had NO locale argument, silently fell back to browser default 喺英文 mode 都出中文/瀏覽器默認格式
+|- ✅ 改成 `formatDate(bank.last_check)` (i18n.js:1150 helper) — 但 v3.4.34 grep 用 `toLocaleDateString\('zh-TW'\)` 嘅 regex **根本 miss 咗冇 arg 嘅 call**，所以呢個 bug survive 咗 1 個 tick
+|- ✅ Detection recipe 修正: `grep -rnE 'new Date\([^)]*\)\.toLocale(?:Date|Time)?String\(\)' templates/ static/js/` (空 arg 都 catch) — 0 hits 證明 clean
+|- ✅ Touch: templates/banks.html (+1/-1). formatDate helper battle-tested already (handle null/invalid → '—')
+|- ✅ Template-only → no restart needed, /banks 200 OK
+|- Commit: 0260bca
+|
+|**v3.4.34 (2026-08-27) — Locale-aware date formatting (Pattern 5e)**:
 - ✅ Pattern 5e bug class: 11 hardcoded `toLocaleDateString('zh-TW')` calls across 7 templates — 喺 English mode dates 仍然 render 中文格式 ("2026/8/27") 而唔係用戶期望嘅英文格式 ("Aug 27, 2026")
 - ✅ Root cause 同 Pattern 5d 一樣: applyI18n() 只 rewrites static markup 經 `data-i18n`, 唔能夠攔截 dynamic JS Date formatting — 兩者都係 "hardcoded i18n assumption in JS" 嘅 sub-class
 - ✅ Fix: 加 `formatDate(date, opts)` + `formatDateTime(date, opts)` 喺 `static/js/i18n.js` — 用 `_lang` 揀 locale (Chinese mode → 'zh-TW', English mode → 'en-US')，null/invalid → '—'
