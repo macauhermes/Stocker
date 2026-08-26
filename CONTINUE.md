@@ -2,8 +2,8 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit af7bb87 (v3.4.25)
-**Latest commit**: af7bb87 [P3] feat: stock_detail news filter row v3.4.25 — publisher pills + sort + count badge
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4972929 (v3.4.29)
+**Latest commit**: 4972929 [P1] fix: refresh_ticker_data() sqlite3.Row AttributeError + wire observability (v3.4.29)
 **Server**: localhost:5000（python app.py 跑緊）
 **Branch**: main
 **Remote**: git@github.com:macauhermes/Stocker.git
@@ -31,7 +31,7 @@
 | Commit: 7fa504d
 
 **v3.4.28 (2026-08-26) — stock_detail Related Reports section**:
-- ✅ Pattern 1 應用: stock_detail.html 加 Related Reports card (喺 Events 上面), 消費 `/api/reports?ticker=X&limit=5` endpoint (v3.4.3 ships, 之前從來冇 UI surface)
+- ✅ Pattern 1 應用: stock_detail.html 加 Related Reports card (å Events 上面), 消費 `/api/reports?ticker=X&limit=5` endpoint (v3.4.3 ships, 之前從來冇 UI surface)
 - ✅ 每隻追蹤中嘅 ticker 喺 DB 都有 6-30 份 10-K/10-Q/分析師/招股書報告, stock detail page 之前要 scroll 去 /report/<id> 先見到
 - ✅ Parallel fetch via loadRelatedReports() — 唔 block 其他 sections render
 - ✅ renderRelatedReports() 用 5 個 category-specific icon mapping (mirrors index.html renderReports() v3.4.20 fix): earnings=assessment/green, industry|news=article/orange, analyst_report=analytics/purple, investment_bank_report=account_balance/blue, sec_filing=gavel/orange
@@ -44,6 +44,18 @@
 - ✅ Pure frontend — Touch: templates/stock_detail.html (+134), static/js/i18n.js (+8), static/css/components.css (+16 lines). Template-only → no restart needed, server 200 OK
 - ✅ Smoke test: /stock/TSLA 200 + 7 expected markup markers; /api/reports?ticker=TSLA&limit=5 返 5 reports (1 analyst + 4 earnings); MRVU/SPCX/NVDA 全 200 + 6+ markup IDs
 - Commit: 9cbbd90
+
+**v3.4.29 (2026-08-26) — refresh_ticker_data() sqlite3.Row AttributeError fix + observability**:
+- ✅ Pattern 6 latent-bug detection: services/stock_data.py:refresh_ticker_data() 由 v3.3 ships 起每次 call 都 silently 失敗 — `ticker_row.id` / `ev.event_type` / `ev.event_date` 用 sqlite3.Row 嘅 attribute access (Row 只支援 bracket access, Pitfall 12b)
+- ✅ Sibling subagent WIP detection: 2 files modified 已經喺 git status, 檢查 #5 (i18n/CSS 唔適用因為係 backend) + import test 通過; 唯一需要補嘅係 stock_data.py 缺少 `_record_refresh_metric` import (sibling 漏咗 wire)
+- ✅ 加 `try: from services.metrics import record_ticker_refresh as _record_refresh_metric except ImportError: def _record_refresh_metric(_s): return None` — 容錯 test setup 同時 wire metric 落 refresh success/error 兩條 path
+- ✅ Prometheus 新增 `stocker_ticker_refresh_total{status=success|error}` Counter + `/api/metrics/summary` 加 `ticker_refresh: {total, success, error}` block (Pitfall 15 pattern — labelled Counter 用 `_metrics.values()` sum children)
+- ✅ Companion Pattern 1 修復: /system admin page 嘅 Prometheus counters panel 加入 `ticker_refresh` + 之前 orphan 嘅 `manual_triggers` 兩個 group (manual_triggers i18n key 已經存在由 v3.4.24 起但從未 wire 入 renderCounters())
+- ✅ 2 zh + 2 en i18n keys (`system.cnt_ticker_refresh` 新加, `system.cnt_manual_triggers` 已存在重用)
+- ✅ Smoke test: TSLA POST /api/stock/TSLA/refresh 200 + `stocker_ticker_refresh_total{status="success"}=1.0` + summary `ticker_refresh: {success:1, error:0, total:1.0}`; /system page 兩個新 counter card 都 render
+- ✅ Touch: services/metrics.py (+37 lines), services/stock_data.py (+13/-5), templates/system.html (+2), static/js/i18n.js (+2 keys). Backend 改動 → restart server, 200 OK
+- Commit: 4972929
+
 
 **v3.4.27 (2026-08-26) — stock_detail Events Timeline section**:
 - ✅ 新加 stock_detail.html 嘅 Events Timeline card (喺 Holdings Section 上面) — render `/api/stock/<sym>/detail` 嘅 events array 為 full list (type icon + date + type label + title)
