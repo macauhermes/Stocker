@@ -352,7 +352,7 @@
             const summary = (r.summary || r.title || '').substring(0, 80);
             const source = r.source || '—';
             const date = r.published_at || r.created_at || '';
-            const dateStr = date ? new Date(date).toLocaleDateString('zh-TW') : '—';
+            const dateStr = date ? formatDate(date) : '—';
             
             // Determine icon based on category
             let icon = 'description';

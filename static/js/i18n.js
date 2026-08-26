@@ -1142,6 +1142,32 @@ function getLang() {
 }
 
 /**
+ * Locale-aware date formatting (v3.4.34 Pattern 5e).
+ * Returns a date string formatted for the current language —
+ * 'zh-TW' for Chinese mode (default), 'en-US' for English mode.
+ * Accepts ISO strings, Date objects, or null/undefined (returns '—').
+ */
+function formatDate(date, opts) {
+  if (!date) return '—';
+  const d = (date instanceof Date) ? date : new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  const locale = _lang === 'en' ? 'en-US' : 'zh-TW';
+  return d.toLocaleDateString(locale, opts);
+}
+
+/**
+ * Locale-aware datetime formatting (v3.4.34).
+ * Same as formatDate but includes time.
+ */
+function formatDateTime(date, opts) {
+  if (!date) return '—';
+  const d = (date instanceof Date) ? date : new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  const locale = _lang === 'en' ? 'en-US' : 'zh-TW';
+  return d.toLocaleString(locale, opts);
+}
+
+/**
  * Switch language and refresh all data-i18n elements.
  */
 function setLang(lang) {

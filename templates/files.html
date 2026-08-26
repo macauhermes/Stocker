@@ -186,7 +186,7 @@
 
         container.innerHTML = '';
         filtered.forEach(f => {
-            const date = f.created_at ? new Date(f.created_at).toLocaleDateString('zh-TW') : '—';
+            const date = f.created_at ? formatDate(f.created_at) : '—';
             const size = formatFileSize(f.file_size);
             const categoryLabel = formatCategory(f.category);
             

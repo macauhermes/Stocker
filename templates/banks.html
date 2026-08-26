@@ -224,7 +224,7 @@
         container.innerHTML = '';
         reports.forEach(report => {
             const date = report.published_at || report.created_at;
-            const dateStr = date ? new Date(date).toLocaleDateString('zh-TW') : '—';
+            const dateStr = date ? formatDate(date) : '—';
             
             const card = document.createElement('div');
             card.className = 'report-card';

@@ -470,7 +470,7 @@
             const nextUpcoming = (data.events || []).find(e => !e.dismissed && e.event_date >= today);
             if (nextUpcoming) {
                 currentEventId = nextUpcoming.id;
-                const d = new Date(nextUpcoming.event_date).toLocaleDateString('zh-TW');
+                const d = formatDate(nextUpcoming.event_date);
                 document.getElementById('event-banner-text').textContent = nextUpcoming.title + ' — ' + d;
                 document.getElementById('event-banner').style.display = 'flex';
             } else {
@@ -926,7 +926,7 @@
 
         list.innerHTML = '';
         filtered.forEach(n => {
-            const date = n.published_at ? new Date(n.published_at).toLocaleDateString('zh-TW') : '—';
+            const date = n.published_at ? formatDate(n.published_at) : '—';
             const item = document.createElement('div');
             item.className = 'news-item';
             const safeTitle = escHtml(n.title || (typeof t === 'function' ? t('detail.news_untitled') : '無標題') || '無標題');
@@ -1017,7 +1017,7 @@
             }
 
             const date = r.published_at || r.created_at;
-            const dateStr = date ? new Date(date).toLocaleDateString('zh-TW') : '—';
+            const dateStr = date ? formatDate(date) : '—';
             const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '';
 
             const card = document.createElement('a');
@@ -1087,7 +1087,7 @@
                 : type === 'dividend' ? t('events.type.dividend')
                 : type === 'sec_filing' ? t('events.type.sec_filing')
                 : type;
-            const dateStr = e.event_date ? new Date(e.event_date).toLocaleDateString('zh-TW') : '—';
+            const dateStr = e.event_date ? formatDate(e.event_date) : '—';
             const dim = (isPast || isDismissed) ? ' event-row-dim' : '';
             const upcomingTag = (!isPast && !isDismissed) ? ' <span class="event-row-tag">' + t('detail.events_upcoming_tag') + '</span>' : '';
             const dismissedTag = isDismissed ? ' <span class="event-row-tag event-row-tag-dismissed">' + t('detail.events_dismissed_tag') + '</span>' : '';

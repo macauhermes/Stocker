@@ -324,7 +324,7 @@
             if (events && events.length > 0) {
                 const banner = document.getElementById('event-banner');
                 const text = events.map(e => {
-                    const d = new Date(e.event_date).toLocaleDateString('zh-TW');
+                    const d = formatDate(e.event_date);
                     return `${e.title} — ${d}`;
                 }).join('  |  ');
                 document.getElementById('event-banner-text').textContent = text;
@@ -1197,7 +1197,7 @@
         list.innerHTML = '';
         reports.forEach(r => {
             const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '—';
-            const date = r.published_at ? new Date(r.published_at).toLocaleDateString('zh-TW') : '—';
+            const date = r.published_at ? formatDate(r.published_at) : '—';
 
             // Determine icon based on category
             let icon = 'description';
@@ -1359,7 +1359,7 @@
         
         container.innerHTML = '';
         tickers.forEach(ticker => {
-            const archivedDate = ticker.archived_at ? new Date(ticker.archived_at).toLocaleDateString('zh-TW') : '—';
+            const archivedDate = ticker.archived_at ? formatDate(ticker.archived_at) : '—';
             const card = document.createElement('div');
             card.className = 'stock-card';
             card.innerHTML = `
