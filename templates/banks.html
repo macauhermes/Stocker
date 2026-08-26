@@ -169,7 +169,7 @@
                     </div>
                     <div class="stock-name">${escapeHtml(bank.name)}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-                        ${bank.last_check ? t('banks.last_check') + new Date(bank.last_check).toLocaleDateString() : t('banks.never_checked')}
+                        ${bank.last_check ? t('banks.last_check') + formatDate(bank.last_check) : t('banks.never_checked')}
                     </div>
                 </div>
                 <div style="display:flex; gap:4px;">
