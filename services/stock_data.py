@@ -22,6 +22,18 @@ from models import (
 )
 import tsdb
 
+# Local alias for refresh_ticker_data() success/error counter (v3.4.29).
+# Wired via services.metrics.record_ticker_refresh() so the refresh pipeline
+# is observable in /metrics — a 100%-error rate would have surfaced the
+# sqlite3.Row AttributeError that's been silently breaking this function
+# since v3.3 ships (Pitfall 12b — sibling subagent caught it).
+try:
+    from services.metrics import record_ticker_refresh as _record_refresh_metric
+except ImportError:
+    # Tolerate running outside the project root (e.g. some test setups).
+    def _record_refresh_metric(_status: str) -> None:
+        return None
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -382,6 +394,7 @@ def fetch_next_earnings(symbol: str) -> dict | None:
 
 
 # ──────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────
 # 6. refresh_ticker_data
 # ──────────────────────────────────────────────────────────────────────
 
@@ -409,7 +422,13 @@ def refresh_ticker_data(symbol: str) -> dict:
                 sector=info.get("sector", "N/A"),
             )
 
-        ticker_id = ticker_row["id"] if isinstance(ticker_row, dict) else ticker_row.id
+        # NOTE (v3.4.29 fix): models.get_ticker() / create_ticker() return
+        # sqlite3.Row, which supports bracket access but NOT attribute access.
+        # The previous `... else ticker_row.id` branch raised AttributeError on
+        # every call, so refresh_ticker_data() has been a silent no-op since
+        # v3.3 (the outer try/except swallowed it into summary['error']).
+        # Bracket access works for BOTH dict and Row — no isinstance needed.
+        ticker_id = ticker_row["id"]
 
         # ── Fetch & save daily prices (1 year) ────────────────────────
         historical = fetch_historical_prices(symbol, period="1y")
@@ -433,8 +452,9 @@ def refresh_ticker_data(symbol: str) -> dict:
             existing_events = get_events_by_ticker(ticker_id) or []
             already_tracked = False
             for ev in existing_events:
-                ev_type = ev["event_type"] if isinstance(ev, dict) else ev.event_type
-                ev_date = ev["event_date"] if isinstance(ev, dict) else ev.event_date
+                # Bracket access works for both dict and sqlite3.Row (Pitfall 12b).
+                ev_type = ev["event_type"]
+                ev_date = ev["event_date"]
                 if ev_type == "earnings" and str(ev_date) == earnings["date"]:
                     already_tracked = True
                     break
@@ -452,9 +472,11 @@ def refresh_ticker_data(symbol: str) -> dict:
 
             summary["earnings"] = earnings
 
+        _record_refresh_metric("success")
         return summary
 
     except Exception as exc:
         logger.error("refresh_ticker_data(%s) failed: %s", symbol, exc)
         summary["error"] = str(exc)
+        _record_refresh_metric("error")
         return summary

@@ -245,6 +245,23 @@ MANUAL_TRIGGERS.labels(action='check_banks')
 MANUAL_TRIGGERS.labels(action='collect_reports')
 
 
+# Ticker refresh outcomes (v3.4.29) — track refresh_ticker_data() results.
+# Added after discovering the function had been raising AttributeError on
+# EVERY call since v3.3 (sqlite3.Row attribute access, Pitfall 12b). The bug
+# was invisible because the outer try/except swallowed it into
+# summary['error'] and no metric counted failures. With this counter, a
+# 100%-error rate shows up immediately on /metrics.
+TICKER_REFRESH = Counter(
+    'stocker_ticker_refresh_total',
+    'refresh_ticker_data() outcomes',
+    ['status']  # 'success' / 'error'
+)
+
+# Pre-create label children so /metrics shows 0 (not absent) before any traffic.
+TICKER_REFRESH.labels(status='success')
+TICKER_REFRESH.labels(status='error')
+
+
 # ── Middleware ──────────────────────────────────────────────────────────
 
 def init_metrics(app):
@@ -403,6 +420,20 @@ def record_manual_trigger(action: str):
     if action not in ('nightly_refresh', 'check_banks', 'collect_reports'):
         action = 'nightly_refresh'  # fail safe — never silently drop an event
     MANUAL_TRIGGERS.labels(action=action).inc()
+
+
+def record_ticker_refresh(status: str):
+    """Record a refresh_ticker_data() outcome (v3.4.29).
+
+    `status` is 'success' or 'error'. Called from within
+    services/stock_data.refresh_ticker_data() on both paths so a systematic
+    failure (like the sqlite3.Row AttributeError that silently broke every
+    refresh from v3.3 to v3.4.28) surfaces as a non-zero error counter
+    instead of hiding inside summary['error'].
+    """
+    if status not in ('success', 'error'):
+        status = 'error'  # fail safe — unknown states count as failures
+    TICKER_REFRESH.labels(status=status).inc()
 
 
 
@@ -785,6 +816,15 @@ def metrics_summary():
             'nightly_refresh': int(MANUAL_TRIGGERS.labels(action='nightly_refresh')._value.get()),
             'check_banks': int(MANUAL_TRIGGERS.labels(action='check_banks')._value.get()),
             'collect_reports': int(MANUAL_TRIGGERS.labels(action='collect_reports')._value.get()),
+        },
+        # ticker_refresh (v3.4.29): refresh_ticker_data() success/error split.
+        # A high 'error' count means the refresh pipeline is broken — this is
+        # exactly the signal that was missing when the sqlite3.Row bug made
+        # every refresh fail silently from v3.3 through v3.4.28.
+        'ticker_refresh': {
+            'total': sum(c._value.get() for c in TICKER_REFRESH._metrics.values()),
+            'success': int(TICKER_REFRESH.labels(status='success')._value.get()),
+            'error': int(TICKER_REFRESH.labels(status='error')._value.get()),
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,
