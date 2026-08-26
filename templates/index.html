@@ -1415,7 +1415,7 @@
                 return `
                     <div style="background:var(--card-bg,#1a1a2e); border:1px solid var(--border,#2a2a3e); border-radius:12px; margin-bottom:10px; border-left:3px solid ${g.color};">
                         <div style="padding:12px 16px;">
-                            <div style="font-weight:600; font-size:0.95rem;">${escHtml(g.name)} <span style="color:var(--text-muted); font-size:0.8rem;">${g.ticker_count} 股</span></div>
+                            <div style="font-weight:600; font-size:0.95rem;">${escHtml(g.name)} <span style="color:var(--text-muted); font-size:0.8rem;">${t('watchlists.ticker_count', {n: g.ticker_count})}</span></div>
                             ${g.description ? `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:2px;">${escHtml(g.description)}</div>` : ''}
                         </div>
                         <div style="padding:0 16px 12px;">
@@ -1654,6 +1654,8 @@
         loadPortfolioSparkline();
         loadPortfolioHoldings();
         loadPortfolioSnapshotsLog();
+        // Re-render groups dashboard so the ticker count "{n} 股"/"{n} stocks" re-translates
+        loadGroupsDashboard();
     });
 </script>
 {% endblock %}
