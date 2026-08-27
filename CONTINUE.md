@@ -2,11 +2,22 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit cb427f4 (v3.4.37)
-|**Latest commit**: cb427f4 [P3] UX: replace native alert() with showToast() in alerts + watchlists
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4b1e3a6 (v3.4.38)
+|**Latest commit**: 4b1e3a6 [P3] i18n: events.html calendar updates on langchange (Pattern 5d)
 |**Server**: localhost:5000（python app.py 跑緊）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.38 (2026-08-27) — Events calendar langchange re-render fix (Pattern 5d)**:
+|- ✅ Pattern 5d bug class: `templates/events.html:168` 用 `const DAYS = t('events.days') || ['日',...];` — `const` 喺 script load 時 evaluate 一次，之後永遠唔變。即使用戶中途撳 `中/EN` switcher，calendar header 嘅「日/一/二/...」永遠 stay 喺中文（除非 reload page）
+|- ✅ 同時發現 events.html 完全冇 `window.addEventListener('langchange', ...)` — index.html / files.html / alerts.html / industry.html / stock_detail.html / system.html 全部有，淨係 events.html 漏咗
+|- ✅ 兩重 fix:
+|  1. `const DAYS = ...` 改成 `function getDays()` — 每次 `loadCalendar()` call 都重新 fetch 當前 locale 嘅 day names
+|  2. 新增 `window.addEventListener('langchange', () => { loadCalendar(); renderUpcoming(); })` — 切 language 即時 re-render calendar header + month title + upcoming list
+|- ✅ Detection recipe (refined Pattern 5d): `grep -rnE "^\s*(let|const|var)\s+[A-Z_]+\s*=\s*t\(" templates/` — 每個 hit 都係 cached-at-load-time 嘅 i18n value，必須改做 function call 或者喺 langchange handler 重新 fetch
+|- ✅ Touch: templates/events.html (+16/-2). Template-only → no restart needed
+|- ✅ Smoke test: /events 200; 3 events in Aug 2026 (IBM/MSFT dividends + NVDA earnings 8/27); node --check OK; gremlin clean
+|- Commit: 4b1e3a6
 
 **v3.4.37 (2026-08-27) — UX consistency: native alert() → showToast() in alerts + watchlists**:
 - ✅ **Bug class**: `templates/alerts.html` 同 `templates/watchlists.html` 用 native `alert()` (window.alert, blocking modal) — 其他 7 templates 全部用 `base.html:144` 嘅 `showToast()` (auto-dismiss 3s, non-blocking)。兩 files 用 `alert(t(...))` 13 次, 全部係 form validation / save error / 確認回饋嘅 moment
