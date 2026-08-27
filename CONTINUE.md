@@ -2,8 +2,20 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 560de92 (v3.4.41)
-|**Latest commit**: 560de92 [P3] i18n: replace static data-i18n in JS template literals with t() calls
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 9cbdf35 (v3.4.42)
+**Latest commit**: 9cbdf35 [P3] i18n: timeAgo() + freshness tooltip use t() calls (Pattern 5d)
+
+**v3.4.42 (2026-08-27) — index.html timeAgo() Pattern 5d fix**:
+- ✅ **Bug class**: `templates/index.html:999-1008` 嘅 `timeAgo()` function 用 hardcoded English strings ('just now', 'Ns ago', 'Nm ago', 'Nh ago', 'Nd ago') — 即使其他 locale 設定已經切換, freshness badge 永遠 stay 喺英文
+- ✅ Freshness badge 嘅 `title="Last updated: ..."` 亦都用 hardcoded "Last updated: " + "unknown" 字符串 (line 936)
+- ✅ Sibling subagent WIP salvage: 2 files modified (i18n.js + index.html), salvage check #5 全 pass — 7 個 t() calls 全部有 matching i18n keys (4 existing + 3 new), JS node --check OK, gremlin clean (2 files), langchange listener line 1645 經 loadStocks() → timeAgo() → t() 自動 re-render
+- ✅ 3 個新 zh + 3 個新 en i18n keys:
+  - `time.seconds_ago: '{n} 秒前' / '{n}s ago'`
+  - `index.last_updated_at: '最後更新：' / 'Last updated: '`
+  - `index.last_updated_unknown: '未更新' / 'Not yet updated'`
+- ✅ Touch: templates/index.html (+7/-6), static/js/i18n.js (+6 keys)。Template-only → no restart needed
+- ✅ Smoke test: / 200; 7 expected t() call sites all wired; i18n.js node --check OK; freshness badge 喺 served HTML 仲 render
+- Commit: 9cbdf35
 |**Server**: localhost:5000（python app.py 跑緊，restart 完成 200 OK）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
