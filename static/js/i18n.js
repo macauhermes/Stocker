@@ -363,6 +363,9 @@ const I18N = {
     'watchlists.delete_confirm': '刪除「{name}」？股票唔會被刪除。',
     'watchlists.all_added': '所有股票都已經加入咗',
     'watchlists.symbol_required': '請輸入股票代碼',
+    'watchlists.save_error': '儲存失敗：{msg}',
+    'watchlists.network_error': '網絡錯誤',
+    'watchlists.remove_error': '刪除失敗：{msg}',
 
     // Price Alerts (v3.4)
     'alerts.title': '價格提醒',
@@ -919,6 +922,9 @@ const I18N = {
     'watchlists.delete_confirm': 'Delete "{name}"? Stocks will not be removed.',
     'watchlists.all_added': 'All stocks already added',
     'watchlists.symbol_required': 'Please enter a stock symbol',
+    'watchlists.save_error': 'Save failed: {msg}',
+    'watchlists.network_error': 'Network error',
+    'watchlists.remove_error': 'Remove failed: {msg}',
 
     // Price Alerts (v3.4)
     'alerts.title': 'Price Alerts',

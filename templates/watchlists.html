@@ -327,10 +327,10 @@ async function saveGroup() {
     try {
         const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const data = await res.json();
-        if (!res.ok) { alert(data.error || 'Error'); return; }
+        if (!res.ok) { showToast(t('watchlists.save_error', { msg: data.error || res.status }), 'error'); return; }
         closeGroupModal();
         loadGroups();
-    } catch (e) { alert('Network error'); }
+    } catch (e) { showToast(t('watchlists.network_error'), 'error'); }
 }
 
 function editGroup(id) {
@@ -343,7 +343,7 @@ async function deleteGroup(id) {
     try {
         await fetch(`/api/watchlist-groups/${id}`, { method: 'DELETE' });
         loadGroups();
-    } catch (e) { alert('Network error'); }
+    } catch (e) { showToast(t('watchlists.network_error'), 'error'); }
 }
 
 // --- Color picker ---
@@ -406,17 +406,22 @@ async function quickAddTicker(symbol) {
             body: JSON.stringify({symbol})
         });
         const data = await res.json();
-        if (!res.ok) { alert(data.error || 'Error'); return; }
+        if (!res.ok) { showToast(t('watchlists.save_error', { msg: data.error || res.status }), 'error'); return; }
         closeTickerModal();
         loadGroups();
-    } catch (e) { alert('Network error'); }
+    } catch (e) { showToast(t('watchlists.network_error'), 'error'); }
 }
 
 async function removeTicker(groupId, symbol) {
     try {
-        await fetch(`/api/watchlist-groups/${groupId}/tickers/${symbol}`, { method: 'DELETE' });
+        const resp = await fetch(`/api/watchlist-groups/${groupId}/tickers/${symbol}`, { method: 'DELETE' });
+        if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            showToast(t('watchlists.remove_error', { msg: data.error || resp.status }), 'error');
+            return;
+        }
         loadGroups();
-    } catch (e) { alert('Network error'); }
+    } catch (e) { showToast(t('watchlists.network_error'), 'error'); }
 }
 
 function esc(s) {
