@@ -2,11 +2,20 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4b1e3a6 (v3.4.38)
-|**Latest commit**: e64a9c5 [P3] UX: replace bare native alert() with showToast() in watchlists.html
-|**Server**: localhost:5000（python app.py 跑緊）
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 560de92 (v3.4.41)
+|**Latest commit**: 560de92 [P3] i18n: replace static data-i18n in JS template literals with t() calls
+|**Server**: localhost:5000（python app.py 跑緊，restart 完成 200 OK）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.41 (2026-08-27) — Sibling subagent WIP salvage (2 commits, 8 files)**:
+- ✅ **Cron tick WIP salvage**: `git status` 顯示 8 個 modified files 嚟自兩個 sibling subagent runs (~12h + ~6h old) — salvage check #5 全 pass: CACHE_HITS/CACHE_MISSES defined + wired, 6 個 i18n keys 各 zh+en 出現 2 次, 22 t() keys 全部 hit, JS node --check OK (6 templates), gremlin clean (8 files)
+- ✅ **Commit 1 — e5aca93 [P3] metrics**: surface 3 個 Prometheus counters 到 /system admin page — cache{hits,misses,hit_rate%}, data_source_requests{by_source{yfinance/yahoo_direct/stooq/coingecko}}, health_check{by_status{healthy/degraded/unhealthy}}。Pre-create expected labels (Pitfall 15) 所以 /metrics 第一行就見 0 而唔係空白。renderCounters() generalize 攞 flat dict + nested dict (by_source / by_status 都解開做 "label: count · ..." segments)。6 zh + 6 en i18n keys (system.cnt_cache / .cnt_data_sources / .cnt_health_check)
+- ✅ **Commit 2 — 560de92 [P3] i18n**: Pattern 5d 升級 — 22 個 static `data-i18n="..."` attributes 喺 JS template literals (`el.innerHTML = \`...\${t('...')}...\``) 換做 `${t('...')}` direct calls。之前 applyI18n() 喺 DOMContentLoaded 跑嗰陣呢啲 empty-state DOM 仲未存在 (loadGroups/loadSources/etc 嘅 fetch 先 inject)，所以 English mode 永遠見到硬編碼 CJK 字串。22 個 t() key 全部喺 i18n.js 已有 (0 missing)。Touch 5 templates: index.html (groups dashboard), report_detail.html (rating + empty state), sources.html (custom sources empty), stock_detail.html (news empty/filter-empty + save button), watchlists.html (groups empty)
+- ✅ **Smoke test**: services/metrics.py 重啟後 → /api/metrics/summary 返 cache={hits:1,misses:11,hit_rate:8.3} + data_source_requests{...} + health_check{healthy:1,...} 全 block surface; 6 pages 200 (/, /system, /watchlists, /sources, /stock/TSLA, /api/metrics/summary); /health 觸發後 HEALTH_CHECK counter inc 1 = wire-up 確認
+- ✅ **Touch**: services/metrics.py (+39), templates/system.html (+19), static/js/i18n.js (+6 keys), 5 templates (+14/-14 lines total)。Commit 1 backend 改 → restart server; Commit 2 template-only → no restart needed
+
+**v3.4.40 — covered by e5aca93 above (3 個 Prometheus counter blocks)**
 
 **v3.4.39 (2026-08-27) — Pattern 11 second sweep: bare native alert() in watchlists.html**:
 - ✅ **Bug class**: v3.4.37 sweep 用 `grep -rn "alert(t("` 只 catch i18n-wrapped alert calls，漏咗 bare-string calls。`templates/watchlists.html` 有 6 個 native `alert()` (2× `alert(data.error || 'Error')` + 4× `alert('Network error')`) — v3.4.37 convert `alert(t(...))` 但漏咗呢啲，consistency 仍然 broken
