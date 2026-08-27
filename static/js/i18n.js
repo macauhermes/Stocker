@@ -57,6 +57,8 @@ const I18N = {
 
     // Index page
     'index.title': '主頁',
+    'index.last_updated_at': '最後更新：',
+    'index.last_updated_unknown': '未更新',
     'index.tab.stocks': '股票',
     'index.tab.reports': '報告',
     'index.tab.archived': '歸檔',
@@ -556,6 +558,7 @@ const I18N = {
 
     // Time
     'time.just_now': '剛剛',
+    'time.seconds_ago': '{n} 秒前',
     'time.minutes_ago': '{n} 分鐘前',
     'time.hours_ago': '{n} 小時前',
     'time.days_ago': '{n} 天前',
@@ -619,6 +622,8 @@ const I18N = {
 
     // Index page
     'index.title': 'Dashboard',
+    'index.last_updated_at': 'Last updated: ',
+    'index.last_updated_unknown': 'Not yet updated',
     'index.tab.stocks': 'Stocks',
     'index.tab.reports': 'Reports',
     'index.tab.archived': 'Archived',
@@ -1118,6 +1123,7 @@ const I18N = {
 
     // Time
     'time.just_now': 'Just now',
+    'time.seconds_ago': '{n}s ago',
     'time.minutes_ago': '{n}m ago',
     'time.hours_ago': '{n}h ago',
     'time.days_ago': '{n}d ago',

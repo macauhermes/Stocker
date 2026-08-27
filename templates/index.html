@@ -933,7 +933,7 @@
                         ${ticker.symbol}
                         ${ticker.sector ? `<span class="stock-sector">${ticker.sector}</span>` : ''}
                         <span class="source-badge source-${(ticker.data_source || 'unknown').replace(/_/g, '-')}" title="${ticker.data_source || 'unknown'}">${sourceLabel(ticker.data_source)}</span>
-                        <span class="freshness-badge ${freshnessClass(ticker.last_updated)}" data-ts="${ticker.last_updated || ''}" title="Last updated: ${ticker.last_updated || 'unknown'}">${timeAgo(ticker.last_updated)}</span>
+                        <span class="freshness-badge ${freshnessClass(ticker.last_updated)}" data-ts="${ticker.last_updated || ''}" title="${ticker.last_updated ? t('index.last_updated_at') + ticker.last_updated : t('index.last_updated_unknown')}">${timeAgo(ticker.last_updated)}</span>
                     </div>
                     <div class="stock-name">${ticker.name || '—'}</div>
                 </div>
@@ -999,14 +999,13 @@
     function timeAgo(isoString) {
         if (!isoString) return '';
         const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
-        if (seconds < 0) return 'just now';
-        if (seconds < 10) return 'just now';
-        if (seconds < 60) return seconds + 's ago';
+        if (seconds < 10) return t('time.just_now');
+        if (seconds < 60) return t('time.seconds_ago', { n: seconds });
         const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return minutes + 'm ago';
+        if (minutes < 60) return t('time.minutes_ago', { n: minutes });
         const hours = Math.floor(minutes / 60);
-        if (hours < 24) return hours + 'h ago';
-        return Math.floor(hours / 24) + 'd ago';
+        if (hours < 24) return t('time.hours_ago', { n: hours });
+        return t('time.days_ago', { n: Math.floor(hours / 24) });
     }
 
     // Freshness CSS class based on age
