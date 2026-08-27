@@ -2,11 +2,28 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 975f827 (v3.4.36)
-|**Latest commit**: 975f827 [P3] i18n: watchlist group ticker count uses t() + langchange re-renders (v3.4.36)
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit cb427f4 (v3.4.37)
+|**Latest commit**: cb427f4 [P3] UX: replace native alert() with showToast() in alerts + watchlists
 |**Server**: localhost:5000（python app.py 跑緊）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
+
+**v3.4.37 (2026-08-27) — UX consistency: native alert() → showToast() in alerts + watchlists**:
+- ✅ **Bug class**: `templates/alerts.html` 同 `templates/watchlists.html` 用 native `alert()` (window.alert, blocking modal) — 其他 7 templates 全部用 `base.html:144` 嘅 `showToast()` (auto-dismiss 3s, non-blocking)。兩 files 用 `alert(t(...))` 13 次, 全部係 form validation / save error / 確認回饋嘅 moment
+- ✅ Alerts.html 仲有一個 local shim `function alert(msg) { window.alert(msg); }` (line 336) — author 為咗避免 shadowing 自己定義嘅 local `alert()` 變數 (used for re-render check) 而特登寫嘅 — 即係話連 form 填錯都係 popup 嚇 user
+- ✅ 13 個 `alert(t(...))` 全部換做 `showToast(t(...), type)`:
+  - Form validation: `warning` toast (橘色) — symbol/price required, group name required, ticker symbol required
+  - Save/load/update/rearm/delete errors: `error` toast (紅色)
+  - checkAllAlerts success: 拆 2 個 toast (count 用 success 綠色, per-line details 用 warning 橘色, joined with ` · ` 因為 toast 唔 render newlines)
+  - checkAllAlerts no-trigger: `info` toast (藍色)
+- ✅ 移除 `function alert(msg) { window.alert(msg); }` local shim — 而家直接用 base.html global `showToast()`
+- ✅ Detection recipe: `grep -rn "alert(t(" templates/` — 0 hits 證明 clean (search-time 2 files affected, both 0 after fix)
+- ✅ Consistency check: 38 prior `showToast(` + 14 新加 = 52 個 `showToast(` total 喺所有 templates — 0 個 native blocking `alert()` left in form flows
+- ✅ Pure UX — Touch: templates/alerts.html (+12/-15), templates/watchlists.html (+2/-2). Zero backend / DB / i18n changes (toast component already exists in base.html:144)
+- ✅ Smoke test: /alerts 200 (11 showToast in served HTML, 0 alert), /watchlists 200 (2 showToast, 0 alert), POST /api/alerts/check 200 ({count: 0, triggered: []})
+- ✅ JS node --check 11740 chars OK, gremlin clean (U+FFFD/U+00AD/U+200B/U+FEFF 0 hits)
+- ✅ Template-only → no restart needed
+- Commit: cb427f4
 
 **v3.4.36 (2026-08-27) — Watchlist group ticker count i18n fix (Pattern 5d)**:
 - ✅ Pattern 5d bug class: `templates/index.html:1418` 內 JS template literal `<span>${g.ticker_count} 股</span>` 用 hardcoded CJK 「股」字 — applyI18n() 只 rewrites static HTML markup, 完全唔 touch runtime-injected DOM
