@@ -106,8 +106,8 @@ function renderSources(list) {
         c.innerHTML = `
             <div class="empty-state">
                 <span class="material-icons-outlined empty-state-icon">cloud_off</span>
-                <div class="empty-state-title" data-i18n="sources.empty_title">未設定任何自訂源</div>
-                <button class="btn btn-primary mt-16" onclick="openAddSourceModal()" data-i18n="common.add">新增</button>
+                <div class="empty-state-title">${t('sources.empty_title')}</div>
+                <button class="btn btn-primary mt-16" onclick="openAddSourceModal()">${t('common.add')}</button>
             </div>
         `;
         return;

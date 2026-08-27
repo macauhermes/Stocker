@@ -92,14 +92,14 @@
                 contentEl.innerHTML = `
                     <div class="empty-state" style="padding:24px;">
                         <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">link</span>
-                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="report.source_external">原文儲存於外部連結</div>
+                        <div style="margin-top:8px; color:var(--text-muted);">${t('report.source_external')}</div>
                     </div>
                 `;
             } else {
                 contentEl.innerHTML = `
                     <div class="empty-state" style="padding:24px;">
                         <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">description</span>
-                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="report.no_source">暫無原文內容</div>
+                        <div style="margin-top:8px; color:var(--text-muted);">${t('report.no_source')}</div>
                     </div>
                 `;
             }
@@ -215,7 +215,7 @@
             // Add summary
             html += `
                 <div style="margin-top:16px; padding:12px; background:var(--bg); border-radius:12px;">
-                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;" data-i18n="report.rating_summary">評級摘要</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">${t('report.rating_summary')}</div>
                     <div style="display:flex; flex-wrap:wrap; gap:12px;">
                         ${generateRatingSummary(headers, rows)}
                     </div>

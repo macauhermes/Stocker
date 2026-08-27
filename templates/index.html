@@ -1403,8 +1403,8 @@
                 el.innerHTML = `
                     <div class="empty-state">
                         <span class="material-icons-outlined empty-state-icon">bookmark_border</span>
-                        <div class="empty-state-title" data-i18n="index.groups_empty">尚未建立追蹤分組</div>
-                        <a href="/watchlists" class="btn btn-primary" style="margin-top:12px;" data-i18n="index.groups_create">建立分組</a>
+                        <div class="empty-state-title">${t('index.groups_empty')}</div>
+                        <a href="/watchlists" class="btn btn-primary" style="margin-top:12px;">${t('index.groups_create')}</a>
                     </div>`;
                 return;
             }
@@ -1419,7 +1419,7 @@
                             ${g.description ? `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:2px;">${escHtml(g.description)}</div>` : ''}
                         </div>
                         <div style="padding:0 16px 12px;">
-                            ${tickers || `<span style="color:var(--text-muted); font-size:0.8rem;" data-i18n="index.groups_empty_group">空</span>`}
+                            ${tickers || `<span style="color:var(--text-muted); font-size:0.8rem;">${t('index.groups_empty_group')}</span>`}
                         </div>
                     </div>`;
             }).join('');

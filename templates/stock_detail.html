@@ -908,7 +908,7 @@
                 list.innerHTML = `
                     <div class="empty-state" style="padding:24px;">
                         <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">article</span>
-                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="detail.no_news">暫無新聞</div>
+                        <div style="margin-top:8px; color:var(--text-muted);">${t('detail.no_news')}</div>
                     </div>
                 `;
             } else {
@@ -916,8 +916,8 @@
                 list.innerHTML = `
                     <div class="empty-state" style="padding:24px;">
                         <span class="material-icons-outlined" style="font-size:48px; color:var(--text-muted);">filter_alt_off</span>
-                        <div style="margin-top:8px; color:var(--text-muted);" data-i18n="detail.news_no_match">冇符合篩選嘅新聞</div>
-                        <div style="margin-top:4px; color:var(--text-muted); font-size:0.78rem;" data-i18n="detail.news_try_other">試下揀「全部」或另一個來源</div>
+                        <div style="margin-top:8px; color:var(--text-muted);">${t('detail.news_no_match')}</div>
+                        <div style="margin-top:4px; color:var(--text-muted); font-size:0.78rem;">${t('detail.news_try_other')}</div>
                     </div>
                 `;
             }
@@ -1134,7 +1134,7 @@
             btn.disabled = false;
             btn.innerHTML = `
                 <span class="material-icons-outlined">save</span>
-                <span data-i18n="detail.save_holdings">保存</span>
+                <span>${t('detail.save_holdings')}</span>
             `;
         }
     }

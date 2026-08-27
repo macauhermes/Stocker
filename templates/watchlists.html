@@ -240,8 +240,8 @@ function renderGroups() {
         el.innerHTML = `
             <div class="empty-state">
                 <span class="material-icons-outlined">bookmark_border</span>
-                <p data-i18n="watchlists.empty_title">尚未建立任何追蹤分組</p>
-                <p style="font-size:0.8rem;" data-i18n="watchlists.empty_hint">點擊「新增分組」開始</p>
+                <p>${t('watchlists.empty_title')}</p>
+                <p style="font-size:0.8rem;">${t('watchlists.empty_hint')}</p>
             </div>`;
         return;
     }
