@@ -180,6 +180,41 @@ def init_db():
             )
         """)
 
+        # Investment banks (v3.3 — 投行 observation list; scrape PDFs from each bank)
+        # Originally created by external migration; moved here so fresh checkouts
+        # work without manual schema setup (v3.4.43).
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS investment_banks (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL,
+                short_name   TEXT,
+                website_url  TEXT,
+                report_url   TEXT,
+                logo_url     TEXT,
+                enabled      INTEGER DEFAULT 1,
+                added_at     TEXT,
+                last_check   TEXT,
+                last_report  TEXT
+            )
+        """)
+
+        # Bank reports (v3.3 — PDFs scraped from investment bank websites)
+        # bank_id FK to investment_banks; ON DELETE CASCADE cleans up reports when
+        # a bank is removed.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS bank_reports (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                bank_id       INTEGER NOT NULL REFERENCES investment_banks(id) ON DELETE CASCADE,
+                title         TEXT NOT NULL,
+                url           TEXT,
+                pdf_url       TEXT,
+                published_at  TEXT,
+                downloaded    INTEGER DEFAULT 0,
+                file_path     TEXT,
+                created_at    TEXT
+            )
+        """)
+
         # Helpful indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_ticker ON daily_prices(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_prices_date   ON daily_prices(date)")
@@ -190,6 +225,7 @@ def init_db():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_ticker ON price_alerts(ticker_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_alerts_enabled ON price_alerts(enabled)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_date ON portfolio_snapshots(snapshot_date DESC)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_bank_reports_bank ON bank_reports(bank_id)")
 
         # Backward-compatible migration: add archived columns if missing
         for col, ddl in [

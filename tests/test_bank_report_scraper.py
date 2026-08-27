@@ -8,9 +8,10 @@ bank_report_scraper is pure-logic + network I/O. We isolate by:
      (Pitfall 7 — services.bank_report_scraper imports requests at
      module level, so we can patch it directly).
 
-Schema note: `investment_banks` and `bank_reports` tables exist in the
-live DB (created externally) but NOT in models.init_db(). Tests create
-them in the temp_db fixture so a fresh checkout works.
+Schema note: `investment_banks` and `bank_reports` tables are now created
+by models.init_db() (v3.4.43). The temp_db fixture still calls
+_create_bank_tables() as a no-op safety net (CREATE TABLE IF NOT EXISTS
+is idempotent) so legacy test setups continue to work.
 
 What we verify:
   - _extract_date() matches 4 common date formats from text
