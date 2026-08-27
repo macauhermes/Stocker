@@ -549,6 +549,9 @@ const I18N = {
     'system.action_success': '操作完成',
     'system.action_failed': '操作失敗',
     'system.cnt_manual_triggers': '手動操作',
+    'system.cnt_cache': '快取命中率',
+    'system.cnt_data_sources': '數據源使用',
+    'system.cnt_health_check': '健康檢查',
 
 
     // Time
@@ -1108,6 +1111,9 @@ const I18N = {
     'system.action_success': 'Action completed',
     'system.action_failed': 'Action failed',
     'system.cnt_manual_triggers': 'Manual triggers',
+    'system.cnt_cache': 'Cache hit rate',
+    'system.cnt_data_sources': 'Data source usage',
+    'system.cnt_health_check': 'Health checks',
 
 
     // Time

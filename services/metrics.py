@@ -165,6 +165,12 @@ DATA_SOURCE_REQUESTS = Counter(
     'Data source requests by source',
     ['source']
 )
+# Pre-create expected source labels so /metrics shows 0 before any traffic.
+# Possible sources: yfinance / yahoo_direct / stooq / coingecko / custom:<name>.
+DATA_SOURCE_REQUESTS.labels(source='yfinance')
+DATA_SOURCE_REQUESTS.labels(source='yahoo_direct')
+DATA_SOURCE_REQUESTS.labels(source='stooq')
+DATA_SOURCE_REQUESTS.labels(source='coingecko')
 
 SSE_CONNECTIONS = Gauge(
     'stocker_sse_connections',
@@ -182,6 +188,10 @@ HEALTH_CHECK = Counter(
     'Health check calls',
     ['status']  # 'healthy' / 'degraded' / 'unhealthy'
 )
+# Pre-create expected status labels so /metrics shows 0 before any traffic.
+HEALTH_CHECK.labels(status='healthy')
+HEALTH_CHECK.labels(status='degraded')
+HEALTH_CHECK.labels(status='unhealthy')
 
 # Report search (v3.4.3) — track search queries by whether they returned results
 REPORT_SEARCH = Counter(
@@ -825,6 +835,35 @@ def metrics_summary():
             'total': sum(c._value.get() for c in TICKER_REFRESH._metrics.values()),
             'success': int(TICKER_REFRESH.labels(status='success')._value.get()),
             'error': int(TICKER_REFRESH.labels(status='error')._value.get()),
+        },
+        # cache (v3.4.40): /api/tickers in-memory cache hit/miss rate.
+        # hit_rate is derived; 0 when no requests yet (no division by zero).
+        'cache': {
+            'hits': int(CACHE_HITS._value.get()),
+            'misses': int(CACHE_MISSES._value.get()),
+            'hit_rate': round(
+                CACHE_HITS._value.get() / max(
+                    1, CACHE_HITS._value.get() + CACHE_MISSES._value.get()) * 100, 1),
+        },
+        # data_source_requests (v3.4.40): which data source served each
+        # /api/stock/<sym>/chart-data, /api/stock/<sym>/detail, and SSE tick.
+        # by_source is a dict keyed by source name (yfinance/yahoo_direct/...)
+        # — only sources that have been called at least once appear.
+        'data_source_requests': {
+            'total': sum(c._value.get() for c in DATA_SOURCE_REQUESTS._metrics.values()),
+            'by_source': {
+                src[0]: int(c._value.get())
+                for src, c in DATA_SOURCE_REQUESTS._metrics.items()
+            },
+        },
+        # health_check (v3.4.40): /health endpoint outcomes by status.
+        # A high 'unhealthy' count signals something is broken.
+        'health_check': {
+            'total': sum(c._value.get() for c in HEALTH_CHECK._metrics.values()),
+            'by_status': {
+                status[0]: int(c._value.get())
+                for status, c in HEALTH_CHECK._metrics.items()
+            },
         },
         'top_sectors': sectors,
         'top_tickers_by_reports': top_tickers,

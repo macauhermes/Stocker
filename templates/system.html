@@ -350,6 +350,10 @@ function renderSummary(s) {
 function renderCounters(s) {
     if (!s) return;
     const counters = document.getElementById('prometheus-counters');
+    // Some counter groups have a flat breakdown (portfolio_captures),
+    // others have a nested dict (data_source_requests.by_source, health_check.by_status).
+    // Flatten those nested dicts into "key: value · ..." segments so the
+    // generic renderer can still handle everything uniformly.
     const groups = [
         { key: 'ticker_exports', label: t('system.cnt_exports') },
         { key: 'portfolio_captures', label: t('system.cnt_captures') },
@@ -359,15 +363,28 @@ function renderCounters(s) {
         { key: 'ticker_refresh', label: t('system.cnt_ticker_refresh') },
         { key: 'industry_news', label: t('system.cnt_industry_news') },
         { key: 'manual_triggers', label: t('system.cnt_manual_triggers') },
+        { key: 'cache', label: t('system.cnt_cache') },
+        { key: 'data_source_requests', label: t('system.cnt_data_sources') },
+        { key: 'health_check', label: t('system.cnt_health_check') },
     ];
     counters.innerHTML = groups.map(g => {
         const data = s[g.key];
         if (!data) return '';
         const total = Math.round(data.total || 0);
+        // Breakdown: for nested dicts (by_source / by_status), render as
+        // "label: count · ..."; for everything else use the flat shape.
+        const parts = Object.entries(data).filter(([k]) => k !== 'total').map(([k, v]) => {
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                // e.g. by_source = {yfinance: 1, yahoo_direct: 0}
+                return Object.entries(v).filter(([_, n]) => n > 0)
+                    .map(([src, n]) => `${src}: <strong>${n}</strong>`).join(' · ');
+            }
+            return `${k}: <strong>${v}</strong>`;
+        }).filter(s => s);
         return `<div class="counter-card">
             <div class="counter-label">${g.label}</div>
             <div class="counter-total">${total}</div>
-            <div class="counter-breakdown">${Object.entries(data).filter(([k]) => k !== 'total').map(([k, v]) => `${k}: <strong>${v}</strong>`).join(' · ')}</div>
+            <div class="counter-breakdown">${parts.join(' · ')}</div>
         </div>`;
     }).join('');
 }
