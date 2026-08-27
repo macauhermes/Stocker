@@ -3,12 +3,22 @@
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
 |**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4b1e3a6 (v3.4.38)
-|**Latest commit**: 4b1e3a6 [P3] i18n: events.html calendar updates on langchange (Pattern 5d)
+|**Latest commit**: e64a9c5 [P3] UX: replace bare native alert() with showToast() in watchlists.html
 |**Server**: localhost:5000（python app.py 跑緊）
 |**Branch**: main
 |**Remote**: git@github.com:macauhermes/Stocker.git
 
-**v3.4.38 (2026-08-27) — Events calendar langchange re-render fix (Pattern 5d)**:
+**v3.4.39 (2026-08-27) — Pattern 11 second sweep: bare native alert() in watchlists.html**:
+- ✅ **Bug class**: v3.4.37 sweep 用 `grep -rn "alert(t("` 只 catch i18n-wrapped alert calls，漏咗 bare-string calls。`templates/watchlists.html` 有 6 個 native `alert()` (2× `alert(data.error || 'Error')` + 4× `alert('Network error')`) — v3.4.37 convert `alert(t(...))` 但漏咗呢啲，consistency 仍然 broken
+- ✅ 改用 broadened regex `grep -rnE '\b(alert|confirm|prompt)\(' templates/` — 9 hits total (6 alert in watchlists + 3 confirm 喺 index.html/archive + watchlists/deleteGroup + sources.html — 3 個 confirm 留低因為 destructive action confirmation 係 conventional UX)
+- ✅ 6 個 alert 全部換做 showToast，mirror alerts.html pattern：server error → `showToast(t('watchlists.save_error', { msg: data.error || res.status }), 'error')`，network exception → `showToast(t('watchlists.network_error'), 'error')`
+- ✅ `removeTicker()` 順手加 `resp.ok` check + JSON error parse — 之前 silent swallow 全部失敗 (冇 user feedback)，而家失敗會出 toast。Scope-justified 因為呢個 change 將 silent-failure UX 變做 proper error reporting
+- ✅ 3 zh + 3 en i18n keys: `watchlists.save_error` ('儲存失敗：{msg}'/'Save failed: {msg}'), `watchlists.network_error` ('網絡錯誤'/'Network error'), `watchlists.remove_error` ('刪除失敗：{msg}'/'Remove failed: {msg}')
+- ✅ Touch: templates/watchlists.html (+12/-7), static/js/i18n.js (+6 keys). Template-only → no restart needed
+- ✅ Smoke test: /watchlists 200; showToast total 52 → 59; served HTML 0 alert( 留低; node --check 兩 file OK; gremlin clean; 3 i18n key 喺 i18n.js 各 2 次 (zh + en)
+- Commit: e64a9c5
+
+|**v3.4.38 (2026-08-27) — Events calendar langchange re-render fix (Pattern 5d)**:
 |- ✅ Pattern 5d bug class: `templates/events.html:168` 用 `const DAYS = t('events.days') || ['日',...];` — `const` 喺 script load 時 evaluate 一次，之後永遠唔變。即使用戶中途撳 `中/EN` switcher，calendar header 嘅「日/一/二/...」永遠 stay 喺中文（除非 reload page）
 |- ✅ 同時發現 events.html 完全冇 `window.addEventListener('langchange', ...)` — index.html / files.html / alerts.html / industry.html / stock_detail.html / system.html 全部有，淨係 events.html 漏咗
 |- ✅ 兩重 fix:
@@ -351,6 +361,8 @@
 ## 接力做事項（v3.3 規劃）
 
 按以下優先級，每小時做 1-2 項，commit + push + restart server:
+
+## 流程
 
 ### P0 - 立即做
  [x] 將 `fetch_chart_data` 改用 multi_source.fetch_with_fallback()（commit a8d9115）
