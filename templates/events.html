@@ -165,7 +165,13 @@
 let currentYear, currentMonth;
 let allUpcomingEvents = [];   // v3.4.19: cached for client-side filter
 let currentEventType = 'all';
-const DAYS = t('events.days') || ['日', '一', '二', '三', '四', '五', '六'];
+// v3.4.38: re-fetched on every langchange so calendar header updates when language switches.
+// Previously hardcoded as `const DAYS = t('events.days') || [...]` — the || fallback
+// masked the real bug: `const` is evaluated once at script load, before langchange
+// fires. In English mode the calendar header would permanently show zh day names.
+function getDays() {
+    return t('events.days') || ['日', '一', '二', '三', '四', '五', '六'];
+}
 
 function initCalendar() {
     const now = new Date();
@@ -200,7 +206,7 @@ async function loadCalendar() {
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === currentYear && today.getMonth() + 1 === currentMonth;
 
-    let html = DAYS.map(d => `<div class="cal-header">${d}</div>`).join('');
+    let html = getDays().map(d => `<div class="cal-header">${d}</div>`).join('');
 
     // Empty cells before first day
     for (let i = 0; i < firstDay; i++) {
@@ -320,5 +326,13 @@ async function syncEvents() {
 }
 
 initCalendar();
+
+// v3.4.38: re-render calendar + upcoming list when language switches.
+// Previously, the calendar header (DAYS const) and month title were set once
+// at script load — switching to English after page load left them in Chinese.
+window.addEventListener('langchange', () => {
+    loadCalendar();
+    renderUpcoming();
+});
 </script>
 {% endblock %}
