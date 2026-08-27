@@ -223,8 +223,8 @@ async function saveAlert() {
     const note = document.getElementById('alert-note').value.trim();
     const id = editingId;
 
-    if (!symbol) return alert(t('alerts.symbol_required'));
-    if (!thresholdPrice || thresholdPrice <= 0) return alert(t('alerts.price_required'));
+    if (!symbol) { showToast(t('alerts.symbol_required'), 'warning'); return; }
+    if (!thresholdPrice || thresholdPrice <= 0) { showToast(t('alerts.price_required'), 'warning'); return; }
 
     const body = { symbol, threshold_type: thresholdType, threshold_price: thresholdPrice, note };
     try {
@@ -235,13 +235,13 @@ async function saveAlert() {
         });
         if (!resp.ok) {
             const err = await resp.json();
-            return alert(t('alerts.save_error', { msg: err.error || resp.status }));
+            return showToast(t('alerts.save_error', { msg: err.error || resp.status }), 'error');
         }
         closeAlertModal();
         loadAlerts();
         if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
     } catch (e) {
-        alert(t('alerts.save_error', { msg: String(e) }));
+        showToast(t('alerts.save_error', { msg: String(e) }), 'error');
     }
 }
 
@@ -251,7 +251,7 @@ async function editAlert(id) {
         const all = await resp.json();
         const a = all.find(x => x.id === id);
         if (a) openAlertModal(a);
-    } catch (e) { alert(t('alerts.load_error', { msg: String(e) })); }
+    } catch (e) { showToast(t('alerts.load_error', { msg: String(e) }), 'error'); }
 }
 
 async function toggleAlert(id, enabled) {
@@ -263,7 +263,7 @@ async function toggleAlert(id, enabled) {
         });
         loadAlerts();
         if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
-    } catch (e) { alert(t('alerts.update_error', { msg: String(e) })); }
+    } catch (e) { showToast(t('alerts.update_error', { msg: String(e) }), 'error'); }
 }
 
 async function rearmAlert(id) {
@@ -271,7 +271,7 @@ async function rearmAlert(id) {
         await fetch(`${API}/${id}/rearm`, { method: 'POST' });
         loadAlerts();
         if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
-    } catch (e) { alert(t('alerts.rearm_error', { msg: String(e) })); }
+    } catch (e) { showToast(t('alerts.rearm_error', { msg: String(e) }), 'error'); }
 }
 
 function confirmDelete(id, symbol) {
@@ -282,7 +282,7 @@ function confirmDelete(id, symbol) {
             closeConfirm();
             loadAlerts();
             if (typeof refreshAlertsBadge === 'function') refreshAlertsBadge();
-        } catch (e) { alert(t('alerts.delete_error', { msg: String(e) })); }
+        } catch (e) { showToast(t('alerts.delete_error', { msg: String(e) }), 'error'); }
     };
     document.getElementById('confirm-overlay').style.display = 'flex';
 }
@@ -294,6 +294,8 @@ async function checkAllAlerts() {
         const resp = await fetch(`${API}/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         const data = await resp.json();
         if (data.count > 0) {
+            // Multi-line summary: first toast for count (success), then per-line warnings
+            showToast(t('alerts.check_triggered', { n: data.count }), 'success');
             const lines = data.triggered.map(t2 =>
                 t('alerts.check_line', {
                     symbol: t2.symbol,
@@ -301,13 +303,13 @@ async function checkAllAlerts() {
                     threshold: Number(t2.threshold_price).toFixed(2),
                     current: Number(t2.current_price).toFixed(2),
                 })
-            ).join('\n');
-            alert(t('alerts.check_triggered', { n: data.count }) + '\n' + lines);
+            ).join(' · ');
+            showToast(lines, 'warning');
         } else {
-            alert(t('alerts.check_none'));
+            showToast(t('alerts.check_none'), 'info');
         }
         loadAlerts();
-    } catch (e) { alert(t('alerts.check_error', { msg: String(e) })); }
+    } catch (e) { showToast(t('alerts.check_error', { msg: String(e) }), 'error'); }
 }
 
 // --- Re-translate dynamic content on langchange -----------------------
@@ -333,7 +335,6 @@ window.addEventListener('langchange', () => {
 });
 
 // --- Helpers -----------------------------------------------------------
-function alert(msg) { window.alert(msg); }
 function formatDate(s) {
     if (!s) return '';
     return s.replace('T', ' ').substring(0, 16);

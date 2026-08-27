@@ -315,7 +315,7 @@ function closeGroupModal() {
 
 async function saveGroup() {
     const name = document.getElementById('grp-name').value.trim();
-    if (!name) { alert(t('watchlists.name_required')); return; }
+    if (!name) { showToast(t('watchlists.name_required'), 'warning'); return; }
     const body = {
         name,
         description: document.getElementById('grp-desc').value.trim(),
@@ -394,7 +394,7 @@ async function loadAvailableTickers(groupId) {
 
 async function addTickerToGroup() {
     const symbol = document.getElementById('ticker-symbol').value.trim().toUpperCase();
-    if (!symbol) { alert(t('watchlists.symbol_required')); return; }
+    if (!symbol) { showToast(t('watchlists.symbol_required'), 'warning'); return; }
     await quickAddTicker(symbol);
 }
 
