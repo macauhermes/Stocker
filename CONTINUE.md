@@ -1,9 +1,25 @@
 你是陳仔0號的 Hermes Agent。被 cron 每 1 小時叫醒。
 
-## 當前狀態（截至最後一次手動執行 2026-08-26）
+## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit ab7aa8e (v3.4.43)
-**Latest commit**: ab7aa8e [P3] i18n: dynamic page title translation via data-page-title
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 23e1f28 (v3.4.45)
+**Latest commit**: 23e1f28 [P3] fix: hide N/A sector from /industry picker (MRVU clickable 404)
+
+**v3.4.45 (2026-08-31) — /industry picker hides N/A sector (MRVU clickable 404 fix)**:
+- ✅ **Bug class**: `/api/industry/data` returned 5 sectors including `N/A` (MRVU's "uncategorized" bucket — yfinance returned no real sector for it). `/industry` rendered `N/A` as clickable card with `1 ticker · 20 reports`. Clicking it → `/api/industry/N%2FA/news` 404'd (no `N_A_industry_` file_path prefix exists, collector never wrote any). Dead-end UX
+- ✅ **Fix scope** — filter at API boundary, NOT in `models.get_sectors()`:
+  - `app.py:api_industry_data()` now `sectors = [s for s in models.get_sectors() if s != 'N/A']` before building per-sector response
+  - `/api/sectors` (consumed by dashboard stocks-list sector pills) UNCHANGED — `index.html:822` uses `'N/A'` as `tk.sector || 'N/A'` fallback for MRVU, so dashboard's N/A pill still appears and correctly buckets MRVU
+- ✅ **Smoke test** (post-restart, PID 667816): `/api/industry/data` sectors: [Consumer Cyclical, Financial Services, Industrials, Technology] (N/A gone ✓); `/api/sectors` sectors: [Consumer Cyclical, Financial Services, Industrials, N/A, Technology] (N/A preserved for dashboard ✓); /industry 200 OK 4 cards; app.py gremlin 0 hits; py_compile OK
+- ✅ Touch: app.py (+12/-2). Backend → restart server → 200 OK
+- Commit: 23e1f28
+
+**v3.4.44 (2026-08-31) — Locale-aware number/currency formatting (Pattern 5e number variant)**:
+- ✅ Pattern 5e number variant: 6 hardcoded `toLocaleString('en-US', ...)` call sites — even in en mode, zh fallback showed "$1,234" without locale formatting, and currency display used different number conventions
+- ✅ Fix: added `formatNumber()` + `formatCurrency()` helpers in static/js/i18n.js (mirrors v3.4.34 `formatDate()` pattern) — locale picker uses `_lang` ('en' → 'en-US', else 'zh-TW')
+- ✅ Wired 6 sites: `templates/index.html` (portfolio sparkline Chart.js tick callback + holdings breakdown table shares/price/MV/PnL) + `templates/system.html` (stat-portfolio-value + stat-portfolio-pnl with `+` sign prefix for PnL)
+- ✅ Removed local `formatNumber()` / `formatCurrency()` definitions from both templates (now global in i18n.js)
+- Commit: b470403
 
 **v3.4.43 (2026-08-31) — Sibling subagent WIP salvage: dynamic page title translation**:
 - ✅ **Bug class**: 各 template 嘅 `<title>Stocker — Dashboard</title>` 之前係 hardcoded CJK 字串, 即使用戶中途撳 `中/EN` switcher, browser tab title 永遠 stay 喺中文 — 因為 `applyTranslations()` 雖然有 title 更新邏輯, 但舊 code 只 query `[data-i18n-title]` selector, 而 `<title>` 元素從未被加過呢個 attribute
