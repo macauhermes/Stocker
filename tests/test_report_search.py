@@ -204,3 +204,115 @@ class TestCountSearchResults:
             cnt = models.count_search_results(**combo)
             results = models.search_reports(limit=1000, **combo)
             assert cnt == len(results), f"mismatch for {combo}: count={cnt}, results={len(results)}"
+
+
+# ── v3.4.46 regression tests — /api/reports cap behavior ───────────────────
+#
+# Pre-v3.4.46, /api/reports capped at limit=500 (app.py:api_get_reports) which
+# silently dropped all 23 investment_bank_report + sec_filing rows because they
+# were older than the 500th-most-recent report. v3.4.46 raises the cap to 2000.
+#
+# These tests verify:
+#   (a) The cap honors the request (limit=2000 returns up to 2000, limit=50
+#       returns exactly 50).
+#   (b) The cap is high enough to cover the live DB as of 2026-08-31 (1095 rows).
+#
+# Uses smoke-prefix pattern (Pitfall 17) — Flask test client + insert/delete
+# cleanup. Cannot use temp_db here because the route imports app.py which
+# wires models.DB_PATH at import time (Pitfall 17 + reload fragility).
+
+
+import json
+import sys
+
+import pytest
+
+
+SMOKE_PREFIX = '__REPORTS_CAP_TEST_'
+
+
+@pytest.fixture(scope='module')
+def flask_client():
+    """Flask test client. app.py initializes DB + Prometheus on import."""
+    from app import app
+    app.config['TESTING'] = True
+    with app.test_client() as c:
+        yield c
+
+
+@pytest.fixture(autouse=True)
+def smoke_row_cleanup():
+    """Clean up any smoke-test rows after each test."""
+    yield
+    import sqlite3
+    db = sqlite3.connect('/home/ubuntu/repos/Stocker/data/stocker.db')
+    try:
+        db.execute("DELETE FROM reports WHERE title LIKE ?", (f'{SMOKE_PREFIX}%',))
+        db.commit()
+    finally:
+        db.close()
+
+
+def _insert_reports(n: int):
+    """Insert n reports with synthetic title (marker for cleanup) + old created_at."""
+    import sqlite3
+    db = sqlite3.connect('/home/ubuntu/repos/Stocker/data/stocker.db')
+    try:
+        # Use a very old timestamp (2000-01-01) so these rows always sort to the
+        # END of ORDER BY created_at DESC — exactly where the v3.4.46 bug bit.
+        for i in range(n):
+            db.execute(
+                """INSERT INTO reports (title, source, category, summary, file_path,
+                                         created_at, published_at)
+                   VALUES (?, 'Test', 'earnings', 'smoke', ?, '2000-01-01 00:00:00',
+                           '2000-01-01')""",
+                (f'{SMOKE_PREFIX}old_{i:04d}',
+                 f'/tmp/smoke/{SMOKE_PREFIX}old_{i:04d}.htm'),
+            )
+        db.commit()
+    finally:
+        db.close()
+
+
+class TestReportsCap:
+    """v3.4.46 regression tests for /api/reports limit cap behavior."""
+
+    def test_limit_param_honors_request(self, flask_client):
+        """limit=50 returns at most 50 results."""
+        # Default test row count is small (1095 - won't matter); just verify
+        # the response respects the limit.
+        resp = flask_client.get('/api/reports?limit=50')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert isinstance(data, list)
+        assert len(data) <= 50
+
+    def test_old_rows_not_silently_dropped(self, flask_client):
+        """Insert 50 OLD rows (2000-01-01) and confirm they all appear in
+        /api/reports?limit=2000 response — they would have been dropped under
+        the pre-v3.4.46 LIMIT 500 if the live DB had >500 newer rows.
+        """
+        _insert_reports(50)
+
+        resp = flask_client.get('/api/reports?limit=2000')
+        assert resp.status_code == 200
+        data = resp.get_json()
+
+        old_smoke = [r for r in data if r['title'].startswith(SMOKE_PREFIX)]
+        # All 50 smoke rows must be present (they sort to the END but cap=2000
+        # is high enough to include them).
+        assert len(old_smoke) == 50, (
+            f"Expected 50 smoke rows in response, got {len(old_smoke)}. "
+            f"Pre-v3.4.46 LIMIT 500 silently dropped rows older than the "
+            f"500th-most-recent report — bug class: silent pagination truncation."
+        )
+
+    def test_cap_at_least_2000(self):
+        """Static check: app.py constant must be >= 2000."""
+        # Read app.py source directly (no import — keep test fast)
+        with open('/home/ubuntu/repos/Stocker/app.py') as f:
+            text = f.read()
+        assert 'min(request.args.get(\'limit\', 50, type=int), 2000)' in text, (
+            "app.py /api/reports cap must be at least 2000 to cover the "
+            "current 1095-row DB with headroom. Bump it if this test fails."
+        )

@@ -866,7 +866,7 @@ def api_get_reports():
     - category: exact-match category filter (e.g. earnings, industry)
     - source:   exact-match source filter (e.g. "SEC EDGAR")
     - ticker:   filter by ticker symbol derived from file_path basename prefix
-    - limit:    max results (default 50, capped at 500)
+    - limit:    max results (default 50, capped at 2000)
     - include_total: if '1', include total_count in response (slower)
 
     Response shape:
@@ -875,7 +875,12 @@ def api_get_reports():
 
     v3.4.3 — adds search/filter capability on top of plain list.
     """
-    limit = min(request.args.get('limit', 50, type=int), 500)
+    # v3.4.46: cap raised 500 → 2000 so dashboard reports tab covers the full
+    # DB (1095 reports as of 2026-08-31). The previous cap silently dropped all
+    # 23 investment_bank_report + sec_filing rows because they were older than
+    # the 500th-most-recent report. Bare JSON array stays ~660KB which is fine
+    # for the one-shot dashboard load.
+    limit = min(request.args.get('limit', 50, type=int), 2000)
     q = request.args.get('q', '').strip() or None
     category = request.args.get('category', '').strip() or None
     source = request.args.get('source', '').strip() or None

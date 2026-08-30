@@ -1103,9 +1103,11 @@
     // Load reports
     async function loadReports() {
         try {
-            // v3.4.20: bump limit 50 → 500 (server cap) so dashboard reports
-            // tab covers the full DB (722 reports). Filters apply client-side.
-            const res = await fetch('/api/reports?limit=500');
+            // v3.4.20: bump limit 50 → 500 (server cap). v3.4.46: bump to 2000
+            // (new server cap, app.py:api_get_reports) so the full DB (1095 reports
+            // including all 23 investment_bank_report + sec_filing) reaches the
+            // dashboard. Filters apply client-side.
+            const res = await fetch('/api/reports?limit=2000');
             if (!res.ok) throw new Error('Failed to fetch reports');
             const reports = await res.json();
             allReports = reports;

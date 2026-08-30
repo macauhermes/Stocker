@@ -2,8 +2,8 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 23e1f28 (v3.4.45)
-**Latest commit**: 23e1f28 [P3] fix: hide N/A sector from /industry picker (MRVU clickable 404)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit <v3.4.46-hash> (v3.4.46)
+**Latest commit**: <next> [P3] fix: /api/reports cap 500 → 2000 (Pattern 8c silent truncation — surfaces 23 bank + SEC reports)
 
 **v3.4.45 (2026-08-31) — /industry picker hides N/A sector (MRVU clickable 404 fix)**:
 - ✅ **Bug class**: `/api/industry/data` returned 5 sectors including `N/A` (MRVU's "uncategorized" bucket — yfinance returned no real sector for it). `/industry` rendered `N/A` as clickable card with `1 ticker · 20 reports`. Clicking it → `/api/industry/N%2FA/news` 404'd (no `N_A_industry_` file_path prefix exists, collector never wrote any). Dead-end UX
@@ -43,9 +43,21 @@
 - ✅ Touch: templates/index.html (+7/-6), static/js/i18n.js (+6 keys)。Template-only → no restart needed
 - ✅ Smoke test: / 200; 7 expected t() call sites all wired; i18n.js node --check OK; freshness badge 喺 served HTML 仲 render
 - Commit: 9cbdf35
-|**Server**: localhost:5000（python app.py 跑緊，restart 完成 200 OK）
-|**Branch**: main
-|**Remote**: git@github.com:macauhermes/Stocker.git
+**v3.4.46 (2026-08-31) — /api/reports silent truncation fix (Pattern 8c)**:
+- ✅ **Bug class**: Pattern 8c — silent pagination truncation. `/api/reports?limit=500` returned only 500/1095 reports (46% coverage). All 23 `investment_bank_report` (16) + `sec_filing` (7) rows were outside the top-500 most-recent (`created_at` cutoff 2026-06-13 12:00:54; bank reports 2026-06-07 + SPCX S-1 2026-06-13 06:54:17). Dashboard reports tab's bank filter was permanently empty even though DB had data
+- ✅ **Root cause**: `app.py:api_get_reports` hardcoded `min(request.args.get('limit', 50, type=int), 500)`. v3.4.20 bumped client `limit=50 → 500` (a partial fix for coverage 7% → 46%) but didn't anticipate that `ORDER BY created_at DESC` would push older-but-valuable bank reports off the end
+- ✅ **Fix scope** — 2 surgical line edits:
+  - `app.py:api_get_reports` cap raised 500 → 2000 (covers all 1095 + headroom; bare JSON ~660KB which is fine for one-shot dashboard load)
+  - `templates/index.html:loadReports` `limit=500 → limit=2000` to match new server cap
+- ✅ **Verification** — `/api/reports` returns 1095/1095 (100% coverage); all 5 tabs now non-empty (earnings:259, news/industry:667, analyst:146, **bank:23**); sum invariant holds (259+667+146+23=1095); dashboard 200 OK; `_insert_reports(50)` with old timestamps all reach the response (regression test)
+- ✅ **3 new regression tests** (tests/test_report_search.py::TestReportsCap): test_limit_param_honors_request, test_old_rows_not_silently_dropped (inserts 50 rows with `created_at='2000-01-01'`, asserts all 50 reach the response), test_cap_at_least_2000 (static check on app.py source). 270/270 tests passing (was 267/267)
+- ✅ **Touch**: app.py (+7/-1), templates/index.html (+4/-2), tests/test_report_search.py (+112/-1). Backend → restart server → 200 OK
+- ✅ **Companion finding** (not fixed in this tick): `/api/industry/<sector>/news` hardcoded `LIMIT 50` (DB has 191 Technology industry news, 141 hidden) + `/api/sectors/<sector>/reports` hardcoded `LIMIT 50`. Same Pattern 8c class but sector-specific — log as next-tick item
+- Commit: <next>
+
+**Server**: localhost:5000（python app.py 跑緊，restart 完成 200 OK）
+**Branch**: main
+**Remote**: git@github.com:macauhermes/Stocker.git
 
 **v3.4.41 (2026-08-27) — Sibling subagent WIP salvage (2 commits, 8 files)**:
 - ✅ **Cron tick WIP salvage**: `git status` 顯示 8 個 modified files 嚟自兩個 sibling subagent runs (~12h + ~6h old) — salvage check #5 全 pass: CACHE_HITS/CACHE_MISSES defined + wired, 6 個 i18n keys 各 zh+en 出現 2 次, 22 t() keys 全部 hit, JS node --check OK (6 templates), gremlin clean (8 files)
