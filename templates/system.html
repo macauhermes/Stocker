@@ -293,13 +293,13 @@ function renderSummary(s) {
     // Portfolio
     const p = s.portfolio || {};
     document.getElementById('stat-snapshots').textContent = p.snapshots_count != null ? p.snapshots_count : '—';
-    document.getElementById('stat-portfolio-value').textContent = p.latest_value != null ? '$' + formatNumber(p.latest_value) : '—';
+    document.getElementById('stat-portfolio-value').textContent = p.latest_value != null ? formatCurrency(p.latest_value) : '—';
     const pnl = p.latest_pnl;
     const pnlEl = document.getElementById('stat-portfolio-pnl');
     if (pnl != null) {
         const cls = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
         pnlEl.className = 'stat-value ' + cls;
-        pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + formatNumber(pnl);
+        pnlEl.textContent = (pnl >= 0 ? '+' : '') + formatCurrency(pnl);
     } else {
         pnlEl.textContent = '—';
     }
@@ -388,11 +388,6 @@ function renderCounters(s) {
             <div class="counter-breakdown">${parts.join(' · ')}</div>
         </div>`;
     }).join('');
-}
-
-function formatNumber(n) {
-    if (n == null) return '—';
-    return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatUptime(secs) {

@@ -485,7 +485,7 @@
                             ticks: {
                                 color: 'rgba(255,255,255,0.45)',
                                 font: { size: 10 },
-                                callback: (v) => '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 }),
+                                callback: (v) => formatCurrency(v, { maximumFractionDigits: 0 }),
                             },
                         },
                     },
@@ -531,10 +531,10 @@
                 const shareSign = (h.share_of_portfolio || 0) >= 0 ? '' : '';
                 return `<tr>
                     <td class="symbol-cell"><strong>${escapeHtml(h.symbol)}</strong></td>
-                    <td class="num">${Number(h.shares).toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
-                    <td class="num">$${Number(h.current_price).toFixed(2)}</td>
-                    <td class="num">$${Number(h.market_value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td class="num ${plClass}">${plSign}$${Math.abs(pl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${plSign}${(h.unrealized_pl_pct || 0).toFixed(2)}%)</td>
+                    <td class="num">${formatNumber(h.shares, { maximumFractionDigits: 4 })}</td>
+                    <td class="num">${formatCurrency(h.current_price)}</td>
+                    <td class="num">${formatCurrency(h.market_value)}</td>
+                    <td class="num ${plClass}">${plSign}${formatCurrency(Math.abs(pl))} (${plSign}${(h.unrealized_pl_pct || 0).toFixed(2)}%)</td>
                     <td class="num share-cell">${shareSign}${(h.share_of_portfolio || 0).toFixed(2)}%</td>
                 </tr>`;
             }).join('');
@@ -776,14 +776,6 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-    }
-
-    function formatCurrency(n) {
-        if (n == null || isNaN(n)) return '—';
-        return '$' + Number(n).toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
     }
 
     function formatPnl(amount, pct) {

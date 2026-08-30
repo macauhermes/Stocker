@@ -1200,6 +1200,28 @@ function formatDateTime(date, opts) {
 }
 
 /**
+ * Locale-aware number formatting (v3.4.45 Pattern 5e number variant).
+ * Returns a number string formatted for the current language —
+ * 'en-US' for English mode, 'zh-TW' for Chinese mode.
+ * Accepts numbers, numeric strings, or null/undefined (returns '—').
+ */
+function formatNumber(n, opts) {
+  if (n == null || isNaN(Number(n))) return '—';
+  const locale = _lang === 'en' ? 'en-US' : 'zh-TW';
+  return Number(n).toLocaleString(locale, opts);
+}
+
+/**
+ * Locale-aware currency formatting (v3.4.45).
+ * Same as formatNumber but prefixes with the dollar sign.
+ * Defaults to 2 decimal places — overrides via opts.
+ */
+function formatCurrency(n, opts) {
+  const fmtOpts = Object.assign({ minimumFractionDigits: 2, maximumFractionDigits: 2 }, opts || {});
+  return '$' + formatNumber(n, fmtOpts);
+}
+
+/**
  * Switch language and refresh all data-i18n elements.
  */
 function setLang(lang) {
