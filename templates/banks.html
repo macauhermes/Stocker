@@ -494,6 +494,12 @@
     // Init
     loadBanks();
 
+    // Re-render on language switch (langchange) so dynamic t() calls update
+    window.addEventListener('langchange', () => {
+        loadBanks();
+        loadReports();
+    });
+
     // Close modal on overlay click
     document.getElementById('bank-modal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('bank-modal')) closeModal();

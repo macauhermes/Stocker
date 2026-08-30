@@ -233,5 +233,10 @@ function showSrcError(msg) {
 }
 
 loadSources();
+
+// Re-render on language switch (langchange) so dynamic t() calls update
+window.addEventListener('langchange', () => {
+    loadSources();
+});
 </script>
 {% endblock %}
