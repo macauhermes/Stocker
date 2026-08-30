@@ -2,8 +2,19 @@
 
 ## 當前狀態（截至最後一次手動執行 2026-08-26）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 9cbdf35 (v3.4.42)
-**Latest commit**: 9cbdf35 [P3] i18n: timeAgo() + freshness tooltip use t() calls (Pattern 5d)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit ab7aa8e (v3.4.43)
+**Latest commit**: ab7aa8e [P3] i18n: dynamic page title translation via data-page-title
+
+**v3.4.43 (2026-08-31) — Sibling subagent WIP salvage: dynamic page title translation**:
+- ✅ **Bug class**: 各 template 嘅 `<title>Stocker — Dashboard</title>` 之前係 hardcoded CJK 字串, 即使用戶中途撳 `中/EN` switcher, browser tab title 永遠 stay 喺中文 — 因為 `applyTranslations()` 雖然有 title 更新邏輯, 但舊 code 只 query `[data-i18n-title]` selector, 而 `<title>` 元素從未被加過呢個 attribute
+- ✅ **Fix 方案**: 新加 `<title data-page-title="X.Y">` attribute pattern — 每個 template 喺 `{% block title %}` 旁邊加新 `{% block page_title_key %}` block (e.g. `{% block page_title_key %}index.title{% endblock %}`)
+- ✅ **base.html**: `<title>` 改用 `data-page-title="..."` attribute, default value `common.app_name`
+- ✅ **i18n.js:1225-1248**: rewrite `applyTranslations()` 嘅 title block — `document.querySelector('title[data-page-title]')` 攞 titleEl, read attribute, `t()` resolve, 失敗時 fall back 去現有 `textContent` (no-JS graceful degradation 唔受影響)
+- ✅ **1 個新 i18n key**: `common.app_name: 'Stocker'` (zh + en 同值 — app name 本身就係 "Stocker")。其餘 10 個 page-title keys (`index.title` / `alerts.title` / `banks.title` / `events.title` / `files.title` / `industry.title` / `report.title` / `sources.title` / `system.title` / `watchlists.title`) 全部早已喺 i18n.js 存在, 但從未被 reference
+- ✅ **Touch**: static/js/i18n.js (+9/-2), templates/base.html (+1/-1), 10 templates (+1/-1 each)
+- ✅ **Verification**: 9 個 page route 全部 200 (/, /alerts, /banks, /events, /files, /industry, /sources, /system, /watchlists); served HTML 全部有 `<title data-page-title="...">` markup; setLang('en') flow 驗證過 — t('index.title') → 'Dashboard' → document.title = 'Dashboard — Stocker'; gremlin check 0 hits 喺 11 個 modified files; node --check i18n.js + 所有 template script block OK
+- ✅ Template-only → no restart needed, server 仲係 200 OK
+- Commit: ab7aa8e
 
 **v3.4.42 (2026-08-27) — index.html timeAgo() Pattern 5d fix**:
 - ✅ **Bug class**: `templates/index.html:999-1008` 嘅 `timeAgo()` function 用 hardcoded English strings ('just now', 'Ns ago', 'Nm ago', 'Nh ago', 'Nd ago') — 即使其他 locale 設定已經切換, freshness badge 永遠 stay 喺英文
