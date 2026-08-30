@@ -2483,3 +2483,24 @@
     border-color: var(--blue);
     transform: translateY(-1px);
 }
+
+/* ============================================================
+ * v3.4.43 — Banks page filter pills (consume /api/banks/enabled
+ * and /api/banks/reports/undownloaded orphan endpoints)
+ * ============================================================ */
+.banks-filter-pills .sector-pill[data-bank-filter="enabled"].active {
+    background: rgba(0, 200, 83, 0.85);
+    border-color: rgba(0, 200, 83, 0.85);
+    color: white;
+}
+
+.banks-filter-pills .sector-pill[data-reports-filter="undownloaded"].active {
+    background: var(--orange, #ff9100);
+    border-color: var(--orange, #ff9100);
+    color: white;
+}
+
+.banks-filter-pills .sector-pill {
+    min-width: 80px;
+    text-align: center;
+}

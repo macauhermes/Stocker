@@ -34,6 +34,17 @@
 
 <!-- Banks Tab -->
 <div class="tab-content active" id="tab-banks">
+    <div class="events-filter-row">
+        <div class="sector-pills banks-filter-pills">
+            <button class="sector-pill active" data-bank-filter="all" onclick="setBankFilter('all')">
+                <span data-i18n="banks.filter_all">全部</span>
+            </button>
+            <button class="sector-pill" data-bank-filter="enabled" onclick="setBankFilter('enabled')">
+                <span data-i18n="banks.filter_enabled">已啟用</span>
+            </button>
+        </div>
+        <span class="events-filter-count" id="banks-filter-count"></span>
+    </div>
     <div id="banks-list" class="stock-list">
         <div class="loading-cell">
             <div class="spinner-sm"></div>
@@ -44,6 +55,17 @@
 
 <!-- Reports Tab -->
 <div class="tab-content" id="tab-reports">
+    <div class="events-filter-row">
+        <div class="sector-pills banks-filter-pills">
+            <button class="sector-pill active" data-reports-filter="all" onclick="setReportsFilter('all')">
+                <span data-i18n="banks.filter_all">全部</span>
+            </button>
+            <button class="sector-pill" data-reports-filter="undownloaded" onclick="setReportsFilter('undownloaded')">
+                <span data-i18n="banks.filter_undownloaded">未下載</span>
+            </button>
+        </div>
+        <span class="events-filter-count" id="reports-filter-count"></span>
+    </div>
     <div id="reports-list" class="report-list">
         <div class="loading-cell">
             <div class="spinner-sm"></div>
@@ -108,6 +130,8 @@
 <script>
     let currentTab = 'banks';
     let editingBankId = null;
+    let currentBankFilter = 'all';        // 'all' | 'enabled'
+    let currentReportsFilter = 'all';     // 'all' | 'undownloaded'
 
     function switchTab(tab) {
         currentTab = tab;
@@ -115,16 +139,35 @@
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
-        
+
         if (tab === 'reports') {
             loadReports();
         }
     }
 
-    // Load banks
+    // v3.4.43: Bank list filter
+    function setBankFilter(filter) {
+        currentBankFilter = filter;
+        document.querySelectorAll('[data-bank-filter]').forEach(b => {
+            b.classList.toggle('active', b.dataset.bankFilter === filter);
+        });
+        loadBanks();
+    }
+
+    // v3.4.43: Bank reports filter
+    function setReportsFilter(filter) {
+        currentReportsFilter = filter;
+        document.querySelectorAll('[data-reports-filter]').forEach(b => {
+            b.classList.toggle('active', b.dataset.reportsFilter === filter);
+        });
+        loadReports();
+    }
+
+    // Load banks (uses /api/banks or /api/banks/enabled based on filter)
     async function loadBanks() {
         try {
-            const res = await fetch('/api/banks');
+            const url = currentBankFilter === 'enabled' ? '/api/banks/enabled' : '/api/banks';
+            const res = await fetch(url);
             if (!res.ok) throw new Error('Failed to fetch banks');
             const banks = await res.json();
             renderBanks(banks);
@@ -141,12 +184,17 @@
 
     function renderBanks(banks) {
         const container = document.getElementById('banks-list');
+        const countEl = document.getElementById('banks-filter-count');
+        const total = Array.isArray(banks) ? banks.length : 0;
+        if (countEl) countEl.textContent = t('banks.count_filtered', { shown: total, total });
+
         if (!banks || banks.length === 0) {
+            const filterActive = currentBankFilter !== 'all';
             container.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-outlined empty-state-icon">account_balance</span>
-                    <div class="empty-state-title">${t('banks.empty_title')}</div>
-                    <div class="empty-state-text">${t('banks.empty_hint')}</div>
+                    <span class="material-icons-outlined empty-state-icon">${filterActive ? 'filter_alt_off' : 'account_balance'}</span>
+                    <div class="empty-state-title">${filterActive ? t('banks.empty_filtered_title') : t('banks.empty_title')}</div>
+                    <div class="empty-state-text">${filterActive ? t('banks.empty_filtered_hint') : t('banks.empty_hint')}</div>
                 </div>
             `;
             return;
@@ -190,10 +238,11 @@
         });
     }
 
-    // Load reports
+    // Load reports (uses /api/banks/reports/all or /api/banks/reports/undownloaded based on filter)
     async function loadReports() {
         try {
-            const res = await fetch('/api/banks/reports/all');
+            const url = currentReportsFilter === 'undownloaded' ? '/api/banks/reports/undownloaded' : '/api/banks/reports/all';
+            const res = await fetch(url);
             if (!res.ok) throw new Error('Failed to fetch reports');
             const reports = await res.json();
             renderReports(reports);
@@ -210,12 +259,17 @@
 
     function renderReports(reports) {
         const container = document.getElementById('reports-list');
+        const countEl = document.getElementById('reports-filter-count');
+        const total = Array.isArray(reports) ? reports.length : 0;
+        if (countEl) countEl.textContent = t('banks.count_filtered', { shown: total, total });
+
         if (!reports || reports.length === 0) {
+            const filterActive = currentReportsFilter !== 'all';
             container.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-outlined empty-state-icon">description</span>
-                    <div class="empty-state-title">${t('banks.reports_empty_title')}</div>
-                    <div class="empty-state-text">${t('banks.reports_empty_hint')}</div>
+                    <span class="material-icons-outlined empty-state-icon">${filterActive ? 'filter_alt_off' : 'description'}</span>
+                    <div class="empty-state-title">${filterActive ? t('banks.empty_filtered_title') : t('banks.reports_empty_title')}</div>
+                    <div class="empty-state-text">${filterActive ? t('banks.empty_filtered_hint') : t('banks.reports_empty_hint')}</div>
                 </div>
             `;
             return;

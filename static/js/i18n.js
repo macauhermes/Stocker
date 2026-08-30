@@ -344,6 +344,12 @@ const I18N = {
     'banks.check_all_done': '檢查完成: 共 {n} 份新報告',
     'banks.downloading': '下載中...',
     'banks.download_done': '下載完成',
+    'banks.filter_all': '全部',
+    'banks.filter_enabled': '已啟用',
+    'banks.filter_undownloaded': '未下載',
+    'banks.count_filtered': '{shown}/{total} 個',
+    'banks.empty_filtered_title': '過濾後無結果',
+    'banks.empty_filtered_hint': '切換到「全部」看完整列表',
 
     // Watchlists
     'watchlists.title': '追蹤分組',
@@ -909,6 +915,12 @@ const I18N = {
     'banks.check_all_done': 'Done: {n} new reports total',
     'banks.downloading': 'Downloading...',
     'banks.download_done': 'Download complete',
+    'banks.filter_all': 'All',
+    'banks.filter_enabled': 'Enabled only',
+    'banks.filter_undownloaded': 'Undownloaded only',
+    'banks.count_filtered': '{shown}/{total} shown',
+    'banks.empty_filtered_title': 'No results match filter',
+    'banks.empty_filtered_hint': 'Switch to "All" to see the complete list',
 
     // Watchlists
     'watchlists.title': 'Watchlist Groups',
