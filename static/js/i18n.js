@@ -18,6 +18,7 @@ const I18N = {
     'nav.search_placeholder': '搜尋股票代碼...',
 
     // Common
+    'common.app_name': 'Stocker',
     'common.loading': '載入中...',
     'common.error': '載入失敗，請稍後重試',
     'common.retry': '重試',
@@ -589,6 +590,7 @@ const I18N = {
     'nav.search_placeholder': 'Search ticker...',
 
     // Common
+    'common.app_name': 'Stocker',
     'common.loading': 'Loading...',
     'common.error': 'Failed to load. Please try again.',
     'common.retry': 'Retry',
@@ -1236,10 +1238,15 @@ function applyTranslations() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
   });
-  // Update page title
-  const titleEl = document.querySelector('[data-i18n-title]');
+  // Update page title — read data-page-title from <title> element, fall back to zh textContent
+  const titleEl = document.querySelector('title[data-page-title]');
   if (titleEl) {
-    document.title = t(titleEl.getAttribute('data-i18n-title'));
+    const titleKey = titleEl.getAttribute('data-page-title');
+    const translated = t(titleKey);
+    // translated is the key string itself if missing — fall back to existing textContent
+    document.title = (translated && translated !== titleKey)
+      ? translated + ' — Stocker'
+      : titleEl.textContent;
   }
 }
 
