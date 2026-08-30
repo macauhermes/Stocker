@@ -2,8 +2,8 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit <v3.4.46-hash> (v3.4.46)
-**Latest commit**: <next> [P3] fix: /api/reports cap 500 → 2000 (Pattern 8c silent truncation — surfaces 23 bank + SEC reports)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 534f216 (v3.4.46)
+**Latest commit**: 534f216 [P3] fix: /api/reports cap 500 → 2000 (Pattern 8c silent truncation — surfaces 23 bank + SEC reports)
 
 **v3.4.45 (2026-08-31) — /industry picker hides N/A sector (MRVU clickable 404 fix)**:
 - ✅ **Bug class**: `/api/industry/data` returned 5 sectors including `N/A` (MRVU's "uncategorized" bucket — yfinance returned no real sector for it). `/industry` rendered `N/A` as clickable card with `1 ticker · 20 reports`. Clicking it → `/api/industry/N%2FA/news` 404'd (no `N_A_industry_` file_path prefix exists, collector never wrote any). Dead-end UX
@@ -53,7 +53,7 @@
 - ✅ **3 new regression tests** (tests/test_report_search.py::TestReportsCap): test_limit_param_honors_request, test_old_rows_not_silently_dropped (inserts 50 rows with `created_at='2000-01-01'`, asserts all 50 reach the response), test_cap_at_least_2000 (static check on app.py source). 270/270 tests passing (was 267/267)
 - ✅ **Touch**: app.py (+7/-1), templates/index.html (+4/-2), tests/test_report_search.py (+112/-1). Backend → restart server → 200 OK
 - ✅ **Companion finding** (not fixed in this tick): `/api/industry/<sector>/news` hardcoded `LIMIT 50` (DB has 191 Technology industry news, 141 hidden) + `/api/sectors/<sector>/reports` hardcoded `LIMIT 50`. Same Pattern 8c class but sector-specific — log as next-tick item
-- Commit: <next>
+- Commit: 534f216
 
 **Server**: localhost:5000（python app.py 跑緊，restart 完成 200 OK）
 **Branch**: main
