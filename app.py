@@ -701,8 +701,18 @@ def api_industry_news(sector):
 
 @app.route('/api/industry/data', methods=['GET'])
 def api_industry_data():
-    """Return sector summary with ticker and report counts."""
-    sectors = models.get_sectors()
+    """Return sector summary with ticker and report counts.
+
+    Filters out the 'N/A' sector — that's the "uncategorized" bucket for
+    tickers like MRVU where yfinance returned no real sector. N/A has no
+    industry news (the collector skips it; no file_path with N_A_industry_
+    prefix exists), so showing it as a clickable pill in /industry 404s
+    on /api/industry/N/A/news. The dashboard /api/sectors endpoint still
+    includes N/A because the stocks-list sector pills legitimately filter
+    MRVU under it (see templates/index.html:822 fallback).
+    """
+    # Hide the N/A sector from the industry picker only.
+    sectors = [s for s in models.get_sectors() if s != 'N/A']
     result = []
     for sector in sectors:
         tickers = models.get_tickers_by_sector(sector)
