@@ -53,6 +53,7 @@
                         <th data-i18n="portfolio.holdings_symbol">代碼</th>
                         <th class="num" data-i18n="portfolio.holdings_shares">股數</th>
                         <th class="num" data-i18n="portfolio.holdings_cost_basis">成本/股</th>
+                        <th class="num" data-i18n="portfolio.holdings_cost_value">成本合計</th>
                         <th class="num" data-i18n="portfolio.holdings_price">現價</th>
                         <th class="num" data-i18n="portfolio.holdings_market_value">市值</th>
                         <th class="num" data-i18n="portfolio.holdings_unrealized_pl">未實現損益</th>
@@ -534,6 +535,7 @@
                     <td class="symbol-cell"><strong>${escapeHtml(h.symbol)}</strong></td>
                     <td class="num">${formatNumber(h.shares, { maximumFractionDigits: 4 })}</td>
                     <td class="num">${formatCurrency(h.cost_basis)}</td>
+                    <td class="num">${formatCurrency(h.cost_value)}</td>
                     <td class="num">${formatCurrency(h.current_price)}</td>
                     <td class="num">${formatCurrency(h.market_value)}</td>
                     <td class="num ${plClass}">${plSign}${formatCurrency(Math.abs(pl))} (${plSign}${(h.unrealized_pl_pct || 0).toFixed(2)}%)</td>
