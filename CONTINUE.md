@@ -2,8 +2,38 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 534f216 (v3.4.46)
-**Latest commit**: 534f216 [P3] fix: /api/reports cap 500 → 2000 (Pattern 8c silent truncation — surfaces 23 bank + SEC reports)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit d04125e (v3.4.47)
+**Latest commit**: d04125e [P3] fix: sector endpoint silent pagination truncation (Pattern 8c)
+
+**v3.4.47 (2026-08-31) — Sector endpoint cap bump (Pattern 8c companion to v3.4.46)**:
+- ✅ **Bug class**: Pattern 8c — silent pagination truncation. Two sector endpoints had hardcoded caps that hid hundreds of rows from the live DB:
+  - `/api/industry/<sector>/news` — Python `if len(result) >= 50: break` (SQL had LIMIT 500)
+    - Technology: 50/191 visible (26% — 141 hidden)
+    - Industrials: 50/171 visible (29% — 121 hidden)
+    - Consumer Cyclical: 50/155 visible (32% — 105 hidden)
+    - Financial Services: 50/150 visible (33% — 100 hidden)
+  - `/api/sectors/<sector>/reports` — SQL `LIMIT 50` (worst offender)
+    - Industrials: 50/316 visible (16% — 266 hidden)
+    - Financial Services: 50/267 visible (19% — 217 hidden)
+    - Technology: 50/184 visible (27% — 134 hidden)
+    - Consumer Cyclical: 49/49 visible (only 1 ticker TSLA, just under cap)
+- ✅ **Fix**: SQL LIMIT bumped to 2000, Python break bumped to 200 (in `/api/industry/<sector>/news`). DB has 1095 total reports — 2000 has ample headroom for growth. Worst-case JSON payload ~700KB which is fine for one-shot /industry page load
+- ✅ **Smoke test**: Technology news 50 → 191, Industrials news 50 → 171, Industrials reports 50 → 316, FS reports 50 → 267. /industry page 200 OK
+- ✅ **6 new regression tests** (tests/test_sector_truncation.py): test_news_returns_more_than_50, test_old_smoke_news_reach_response (inserts 50 industry news with old timestamps, asserts they reach response), test_cap_at_least_200; test_reports_returns_more_than_50, test_old_smoke_reports_reach_response, test_sql_limit_at_least_2000. 276/276 tests passing (was 270, now +6)
+- ✅ **Touch**: app.py (+12/-2), tests/test_sector_truncation.py (+192, new file). Backend → restart server → 200 OK
+- Commit: d04125e
+
+**v3.4.46 (2026-08-31) — /api/reports silent truncation fix (Pattern 8c)**:
+- ✅ **Bug class**: Pattern 8c — silent pagination truncation. `/api/reports?limit=500` returned only 500/1095 reports (46% coverage). All 23 `investment_bank_report` (16) + `sec_filing` (7) rows were outside the top-500 most-recent (`created_at` cutoff 2026-06-13 12:00:54; bank reports 2026-06-07 + SPCX S-1 2026-06-13 06:54:17). Dashboard reports tab's bank filter was permanently empty even though DB had data
+- ✅ **Root cause**: `app.py:api_get_reports` hardcoded `min(request.args.get('limit', 50, type=int), 500)`. v3.4.20 bumped client `limit=50 → 500` (a partial fix for coverage 7% → 46%) but didn't anticipate that `ORDER BY created_at DESC` would push older-but-valuable bank reports off the end
+- ✅ **Fix scope** — 2 surgical line edits:
+  - `app.py:api_get_reports` cap raised 500 → 2000 (covers all 1095 + headroom; bare JSON ~660KB which is fine for one-shot dashboard load)
+  - `templates/index.html:loadReports` `limit=500 → limit=2000` to match new server cap
+- ✅ **Verification** — `/api/reports` returns 1095/1095 (100% coverage); all 5 tabs now non-empty (earnings:259, news/industry:667, analyst:146, **bank:23**); sum invariant holds (259+667+146+23=1095); dashboard 200 OK; `_insert_reports(50)` with old timestamps all reach the response (regression test)
+- ✅ **3 new regression tests** (tests/test_report_search.py::TestReportsCap): test_limit_param_honors_request, test_old_rows_not_silently_dropped (inserts 50 rows with `created_at='2000-01-01'`, asserts all 50 reach the response), test_cap_at_least_2000 (static check on app.py source). 270/270 tests passing (was 267/267)
+- ✅ **Touch**: app.py (+7/-1), templates/index.html (+4/-2), tests/test_report_search.py (+112/-1). Backend → restart server → 200 OK
+- ✅ **Companion finding** (fixed in v3.4.47): `/api/industry/<sector>/news` hardcoded `LIMIT 50` (DB has 191 Technology industry news, 141 hidden) + `/api/sectors/<sector>/reports` hardcoded `LIMIT 50`. Same Pattern 8c class but sector-specific
+- Commit: 534f216
 
 **v3.4.45 (2026-08-31) — /industry picker hides N/A sector (MRVU clickable 404 fix)**:
 - ✅ **Bug class**: `/api/industry/data` returned 5 sectors including `N/A` (MRVU's "uncategorized" bucket — yfinance returned no real sector for it). `/industry` rendered `N/A` as clickable card with `1 ticker · 20 reports`. Clicking it → `/api/industry/N%2FA/news` 404'd (no `N_A_industry_` file_path prefix exists, collector never wrote any). Dead-end UX
