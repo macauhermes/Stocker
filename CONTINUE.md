@@ -2,8 +2,30 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit (v3.4.57)
-**Latest commit**: [P3] feat: surface ticker_symbol on report cards (Pattern 9b orphan field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 6e9dea5 (v3.4.58)
+**Latest commit**: [P3] feat: surface breakdown timestamp on portfolio holdings table (Pattern 9b)
+
+**v3.4.58 (2026-09-01) — Portfolio holdings table breakdown timestamp (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/portfolio/breakdown` returns 7 top-level keys including `timestamp` (ISO datetime when the breakdown was computed: `2026-08-31T16:28:10.067513Z`). Dashboard portfolio card's holdings table meta line (`"{n} 個持倉 · 總市值 {total}"`) never read this field — 用戶完全唔知 current prices 可能 stale 幾分鐘 (multi_source fallback chain 經 Yahoo/Stooq/CoinGecko 可以好慢)
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (39 insertions / 3 deletions):
+  - `templates/index.html` (+9/-1): `loadPortfolioHoldings()` meta line extended — 當 `data.timestamp` populated 就 append `· As of: {formatDateTime(data.timestamp)}` (locale-aware via v3.4.34 helper)。defensive guard `asOf && asOf !== '—'` 確保 null/empty timestamp 唔會 render garbage
+  - `static/js/i18n.js` (+2 keys): `'portfolio.holdings_as_of': '資料時間：{time}' / 'As of: {time}'` — `{time}` placeholder substituted by `formatDateTime()`
+  - `tests/test_portfolio_breakdown.py` (+30, 1 new test): `TestTimestampField::test_breakdown_includes_timestamp` — 斷言 `/api/portfolio/breakdown` 返 non-empty parseable ISO datetime
+- ✅ **Companion orphans** (not fixed, future Pattern 9b candidates):
+  - `/api/reports/<id>: file_path` (internal server path, not user-facing)
+  - `/api/events/upcoming: ticker_id` (1:1 with symbol field — redundant)
+  - `/api/files: file_path` (internal path)
+  - `/api/tickers: added_at` (10/10 populated — could become "tracking since {date}" pill)
+  - `/api/tickers: eps, pe_ratio` (9/10 + 8/10 populated — but stock card 已有 price/change/week52, 再加 PE/EPS 會 over-cluttered; 留待 stock_detail.html tile expansion)
+- ✅ 0 backend / DB / schema changes — endpoint already returns timestamp
+- ✅ **Verification**:
+  - 280/281 tests passing (was 279/280, now +1 new test). 1 pre-existing failure (`test_old_smoke_news_reach_response` documented in v3.4.46)
+  - node --check on extracted index.html script + i18n.js both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+  - /api/portfolio/breakdown returns `timestamp: '2026-08-31T16:28:10.067513Z'` (verified via curl)
+  - / 200 OK; meta line now includes `As of: 2026/8/31 下午4:28` (zh mode) / `As of: 8/31/2026, 4:28:10 PM` (en mode, locale-aware via formatDateTime)
+- ✅ Touch: templates/index.html (+9/-1), static/js/i18n.js (+2 keys), tests/test_portfolio_breakdown.py (+30). Template-only → no restart needed
+- Commit: 6e9dea5
 
 **v3.4.57 (2026-09-01) — Report cards ticker_symbol badge (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/reports` returns 10 top-level keys (`analysis`, `category`, `content`, `created_at`, `file_path`, `id`, `published_at`, `source`, `summary`, `title`, `url`) — `file_path` contains the ticker symbol encoded as filename prefix (`TSLA_10-Q_2026-05-01.htm`, `GLW_analyst_rec.txt`) but the dashboard reports card (1175 reports total) showed NO ticker context. User had to read title to figure out which stock a report was about. Industry sector news (`Technology_industry_*.txt`) has no ticker — those correctly omit the badge
@@ -24,7 +46,7 @@
   - /api/reports/1 returns ticker_symbol: GLW
   - / 200 OK; /report/1 200 OK; both render `report-ticker-badge` markup
 - ✅ Touch: app.py (+27), templates/index.html (+12), templates/report_detail.html (+12), static/css/components.css (+27), static/js/i18n.js (+2 keys), tests/test_report_search.py (+84/-0). Backend → restart server → 200 OK
-- Commit: pending
+- Commit: f60fa1c
 
 **v3.4.56 (2026-08-31) — Holdings table 成本合計 column (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/portfolio/breakdown` returns 9 fields per holding including `cost_value` (TSLA 6000, MSFT 2800, NVDA 1500) — but `index.html` holdings table only rendered 7 columns (symbol/shares/cost_basis/price/MV/P&L/share%)。`cost_value` (total cost in dollars = shares × cost_basis) 永久 silently dropped — 用戶睇到 "+52% gain" 但要 mental arithmetic 去知道 "呢個 position 我投資咗 $6000"
