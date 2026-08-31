@@ -260,6 +260,7 @@ const I18N = {
     'files.cat.news': '新聞',
     'files.cat.sec_filing': 'SEC 文件',
     'files.cat.industry': '行業報告',
+    'files.cat.investment_bank_report': '投行報告',
 
     // Files page filter row (v3.4.23)
     'files.search_placeholder': '搜尋檔名...',
@@ -834,6 +835,7 @@ const I18N = {
     'files.cat.news': 'News',
     'files.cat.sec_filing': 'SEC Filing',
     'files.cat.industry': 'Industry Report',
+    'files.cat.investment_bank_report': 'Investment Bank Report',
 
     // Files page filter row (v3.4.23)
     'files.search_placeholder': 'Search filename...',

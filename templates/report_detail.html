@@ -15,6 +15,7 @@
             <div id="report-summary" style="display:none; font-size:0.85rem; color:var(--text-secondary); margin-top:4px; line-height:1.4;"></div>
         </div>
         <div id="report-source-badge" style="display:none;"></div>
+        <div id="report-category-badge" style="display:none;"></div>
     </div>
 
     <!-- Report Content -->
@@ -85,6 +86,29 @@
                 const badge = document.getElementById('report-source-badge');
                 badge.style.display = 'block';
                 badge.innerHTML = `<span class="badge" style="background:rgba(73,79,223,0.15); color:var(--blue);">${escapeHtml(data.source)}</span>`;
+            }
+
+            // Category badge — type-of-report indicator (matches index.html renderReports icon mapping)
+            if (data.category) {
+                let catIcon = 'description';
+                let catBg = 'rgba(73, 79, 223, 0.15)';
+                let catColor = 'var(--blue)';
+                if (data.category === 'earnings') {
+                    catIcon = 'assessment'; catBg = 'rgba(0, 200, 83, 0.15)'; catColor = 'var(--green)';
+                } else if (data.category === 'industry' || data.category === 'news') {
+                    catIcon = 'article'; catBg = 'rgba(255, 145, 0, 0.15)'; catColor = 'var(--orange)';
+                } else if (data.category === 'analyst_report') {
+                    catIcon = 'analytics'; catBg = 'rgba(156, 39, 176, 0.15)'; catColor = 'var(--purple, #9c27b0)';
+                } else if (data.category === 'investment_bank_report') {
+                    catIcon = 'account_balance'; catBg = 'rgba(73, 79, 223, 0.15)'; catColor = 'var(--blue)';
+                } else if (data.category === 'sec_filing') {
+                    catIcon = 'gavel'; catBg = 'rgba(255, 145, 0, 0.15)'; catColor = 'var(--orange)';
+                }
+                const catLabel = t('files.cat.' + data.category);
+                const catText = (catLabel && catLabel !== 'files.cat.' + data.category) ? catLabel : data.category;
+                const catBadge = document.getElementById('report-category-badge');
+                catBadge.style.display = 'block';
+                catBadge.innerHTML = `<span class="badge" style="background:${catBg}; color:${catColor};"><span class="material-icons-outlined" style="font-size:14px; vertical-align:middle; margin-right:4px;">${catIcon}</span>${escapeHtml(catText)}</span>`;
             }
 
             // Source link
