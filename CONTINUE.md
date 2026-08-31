@@ -2,8 +2,25 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e7ceaa (v3.4.50)
-**Latest commit**: 2e7ceaa [P3] feat: surface week52_high/low on stocks-list card (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 8512b95 (v3.4.52)
+**Latest commit**: 8512b95 [P3] feat: surface cost_basis column in portfolio holdings table (Pattern 9b)
+
+**v3.4.52 (2026-08-31) — Holdings table 成本/股 column (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/portfolio/breakdown` returns 9 fields per holding (`cost_basis`, `cost_value`, `current_price`, `market_value`, `share_of_portfolio`, `shares`, `symbol`, `unrealized_pl`, `unrealized_pl_pct`) — but `index.html` holdings table only render 6 columns (symbol/shares/price/MV/P&L/share%)。`cost_basis` (per-share cost, e.g. TSLA 200, MSFT 350, NVDA 300) 永久 silently dropped — 用戶睇到 "+74% gain" 但唔知 "bought at $200, now $348.75" at a glance
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (8 insertions / 2 deletions):
+  - `templates/index.html` (+2): new `<th data-i18n="portfolio.holdings_cost_basis">成本/股</th>` between shares + price columns + matching `<td>${formatCurrency(h.cost_basis)}</td>` in loadPortfolioHoldings() row template
+  - `static/js/i18n.js` (+2 keys): `'portfolio.holdings_cost_basis': '成本/股' / 'Cost/Share'` (mirrors holdings_* namespace)
+  - `static/css/components.css` (mobile @media): update nth-child(3) → nth-child(4) so cost_basis stays visible on <480px and current_price hides (cost_basis + MV + P&L% together convey "bought vs now" — more useful on small screens)
+- ✅ 0 backend / DB / schema changes — endpoint already returns cost_basis
+- ✅ **Verification**:
+  - 276/276 tests passing (no regressions)
+  - node --check on extracted index.html script + i18n.js both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+  - / 200 OK; new `<th data-i18n="portfolio.holdings_cost_basis">` + matching `<td>${formatCurrency(h.cost_basis)}</td>` rendered
+  - /api/portfolio/breakdown 3 holdings (TSLA/MSFT/NVDA) all have cost_basis populated
+- Commit: 8512b95
+
+**v3.4.51 (2026-08-31) — Report detail category badge (Pattern 9b orphan field)**:
 
 **v3.4.50 (2026-08-31) — Stocks-list 52-week range line (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/tickers` returns 19 top-level keys 包括 `week52_high` 同 `week52_low` (10/10 active tickers 全部 populated)，但 `index.html` 嘅 `renderStocks()` 只 consume 17 個 — 52-week range silently dropped between API 同 DOM。每張 stock card 顯示 symbol/sector/price/change 但冇 52W 範圍 context (而 `/stock/<sym>` detail page 已經有 high_52w/low_52w tile)
