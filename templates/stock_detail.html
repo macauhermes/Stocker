@@ -119,6 +119,10 @@
             <div class="stat-label" data-i18n="detail.low_52w">52周最低</div>
             <div class="stat-value" id="val-52w-low">—</div>
         </div>
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.next_earnings">下次財報</div>
+            <div class="stat-value" id="val-next-earnings">—</div>
+        </div>
     </div>
 
     <!-- News Section -->
@@ -446,6 +450,10 @@
             }
             if (data.low_52w != null) {
                 document.getElementById('val-52w-low').textContent = '$' + data.low_52w.toFixed(2);
+            }
+            // Next earnings — date surfaced from /api/stock/<sym>/detail (v3.4.48)
+            if (data.next_earnings && data.next_earnings.date) {
+                document.getElementById('val-next-earnings').textContent = formatDate(data.next_earnings.date);
             }
 
             // News
