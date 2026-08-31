@@ -49,7 +49,14 @@
                         📄 <span data-i18n="events.type.sec_filing">SEC</span>
                     </button>
                 </div>
-                <span id="events-filter-count" class="events-filter-count"></span>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <!-- v3.4.54: hide-dismissed toggle -->
+                    <button id="btn-toggle-dismissed" class="sector-pill" onclick="toggleHideDismissed()">
+                        <span class="material-icons-outlined" style="font-size:14px; vertical-align:middle;">visibility_off</span>
+                        <span id="hide-dismissed-label" data-i18n="events.hide_dismissed">隱藏已 dismiss</span>
+                    </button>
+                    <span id="events-filter-count" class="events-filter-count"></span>
+                </div>
             </div>
 
             <div id="upcoming-list"></div>
@@ -134,6 +141,35 @@
     border-radius: 8px;
     margin-bottom: 6px;
 }
+/* v3.4.54: dismissed state — show muted, with dismiss restore button */
+.upcoming-item.dismissed {
+    opacity: 0.45;
+}
+.upcoming-item-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+.upcoming-item-dismiss:hover {
+    color: var(--primary, #4fc3f7);
+    background: rgba(79, 195, 247, 0.1);
+}
+.upcoming-item-dismiss .material-icons-outlined {
+    font-size: 16px;
+}
+/* v3.4.54: hide-dismissed toggle active state */
+#btn-toggle-dismissed.active {
+    background: var(--primary, #4fc3f7);
+    color: #fff;
+    border-color: var(--primary, #4fc3f7);
+}
 .upcoming-badge {
     font-size: 0.7rem;
     padding: 2px 8px;
@@ -166,6 +202,8 @@
 let currentYear, currentMonth;
 let allUpcomingEvents = [];   // v3.4.19: cached for client-side filter
 let currentEventType = 'all';
+// v3.4.54: dismissed visibility toggle (default: hide dismissed)
+let hideDismissed = true;
 // v3.4.38: re-fetched on every langchange so calendar header updates when language switches.
 // Previously hardcoded as `const DAYS = t('events.days') || [...]` — the || fallback
 // masked the real bug: `const` is evaluated once at script load, before langchange
@@ -259,18 +297,55 @@ function filterEventType(type) {
     renderUpcoming();
 }
 
+// v3.4.54: toggle whether dismissed events appear in the upcoming list
+function toggleHideDismissed() {
+    hideDismissed = !hideDismissed;
+    const btn = document.getElementById('btn-toggle-dismissed');
+    if (btn) btn.classList.toggle('active', !hideDismissed);  // active = showing dismissed
+    const label = document.getElementById('hide-dismissed-label');
+    if (label) {
+        label.setAttribute('data-i18n', hideDismissed ? 'events.hide_dismissed' : 'events.show_dismissed');
+        label.textContent = t(hideDismissed ? 'events.hide_dismissed' : 'events.show_dismissed');
+    }
+    renderUpcoming();
+}
+
+// v3.4.54: dismiss a single event — POST to existing endpoint, refresh list
+async function dismissEvent(eventId) {
+    try {
+        const resp = await fetch('/api/events/' + eventId + '/dismiss', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok || data.error) {
+            showToast(t('events.dismiss_error') + (data.error ? ': ' + data.error : ''), 'error');
+            return;
+        }
+        // Mark in-place + re-render (no full refetch)
+        const ev = allUpcomingEvents.find(e => e.id === eventId);
+        if (ev) { ev.dismissed = 1; ev.dismissed_at = new Date().toISOString(); }
+        showToast(t('events.dismissed'), 'success');
+        renderUpcoming();
+    } catch (err) {
+        showToast(t('events.dismiss_error') + ': ' + err.message, 'error');
+    }
+}
+
 function renderUpcoming() {
     const list = document.getElementById('upcoming-list');
     const countEl = document.getElementById('events-filter-count');
 
+    // v3.4.54: apply dismissed filter first
+    const visible = hideDismissed
+        ? allUpcomingEvents.filter(e => !e.dismissed)
+        : allUpcomingEvents;
+
     // Apply type filter
     const filtered = currentEventType === 'all'
-        ? allUpcomingEvents
-        : allUpcomingEvents.filter(e => (e.event_type || 'other') === currentEventType);
+        ? visible
+        : visible.filter(e => (e.event_type || 'other') === currentEventType);
 
     // Update count badge — show "shown/total" only when filter is active
     if (countEl) {
-        if (currentEventType === 'all') {
+        if (currentEventType === 'all' && hideDismissed) {
             countEl.textContent = '';
         } else {
             countEl.textContent = t('events.filter_count', {
@@ -283,11 +358,20 @@ function renderUpcoming() {
     if (filtered.length === 0) {
         // Distinguish empty-all vs filtered-out
         const hasAllEvents = allUpcomingEvents.length > 0;
+        const dismissedCount = allUpcomingEvents.filter(e => e.dismissed).length;
         const icon = hasAllEvents ? 'filter_alt_off' : 'event_busy';
-        const title = hasAllEvents
-            ? t('events.filtered_empty')
-            : t('events.empty');
-        const hint = hasAllEvents ? '' : `<br><small>${t('events.empty_hint')}</small>`;
+        // v3.4.54: more specific empty hint when only-dismissed-left
+        let title, hint;
+        if (hasAllEvents && hideDismissed && dismissedCount > 0) {
+            title = t('events.only_dismissed');
+            hint = `<br><small>${t('events.only_dismissed_hint')}</small>`;
+        } else if (hasAllEvents) {
+            title = t('events.filtered_empty');
+            hint = '';
+        } else {
+            title = t('events.empty');
+            hint = `<br><small>${t('events.empty_hint')}</small>`;
+        }
         list.innerHTML = `<div class="empty-state">
             <span class="material-icons-outlined" style="font-size:48px; opacity:0.4;">${icon}</span>
             <div style="margin-top:8px;">${title}</div>
@@ -299,11 +383,21 @@ function renderUpcoming() {
     list.innerHTML = filtered.slice(0, 30).map(e => {
         const type = e.event_type || 'other';
         const dateStr = e.event_date ? e.event_date.substring(5) : '';
-        return `<div class="upcoming-item">
+        // v3.4.54: dismissed events render muted with × dismiss button
+        const dismissedClass = e.dismissed ? ' dismissed' : '';
+        const dismissedTag = e.dismissed ? ' <span style="font-size:0.65rem; color:var(--text-muted); margin-left:4px;">(' + t('events.dismissed_tag') + ')</span>' : '';
+        // × button: present on non-dismissed events (click to dismiss)
+        // Skip on already-dismissed events to avoid pointless clicks
+        const dismissBtn = e.dismissed ? '' :
+            `<button class="upcoming-item-dismiss" onclick="dismissEvent(${e.id})" title="${t('events.dismiss_tooltip')}" aria-label="dismiss">
+                <span class="material-icons-outlined">close</span>
+            </button>`;
+        return `<div class="upcoming-item${dismissedClass}">
             <span class="upcoming-badge ${type}">${type === 'earnings' ? '📊 ' + t('events.type.earnings') : type === 'dividend' ? '💰 ' + t('events.type.dividend') : type === 'sec_filing' ? '📄 ' + t('events.type.sec_filing') : '📌 ' + type}</span>
             <span class="upcoming-date">${dateStr}</span>
-            <span class="upcoming-title">${e.title || e.symbol}</span>
+            <span class="upcoming-title">${e.title || e.symbol}${dismissedTag}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${e.symbol || ''}</span>
+            ${dismissBtn}
         </div>`;
     }).join('');
 }
