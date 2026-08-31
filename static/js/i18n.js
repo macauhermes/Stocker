@@ -185,6 +185,7 @@ const I18N = {
     // Reports
     'report.title': '報告',
     'report.summary': '摘要',
+    'report.added_at': '加入系統：{date}',
     'report.analysis': 'AI 分析',
     'report.original': '原文',
     'report.no_analysis': 'AI 分析尚未生成',
@@ -761,6 +762,7 @@ const I18N = {
     // Reports
     'report.title': 'Reports',
     'report.summary': 'Summary',
+    'report.added_at': 'Added to system: {date}',
     'report.analysis': 'AI Analysis',
     'report.original': 'Original',
     'report.no_analysis': 'AI analysis not yet generated',
