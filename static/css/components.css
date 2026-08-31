@@ -1190,8 +1190,10 @@
    MV (MV = shares × price, reader can mentally derive). Keeps the table
    readable without horizontal scroll. */
 @media (max-width: 480px) {
-  .portfolio-holdings-table thead th:nth-child(3),
-  .portfolio-holdings-table tbody td:nth-child(3) {
+  /* Hide current-price column on small screens — cost_basis + MV + P&L%
+     together convey "bought vs now" without needing both price columns. */
+  .portfolio-holdings-table thead th:nth-child(4),
+  .portfolio-holdings-table tbody td:nth-child(4) {
     display: none;
   }
   .portfolio-holdings-table thead th,
