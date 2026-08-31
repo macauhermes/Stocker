@@ -2,8 +2,37 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4e22758 (v3.4.53)
-**Latest commit**: 4e22758 [P3] feat: surface created_at field on report detail header (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 0295ed7 (v3.4.55)
+**Latest commit**: 0295ed7 [P3] feat: surface report_id on files page — add drill-down link to report detail (Pattern 9b)
+
+**v3.4.55 (2026-08-31) — Files page drill-down to report detail (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/files` returns 7 fields per row (category, created_at, file_path, file_size, filename, id, **report_id**) — but `templates/files.html renderFiles()` only consumed 5 (icon/filename/category-badge/size/date + download href). `report_id` field (302/302 rows populated) was silently dropped between API 同 DOM。Every file card on /files let user download 原始 file (HTML/PDF/TXT)，但完全冇 way 去 navigate 去 structured `/report/<id>` view (with v3.4.49 summary, v3.4.50 category badge, v3.4.51 created_at header)
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (15 insertions / 3 deletions):
+  - `templates/files.html` (+9/-3): wrap download button 喺 `<div class="file-actions">` flex container; 新加 `<a class="file-view" href="/report/${f.report_id}">` description icon BEFORE download button; `data-i18n-title` for langchange re-translation; defensive `${f.report_id ? ... : ''}` guard (雖然 302/302 populated)
+  - `static/css/components.css` (+19): `.file-actions` flex container with 2px gap; `.file-view` icon link with `var(--blue)` (matches report-detail visual language); hover state with rgba blue tint
+  - `static/js/i18n.js` (+2 keys): `files.view_report: '查看報告' / 'View Report'`
+- ✅ **Bonus Pattern 5c i18n fix**: existing icon-only download button 之前 hardcoded `title="下載"` CJK tooltip — 順手加返 `data-i18n-title="files.download"` + `title="下載"` zh fallback (English mode 之前 silent fallback 落中文)
+- ✅ 0 backend / DB / schema changes — endpoint already returns report_id
+- ✅ **Verification**:
+  - node --check `files.html` script (12469 chars) + i18n.js both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF) 0 hits across 3 modified files
+  - /files 200 OK; template contains `file-view` + `file-actions` markup
+  - /report/2379 200 OK (drill-down target works)
+  - /api/files 302 rows, all with report_id populated
+- ✅ Touch: templates/files.html (+9/-3), static/css/components.css (+19), static/js/i18n.js (+2 keys). Template-only → no restart needed, server stays 200 OK
+- Commit: 0295ed7
+
+**v3.4.54 (2026-08-31) — Events page per-event dismiss UI + hide-dismissed filter (Pattern 4b)**:
+- ✅ **Bug class**: `/api/events/upcoming` 返每個 event 嘅 `dismissed` 同 `dismissed_at` fields (v3.3 ships 起就有)，但 events.html 嘅 upcoming list render 唔到 dismiss UI — 用户冇 way 去 dismiss 已知悉嘅 event (e.g. 已過嘅派息日)、亦冇 way 去 filter 走 dismissed events
+- ✅ **Fix scope** — pure frontend 1-file surgical addition (40+ insertions):
+  - `templates/events.html` (+40): new dismiss button (✕ icon, red) on each upcoming event card; conditional `${event.dismissed ? '重啟' : '已知悉'}` button label; new filter pill '隱藏已知悉'; empty-state distinguishes 'no events' vs '全部已 dismiss'
+  - 7 zh + 7 en i18n keys: `events.dismiss` / `events.undismiss` / `events.dismissed_tag` / `events.hide_dismissed` / `events.show_all` / `events.all_dismissed` / `events.confirm_dismiss`
+- ✅ **Verification**:
+  - /events 200 OK; new dismiss button rendered for each event
+  - node --check on extracted JS OK; gremlin clean
+  - /api/events/upcoming 16 events (10 盈報 + 6 派息); `dismissed: 0` initially
+- ✅ Touch: templates/events.html (+40). Template-only → no restart needed
+- Commit: 7120ae1
 
 **v3.4.53 (2026-08-31) — Report detail added-at timestamp (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/reports/<id>` returns 11 top-level keys (`analysis`, `category`, `content`, `created_at`, `file_path`, `id`, `published_at`, `source`, `summary`, `title`, `url`) — but `templates/report_detail.html` 只 wire 8 個 (title/published_at/summary/source/url/content/analysis + category badge from v3.4.51).`created_at` field ("when the report entered Stocker") 永久 silently dropped — 用戶睇到 `published_at` (原始 doc date) 但完全唔知 `created_at` (幾時 ingest 到系統)。新 ingest 嘅 GS 投行 PDF / 最新 SEC 招股書 — 用戶冇 way 知道「呢份 2 小時前加入」同「呢份 3 個月前加入」嘅分別
