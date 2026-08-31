@@ -1319,11 +1319,23 @@
   font-weight: 500;
 }
 
+/* Captured-at column — backfilled rows where captured_at differs from snapshot_date
+   (cron missed a day, portfolio_snapshot.py backfilled on next run). Subtle orange
+   tint + dashed underline so user knows the timestamp doesn't match the date col. */
+.portfolio-snapshots-log-table td.snapshot-backfilled {
+  color: var(--orange, #ff9100);
+  font-style: italic;
+  border-bottom: 1px dashed var(--orange, #ff9100);
+  cursor: help;
+}
+
 @media (max-width: 480px) {
   /* Hide cost column on small screens — value + P&L + P&L% are enough info
-     to know how the portfolio is doing; cost is mostly internal accounting. */
-  .portfolio-snapshots-log-table th:nth-child(3),
-  .portfolio-snapshots-log-table td:nth-child(3) {
+     to know how the portfolio is doing; cost is mostly internal accounting.
+     After v3.4.59 added the "captured at" column (nth-child 2), cost is now
+     nth-child 4 — update both selectors to keep mobile layout intact. */
+  .portfolio-snapshots-log-table th:nth-child(4),
+  .portfolio-snapshots-log-table td:nth-child(4) {
     display: none;
   }
 }

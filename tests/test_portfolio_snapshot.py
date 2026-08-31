@@ -157,6 +157,24 @@ class TestListSnapshots:
         rows = models.list_snapshots()
         assert all(isinstance(r, dict) for r in rows)
 
+    def test_captured_at_field_populated(self, temp_db):
+        """v3.4.59 — list_snapshots returns captured_at alongside snapshot_date
+        so the dashboard can distinguish 'this row was captured on date X'
+        from 'this row represents date X but was actually captured later'
+        (i.e. backfilled when nightly cron missed a day)."""
+        models.upsert_snapshot('2026-08-25', 1000.0, 800.0, 200.0, 25.0, 5)
+        rows = models.list_snapshots()
+        assert len(rows) == 1
+        s = rows[0]
+        # captured_at must be present and ISO-format parseable
+        assert 'captured_at' in s
+        assert s['captured_at'] is not None
+        # Should look like 'YYYY-MM-DD HH:MM:SS' — at minimum YYYY-MM-DD prefix
+        assert s['captured_at'][:10] == s['snapshot_date'] or \
+               s['captured_at'][:4].isdigit()
+        # snapshot_date stays stable (still 'YYYY-MM-DD' string)
+        assert s['snapshot_date'] == '2026-08-25'
+
 
 # ═══════════════════════════════════════════════════════════════════
 # Models CRUD — latest_snapshot

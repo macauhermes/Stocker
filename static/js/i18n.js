@@ -482,6 +482,7 @@ const I18N = {
     // Portfolio v3.4.11 — daily snapshots log table on dashboard
     'portfolio.snapshots_log_title': '📋 快照日誌',
     'portfolio.snapshots_log_date': '日期',
+    'portfolio.snapshots_log_captured': '拍攝時間',
     'portfolio.snapshots_log_value': '市值',
     'portfolio.snapshots_log_cost': '成本',
     'portfolio.snapshots_log_pnl': '損益',
@@ -489,6 +490,7 @@ const I18N = {
     'portfolio.snapshots_log_holdings': '持倉數',
     'portfolio.snapshots_log_empty': '尚無歷史快照 — 每日 20:00 自動拍攝',
     'portfolio.snapshots_log_count_total': '共 {n} 個快照',
+    'portfolio.snapshots_log_backfilled': '補拍：此快照代表較早日期，於 {captured} 補入系統',
 
     // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
     'index.stocks_toolbar': '持股清單',
@@ -1071,6 +1073,7 @@ const I18N = {
     // Portfolio v3.4.11 — daily snapshots log table on dashboard
     'portfolio.snapshots_log_title': '📋 Snapshot Log',
     'portfolio.snapshots_log_date': 'Date',
+    'portfolio.snapshots_log_captured': 'Captured',
     'portfolio.snapshots_log_value': 'Value',
     'portfolio.snapshots_log_cost': 'Cost',
     'portfolio.snapshots_log_pnl': 'P&L',
@@ -1078,6 +1081,7 @@ const I18N = {
     'portfolio.snapshots_log_holdings': 'Holdings',
     'portfolio.snapshots_log_empty': 'No snapshots yet — captured nightly at 20:00',
     'portfolio.snapshots_log_count_total': '{n} snapshots total',
+    'portfolio.snapshots_log_backfilled': 'Backfilled: this row was actually captured on {captured}, representing an earlier date',
 
     // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
     'index.stocks_toolbar': 'Holdings',

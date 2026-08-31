@@ -80,6 +80,7 @@
                 <thead>
                     <tr>
                         <th data-i18n="portfolio.snapshots_log_date">日期</th>
+                        <th data-i18n="portfolio.snapshots_log_captured">拍攝時間</th>
                         <th class="num" data-i18n="portfolio.snapshots_log_value">市值</th>
                         <th class="num" data-i18n="portfolio.snapshots_log_cost">成本</th>
                         <th class="num" data-i18n="portfolio.snapshots_log_pnl">損益</th>
@@ -602,8 +603,20 @@
                 const plSign = pnl >= 0 ? '+' : '−';
                 const pnlAbs = Math.abs(pnl);
                 const pnlPctAbs = Math.abs(pnlPct);
+                // Captured-at vs snapshot-date — when the cron nightly missed a day,
+                // portfolio_snapshot.py backfills a row with captured_at on the next run.
+                // Surface that as a "backfilled" visual cue so user knows the timestamp
+                // differs from the date the snapshot nominally represents.
+                const capturedRaw = s.captured_at || '';
+                const capturedDisp = capturedRaw ? formatDateTime(capturedRaw.replace(' ', 'T')) : '—';
+                const isBackfilled = capturedRaw && s.snapshot_date
+                    && capturedRaw.slice(0, 10) !== s.snapshot_date;
+                const capturedClass = isBackfilled ? 'snapshot-backfilled' : '';
+                const capturedTitle = isBackfilled
+                    ? `title="${t('portfolio.snapshots_log_backfilled')}"` : '';
                 return `<tr>
                     <td>${escapeHtml(s.snapshot_date || '—')}</td>
+                    <td class="${capturedClass}" ${capturedTitle}>${escapeHtml(capturedDisp)}</td>
                     <td class="num">${formatCurrency(value)}</td>
                     <td class="num">${formatCurrency(cost)}</td>
                     <td class="num ${plClass}">${plSign}${formatCurrency(pnlAbs)}</td>
