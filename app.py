@@ -629,12 +629,17 @@ def api_sector_reports(sector):
             params.extend([f'%{sym}%', f'%{sym}%'])
 
         where_clause = " OR ".join(conditions)
+        # v3.4.47 (Pattern 8c — companion to /api/reports bump in v3.4.46):
+        # hardcoded LIMIT 50 was silently hiding hundreds of sector reports
+        # (Industrials had 316, Financial Services 267, Technology 184 in DB).
+        # Bumped to 2000 — covers full DB content with headroom; bare JSON ~700KB
+        # for worst sector which is fine for one-shot /industry page load.
         query = f"""
             SELECT DISTINCT r.* FROM reports r
             WHERE ({where_clause})
             AND r.category IN ('news', 'analyst_report', 'earnings')
             ORDER BY r.created_at DESC
-            LIMIT 50
+            LIMIT 2000
         """
         reports = conn.execute(query, params).fetchall()
         return jsonify([dict(r) for r in reports])
@@ -670,6 +675,11 @@ def api_industry_news(sector):
         prefix = f"{safe_sector}_industry_"
         # Fetch all industry-category rows then filter by basename prefix
         # in Python — easier than SQL LIKE on absolute paths.
+        # v3.4.47 (Pattern 8c — companion to /api/reports bump in v3.4.46):
+        # Industry news was capped at SQL LIMIT 500 + Python >= 50 — hiding 141
+        # of 191 Technology news (74% coverage), 121 of 171 Industrials, etc.
+        # SQL LIMIT bumped to 2000 (covers worst sector in DB); Python break
+        # bumped to 200 (we only need ~50-150 per sector for display).
         rows = conn.execute(
             "SELECT id, title, source, summary, url, file_path, "
             "category, published_at, created_at "
@@ -677,7 +687,7 @@ def api_industry_news(sector):
             "WHERE category = 'industry' "
             "AND file_path IS NOT NULL "
             "AND file_path != '' "
-            "ORDER BY created_at DESC LIMIT 500"
+            "ORDER BY created_at DESC LIMIT 2000"
         ).fetchall()
         result = []
         for r in rows:
@@ -687,7 +697,7 @@ def api_industry_news(sector):
             # matching "Industrial" via prefix-only check)
             if basename.startswith(prefix):
                 result.append(dict(r))
-                if len(result) >= 50:
+                if len(result) >= 200:
                     break
         # Track metric — counts hits regardless of whether results found
         try:
