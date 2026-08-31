@@ -3,7 +3,20 @@
 ## 當前狀態（截至 2026-08-31 cron tick）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit d04125e (v3.4.47)
-**Latest commit**: d04125e [P3] fix: sector endpoint silent pagination truncation (Pattern 8c)
+**Latest commit**: 4df93b8 [P3] feat: surface next_earnings field in stock detail stats grid
+
+**v3.4.48 (2026-08-31) — Stock detail Next Earnings stat tile (Pattern 1 orphan field)**:
+- ✅ **Bug class**: `/api/stock/<sym>/detail` returns `next_earnings: {date, title}` for 9/10 active tickers (only MRVU has none) — but `templates/stock_detail.html` stats grid only rendered 5 financial tiles (market_cap / pe_ratio / eps / high_52w / low_52w). The `next_earnings` field was silently dropped — every stock_detail page rendered `—` for what is actually a populated API field
+- ✅ **Fix scope** — pure frontend 10-line addition (6th stat-item tile + JS handler + 2 i18n keys):
+  - `templates/stock_detail.html` (+8): 6th `<div class="stat-item">` after low_52w tile + 4-line JS handler reading `data.next_earnings.date` via `formatDate()` (locale-aware, v3.4.34 helper)
+  - `static/js/i18n.js` (+2 keys): `detail.next_earnings: '下次財報' / 'Next Earnings'`
+- ✅ **Verification**:
+  - 276/276 tests passing (no regressions)
+  - node --check on extracted JS OK; gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits both files
+  - `/stock/TSLA` 200 OK, `val-next-earnings` div + `data-i18n="detail.next_earnings"` rendered
+  - 9/10 tickers have next_earnings date (TSLA 10/22, NVDA 11/18, IBM 10/22, MSFT 10/29, GS 10/13, MS 10/14, GLW 10/27, TE 11/12, SPCX 11/04; MRVU: none)
+- ✅ Touch: templates/stock_detail.html (+8), static/js/i18n.js (+2 keys). Template-only → no restart needed but defensive restart done
+- Commit: 4df93b8
 
 **v3.4.47 (2026-08-31) — Sector endpoint cap bump (Pattern 8c companion to v3.4.46)**:
 - ✅ **Bug class**: Pattern 8c — silent pagination truncation. Two sector endpoints had hardcoded caps that hid hundreds of rows from the live DB:
