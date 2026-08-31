@@ -2,8 +2,21 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 8512b95 (v3.4.52)
-**Latest commit**: 8512b95 [P3] feat: surface cost_basis column in portfolio holdings table (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 4e22758 (v3.4.53)
+**Latest commit**: 4e22758 [P3] feat: surface created_at field on report detail header (Pattern 9b)
+
+**v3.4.53 (2026-08-31) — Report detail added-at timestamp (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/reports/<id>` returns 11 top-level keys (`analysis`, `category`, `content`, `created_at`, `file_path`, `id`, `published_at`, `source`, `summary`, `title`, `url`) — but `templates/report_detail.html` 只 wire 8 個 (title/published_at/summary/source/url/content/analysis + category badge from v3.4.51).`created_at` field ("when the report entered Stocker") 永久 silently dropped — 用戶睇到 `published_at` (原始 doc date) 但完全唔知 `created_at` (幾時 ingest 到系統)。新 ingest 嘅 GS 投行 PDF / 最新 SEC 招股書 — 用戶冇 way 知道「呢份 2 小時前加入」同「呢份 3 個月前加入」嘅分別
+- ✅ **Fix scope** — pure frontend 2-file surgical addition (13 insertions):
+  - `templates/report_detail.html` (+11): new `#report-added` div 喺 `#report-summary` 下面 (muted 0.75rem); JS handler reads `data.created_at`, parses ISO timestamp + 'YYYY-MM-DD HH:MM:SS' format (SQLite default), 透過 v3.4.34 嘅 `formatDateTime()` helper 渲染 (locale-aware — en mode 顯示 "Aug 27, 2026, 12:30 AM" 而唔係 zh "2026/8/27 上午12:30")
+  - `static/js/i18n.js` (+2 keys): `'report.added_at': '加入系統：{date}' / 'Added to system: {date}'` — `{date}` placeholder 由 v3.4.34 嘅 `formatDateTime()` 填充
+- ✅ 0 backend / DB / schema changes — endpoint already 返 created_at (1175/1175 rows populated, 100%)
+- ✅ **Verification**:
+  - 275/276 tests passing — 1 pre-existing failure (`test_old_smoke_news_reach_response`, 已 fail 喺 v3.4.47 之後因為 industry news 191→713 破壞咗 smoke-prefix 排序假設, 唔關今次 change 事)
+  - node --check i18n.js + extracted report_detail.html script both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 2 modified files
+  - /report/1 200 OK; new `#report-added` element + JS handler 喺 served HTML
+- Commit: 4e22758
 
 **v3.4.52 (2026-08-31) — Holdings table 成本/股 column (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/portfolio/breakdown` returns 9 fields per holding (`cost_basis`, `cost_value`, `current_price`, `market_value`, `share_of_portfolio`, `shares`, `symbol`, `unrealized_pl`, `unrealized_pl_pct`) — but `index.html` holdings table only render 6 columns (symbol/shares/price/MV/P&L/share%)。`cost_basis` (per-share cost, e.g. TSLA 200, MSFT 350, NVDA 300) 永久 silently dropped — 用戶睇到 "+74% gain" 但唔知 "bought at $200, now $348.75" at a glance
