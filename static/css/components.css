@@ -466,6 +466,19 @@
   text-overflow: ellipsis;
 }
 
+/* 52-week price range (v3.4.50 Pattern 9b) — third line under stock name */
+.stock-week52 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  cursor: help;
+}
+
 .stock-price-section {
   text-align: right;
   flex-shrink: 0;

@@ -919,6 +919,11 @@
             card.className = 'stock-card';
             card.dataset.symbol = ticker.symbol;
             card.onclick = () => window.location.href = '/stock/' + ticker.symbol;
+            const week52Hi = ticker.week52_high;
+            const week52Lo = ticker.week52_low;
+            const week52Range = (week52Hi != null && week52Lo != null)
+                ? `$${week52Lo.toFixed(2)} – $${week52Hi.toFixed(2)}`
+                : '—';
             card.innerHTML = `
                 <div class="stock-icon">${ticker.symbol.substring(0, 2)}</div>
                 <div class="stock-info">
@@ -929,6 +934,7 @@
                         <span class="freshness-badge ${freshnessClass(ticker.last_updated)}" data-ts="${ticker.last_updated || ''}" title="${ticker.last_updated ? t('index.last_updated_at') + ticker.last_updated : t('index.last_updated_unknown')}">${timeAgo(ticker.last_updated)}</span>
                     </div>
                     <div class="stock-name">${ticker.name || '—'}</div>
+                    <div class="stock-week52" data-week52="${ticker.symbol}" title="${t('index.week52_range')}">${week52Range}</div>
                 </div>
                 <div class="stock-mini-chart">
                     <canvas id="mini-${ticker.symbol}" width="80" height="32"></canvas>

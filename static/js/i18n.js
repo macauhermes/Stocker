@@ -493,6 +493,7 @@ const I18N = {
     'index.stocks_holdings_only': '💼 只顯示持倉',
     'index.stocks_filter_count': '顯示 {shown} / {total}',
     'index.stocks_empty_filtered': '冇符合條件嘅股票',
+    'index.week52_range': '52周範圍',
 
     // System page (/system)
     'nav.system': '系統',
@@ -1066,6 +1067,7 @@ const I18N = {
     'index.stocks_holdings_only': '💼 Holdings only',
     'index.stocks_filter_count': 'Showing {shown} / {total}',
     'index.stocks_empty_filtered': 'No stocks match the current filters',
+    'index.week52_range': '52W Range',
 
     // System page (/system)
     'nav.system': 'System',
