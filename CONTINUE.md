@@ -2,8 +2,27 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 652d910 (v3.4.61)
-**Latest commit**: [P3] feat: surface created_at on alert cards (Pattern 9b orphan field)
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit cbcb144 (v3.4.62)
+|**Latest commit**: [P3] feat: surface et_time on dashboard refresh badge (Pattern 1 + 9b combo)
+
+**v3.4.62 (2026-09-01) — Dashboard refresh badge + et_time surfacing (Pattern 1 + 9b combo)**:
+|- ✅ **Two-bug combo in one feature**: `<div id="refresh-badge">` markup 完全唔存在 — `templates/index.html:1514` 嘅 JS update code 由 v3.4.33 ships 起一直 silently no-op (getElementById 返 null)。`.refresh-badge` CSS class 連同 `[data-reason="us_market_open|us_extended_hours|us_off_hours|weekend"]::before` color-coded dot 喺 static/css/variables.css:68-92 早已準備好，但從未被任何 template reference。同時 `/api/refresh-interval` 返 `et_time` ("17:44 ET") 但永遠冇 surface
+|- ✅ **Fix scope** — pure frontend 3-file surgical addition (94 insertions / 2 deletions):
+|  - `templates/index.html` (+35/-2): 新加 `<span id="refresh-badge" class="refresh-badge" data-i18n-title="index.refresh_badge_title">` markup 喺 stocks-toolbar 入面 (export button 隔離). JS 將 `et_time` prepend 落 textContent ("17:44 ET · 盤後 · 15s"). `badge.style.display='inline-flex'` 默認顯示. `data-reason` / `data-et-time` / `data-reason-text` 3 個 dataset attrs 保留原始數據用於 langchange re-render
+|  - 新加 `rerenderRefreshBadge()` function (18 lines) — langchange 嘅時候 rebuild textContent 由 dataset + fresh t() lookup，即時翻譯 et_time + reason + interval (唔需要等 5min 嘅 /api/refresh-interval 下一輪 poll)
+|  - langchange handler 加 `rerenderRefreshBadge()` call (跟 loadStocks / loadReports / loadGroupsDashboard 並列)
+|  - `static/js/i18n.js` (+2 keys): `index.refresh_badge_title: '市場狀態 / NY 時間' / 'Market status / NY time'`
+|  - `tests/test_refresh_badge.py` (new file, 94 lines, 6 tests): TestRefreshIntervalAPI (test_returns_et_time, test_returns_interval_and_reason) + TestRefreshBadgeUI (test_index_template_renders_refresh_badge, test_index_template_has_rerender_function, test_refresh_badge_has_i18n_title) + TestI18nKeys (test_refresh_badge_title_in_both_languages)
+|- ✅ **Companion fix (Pattern 5d sub-class: langchange re-render)** — 如果冇 rerenderRefreshBadge(), 用戶切 en mode 後要等 5min 嘅 /api/refresh-interval 下一輪 poll 先睇到英文 badge。3 個 dataset attrs (reason/etTime/reasonText) 保留原始數據，rerender 由 fresh t() lookup 重組 textContent。即時翻譯唔需要 network
+|- ✅ **0 backend / DB / schema changes** — `/api/refresh-interval` endpoint 早已返 et_time (v3.4.33 ships)
+|- ✅ **Verification**:
+|  - 290/291 tests passing (was 284/285, +6 new from this commit)
+|  - 1 pre-existing failure (test_old_smoke_news_reach_response, 已 fail 喺 v3.4.47 之後因為 industry news 191→713 破壞咗 smoke-prefix 排序假設, 唔關今次 change 事)
+|  - node --check i18n.js + extracted index.html script both OK
+|  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+|  - / 200 OK; served HTML 含 `id="refresh-badge"` + `function rerenderRefreshBadge()` + langchange handler 含 `rerenderRefreshBadge()` call
+|- ✅ Touch: templates/index.html (+35/-2), static/js/i18n.js (+2 keys), tests/test_refresh_badge.py (new file +94). Template-only → no restart needed
+|- Commit: cbcb144
 
 **v3.4.61 (2026-09-01) — Stock cards tracking_since + salvaged alerts.created_at WIP (Pattern 9b × 2)**:
 - ✅ **Bug class A — `/api/tickers.added_at` orphan**: `/api/tickers` returns 19 top-level keys 包括 `added_at` (SQLite `datetime('now')` 喺 ticker INSERT)。Dashboard `renderStocks()` 只 consume 17 個 — `added_at` 永久 silently dropped。每張 stock card 顯示 symbol/sector/source badge/freshness/name/week52 但完全冇 "tracking since when" context。10/10 tickers 全部 populated (TSLA 6/4, SPCX 6/13 IPO, GS/MS 6/7, MSFT 6/5)
