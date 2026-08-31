@@ -346,6 +346,18 @@
 - ✅ Pure frontend — 改動: templates/index.html (tabs markup + filterByType), static/js/i18n.js (10 keys), README.md (1 行)
 - Commit: 53ded9e
 
+**v3.4.51 (2026-08-31) — Report detail category badge (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/reports/<id>` returns 11 keys but `templates/report_detail.html` 只 wire 7 個 (title/published_at/summary/source/url/content/analysis) — `category` field 永久 silently dropped。每個 /report/<id> page 顯示 title/date/summary/source 但完全冇 indication 屬於咩類型報告 (earnings / industry / analyst_report / investment_bank_report / sec_filing)。用戶開 S-1 招股書 vs GLW 10-Q vs GS 投行報告 vs 行業新聞 → 標題以外冇任何 visual cue
+- ✅ **Fix scope** — pure frontend 26-line addition:
+  - `templates/report_detail.html` (+24): new `#report-category-badge` div 喺 header (next to source badge), JS block render 5 個 category-specific icon + color (matches index.html renderReports() mapping)：earnings=assessment/綠, industry|news=article/橘, analyst_report=analytics/紫, investment_bank_report=account_balance/藍, sec_filing=gavel/橘。Unknown value 落回 default 藍色 description icon
+  - `static/js/i18n.js` (+2 keys): `files.cat.investment_bank_report: '投行報告' / 'Investment Bank Report'` — 其餘 4 個 category i18n keys 已經喺 i18n.js 存在 (earnings/analyst_report/industry/sec_filing)
+- ✅ **Smoke test**: 5 個不同 category page 全部測試過 (id=1 earnings, 16 industry, 57 analyst_report, 209 investment_bank_report, 570 sec_filing) — 全部 200 OK + 全部 5 個 category 喺 JS mapping 覆蓋 + category-badge div 喺 served HTML 存在
+- ✅ node --check (extracted report_detail.html JS + i18n.js) OK, gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF) 0 hits 兩個 files
+- ✅ 276/276 tests passing (no regressions)
+- ✅ / 200 OK, /report/1 200 OK
+- Touch: templates/report_detail.html (+24), static/js/i18n.js (+2 keys). Template-only → no restart needed, server 仲係 200 OK
+- Commit: d2525a4
+
 **v3.4.18 (2026-08-26) — Files page Pattern 8 fix (孖生 v3.4.17 bug class)**:
 - ✅ **Bug fix**: `/files` 頁面嘅 category tabs 之前係 (all/earnings/analyst_report/news)，但 DB `files` table 只有 3 個 category (earnings: 113, analyst_report: 57, sec_filing: 7) —— 從來冇 `news`！7 份 SpaceX 招股書 (SPCX_S-1 × 4 個 + SPCX_EU-Prospectus × 3 個) 永久隱形，只可以喺「全部」tab 見到，用戶唔知道揀咩
 - ✅ 同一個 bug class 係 v3.4.17 嘅孖生兄弟：UI filter 同 DB category 不對齊 (overlap，但唔同 page)
