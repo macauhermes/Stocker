@@ -543,11 +543,16 @@
                 </tr>`;
             }).join('');
 
-            // Meta line: show count + total
+            // Meta line: show count + total + as-of timestamp
+            // v3.4.58 — surface `timestamp` field (Pattern 9b orphan field).
+            // /api/portfolio/breakdown already returns `timestamp`; without
+            // it the user has no signal that current prices may be a few
+            // minutes stale (multi_source fallback chain can be slow).
+            const asOf = data.timestamp ? formatDateTime(data.timestamp) : '';
             metaEl.textContent = t('portfolio.holdings_count_total', {
                 n: holdings.length,
                 total: formatCurrency(data.total_value || 0),
-            });
+            }) + (asOf && asOf !== '—' ? ' · ' + t('portfolio.holdings_as_of', { time: asOf }) : '');
             emptyEl.style.display = 'none';
             wrapper.style.display = 'block';
         } catch (err) {

@@ -469,6 +469,7 @@ const I18N = {
     'portfolio.holdings_market_value': '市值',
     'portfolio.holdings_unrealized_pl': '未實現損益',
     'portfolio.holdings_share': '佔比',
+    'portfolio.holdings_as_of': '資料時間：{time}',            // v3.4.58 — Pattern 9b orphan field (breakdown timestamp)
     'portfolio.holdings_empty': '暫無持倉',
     'portfolio.holdings_count_total': '{n} 個持倉 · 總市值 {total}',
     'portfolio.actions_title': '快捷操作',
@@ -1057,6 +1058,7 @@ const I18N = {
     'portfolio.holdings_market_value': 'Market Value',
     'portfolio.holdings_unrealized_pl': 'Unrealized P&L',
     'portfolio.holdings_share': 'Share',
+    'portfolio.holdings_as_of': 'As of: {time}',               // v3.4.58 — Pattern 9b orphan field (breakdown timestamp)
     'portfolio.holdings_empty': 'No holdings yet',
     'portfolio.holdings_count_total': '{n} holdings · total {total}',
     'portfolio.actions_title': 'Quick actions',

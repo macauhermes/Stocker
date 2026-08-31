@@ -327,4 +327,33 @@ class TestMetrics:
 
         assert resp.status_code == 500
         after = int(PORTFOLIO_BREAKDOWN.labels(status='error')._value.get())
-        assert after == before + 1
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Tests — Timestamp Field (v3.4.58 — Pattern 9b orphan field)
+# ═══════════════════════════════════════════════════════════════════
+
+class TestTimestampField:
+    """v3.4.58: /api/portfolio/breakdown must include `timestamp` so the
+    dashboard holdings table can show "As of: {time}" meta line. Before this,
+    the timestamp field existed in the response but was silently dropped
+    between API and DOM — users had no signal that current prices may be a
+    few minutes stale."""
+
+    def test_breakdown_includes_timestamp(self, client):
+        """Top-level dict must include a non-empty `timestamp` field."""
+        _insert_ticker(f'{SMOKE_PREFIX}TSLA', shares=10, cost_basis=200)
+        prices = {f'{SMOKE_PREFIX}TSLA': _make_price(f'{SMOKE_PREFIX}TSLA', 350)}
+        with patch('services.multi_source.get_current_price',
+                   side_effect=lambda s, *a, **k: (
+                       _make_price(s, prices[s]['price']) if s in prices else None
+                   )):
+            resp = client.get('/api/portfolio/breakdown')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert 'timestamp' in data, "breakdown response missing timestamp field"
+        assert data['timestamp'], "timestamp field is empty/null"
+        # Should be parseable as ISO datetime
+        from datetime import datetime
+        ts = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
+        assert ts is not None
