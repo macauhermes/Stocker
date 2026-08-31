@@ -140,6 +140,13 @@ function renderAlerts(alerts) {
         const triggeredAt = a.last_triggered_at
             ? '<small style="color:var(--text-muted);">' + escapeHtml(t('alerts.triggered_at', { time: formatDate(a.last_triggered_at) })) + '</small>'
             : '';
+        // v3.4.60 — surface `created_at` field (Pattern 9b orphan field).
+        // /api/alerts already returns when the alert was created but the
+        // card never showed it — users couldn't tell whether a long-running
+        // alert had been around for days vs just added.
+        const createdAt = a.created_at
+            ? '<small style="color:var(--text-muted); display:block; margin-top:2px;">' + escapeHtml(t('alerts.created_at', { time: formatDate(a.created_at) })) + '</small>'
+            : '';
         const actionTitle = a.enabled ? t('alerts.action_disable') : t('alerts.action_enable');
         const actionIcon = a.enabled ? 'pause' : 'play_arrow';
         html += `
@@ -158,6 +165,7 @@ function renderAlerts(alerts) {
                     </div>
                     ${a.note ? '<div style="color:var(--text-muted); font-size:0.85rem;">' + escapeHtml(t('alerts.note_prefix')) + escapeHtml(a.note) + '</div>' : ''}
                     ${triggeredAt}
+                    ${createdAt}
                 </div>
                 <div class="alert-card-actions">
                     <button class="btn-icon" onclick="toggleAlert(${a.id}, ${a.enabled ? 0 : 1})" title="${escapeHtml(actionTitle)}">
