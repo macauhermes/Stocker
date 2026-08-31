@@ -479,6 +479,18 @@
   cursor: help;
 }
 
+/* Tracking-since badge (v3.4.60 Pattern 9b) — fourth line under week52 */
+.stock-tracking {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  cursor: help;
+}
+
 .stock-price-section {
   text-align: right;
   flex-shrink: 0;

@@ -403,6 +403,8 @@ const I18N = {
     'alerts.enabled': '啟用',
     'alerts.disabled': '已停用',
     'alerts.triggered_at': '已觸發：{time}',
+    // v3.4.60 — Pattern 9b orphan field: alert cards now show when the alert was created
+    'alerts.created_at': '建立於：{time}',
     'alerts.note': '備註',
     'alerts.note_placeholder': '（選填）例：突破阻力位',
     'alerts.symbol_placeholder': 'TSLA',
@@ -511,6 +513,7 @@ const I18N = {
     'index.stocks_filter_count': '顯示 {shown} / {total}',
     'index.stocks_empty_filtered': '冇符合條件嘅股票',
     'index.week52_range': '52周範圍',
+    'index.tracking_since': '追蹤自 {date}',
 
     // System page (/system)
     'nav.system': '系統',
@@ -994,6 +997,7 @@ const I18N = {
     'alerts.enabled': 'Enabled',
     'alerts.disabled': 'Disabled',
     'alerts.triggered_at': 'Triggered: {time}',
+    'alerts.created_at': 'Created at: {time}',
     'alerts.note': 'Notes',
     'alerts.note_placeholder': '(optional) e.g. breakout level',
     'alerts.symbol_placeholder': 'TSLA',
@@ -1102,6 +1106,7 @@ const I18N = {
     'index.stocks_filter_count': 'Showing {shown} / {total}',
     'index.stocks_empty_filtered': 'No stocks match the current filters',
     'index.week52_range': '52W Range',
+    'index.tracking_since': 'Tracking since {date}',
 
     // System page (/system)
     'nav.system': 'System',

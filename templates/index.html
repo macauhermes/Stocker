@@ -946,6 +946,10 @@
             const week52Range = (week52Hi != null && week52Lo != null)
                 ? `$${week52Lo.toFixed(2)} – $${week52Hi.toFixed(2)}`
                 : '—';
+            const addedDate = ticker.added_at ? formatDate(ticker.added_at) : '—';
+            const trackingSinceHtml = (ticker.added_at && addedDate !== '—')
+                ? `<div class="stock-tracking" title="${t('index.tracking_since', { date: addedDate })}">${t('index.tracking_since', { date: addedDate })}</div>`
+                : '';
             card.innerHTML = `
                 <div class="stock-icon">${ticker.symbol.substring(0, 2)}</div>
                 <div class="stock-info">
@@ -957,6 +961,7 @@
                     </div>
                     <div class="stock-name">${ticker.name || '—'}</div>
                     <div class="stock-week52" data-week52="${ticker.symbol}" title="${t('index.week52_range')}">${week52Range}</div>
+                    ${trackingSinceHtml}
                 </div>
                 <div class="stock-mini-chart">
                     <canvas id="mini-${ticker.symbol}" width="80" height="32"></canvas>
