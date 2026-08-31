@@ -224,9 +224,15 @@
                         <span>${date}</span>
                     </div>
                 </div>
-                <a href="/api/files/${f.id}/download" class="file-download" download>
-                    <span class="material-icons-outlined">download</span>
-                </a>
+                <div class="file-actions">
+                    ${f.report_id ? `
+                    <a href="/report/${f.report_id}" class="file-view" data-i18n-title="files.view_report" title="查看報告">
+                        <span class="material-icons-outlined">description</span>
+                    </a>` : ''}
+                    <a href="/api/files/${f.id}/download" class="file-download" data-i18n-title="files.download" title="下載" download>
+                        <span class="material-icons-outlined">download</span>
+                    </a>
+                </div>
             `;
             container.appendChild(item);
         });

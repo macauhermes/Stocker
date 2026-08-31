@@ -251,6 +251,7 @@ const I18N = {
     'files.title': '檔案管理',
     'files.filename': '檔案名稱',
     'files.download': '下載',
+    'files.view_report': '查看報告',
     'files.load_error': '載入檔案列表失敗',
     'files.empty': '暫無檔案',
 
@@ -836,6 +837,7 @@ const I18N = {
     'files.title': 'File Manager',
     'files.filename': 'Filename',
     'files.download': 'Download',
+    'files.view_report': 'View Report',
     'files.load_error': 'Failed to load file list.',
     'files.empty': 'No files',
 

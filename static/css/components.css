@@ -1796,6 +1796,25 @@
   background: rgba(0, 200, 83, 0.1);
 }
 
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.file-view {
+  color: var(--blue);
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  transition: all 0.2s;
+}
+
+.file-view:hover {
+  background: rgba(73, 79, 223, 0.12);
+}
+
 /* ============================================================
    INDUSTRY PAGE
    ============================================================ */
