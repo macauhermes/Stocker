@@ -2,8 +2,24 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 0295ed7 (v3.4.55)
-**Latest commit**: 0295ed7 [P3] feat: surface report_id on files page — add drill-down link to report detail (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit cdf4bfe (v3.4.56)
+**Latest commit**: cdf4bfe [P3] feat: surface cost_value column in portfolio holdings table (Pattern 9b)
+
+**v3.4.56 (2026-08-31) — Holdings table 成本合計 column (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/portfolio/breakdown` returns 9 fields per holding including `cost_value` (TSLA 6000, MSFT 2800, NVDA 1500) — but `index.html` holdings table only rendered 7 columns (symbol/shares/cost_basis/price/MV/P&L/share%)。`cost_value` (total cost in dollars = shares × cost_basis) 永久 silently dropped — 用戶睇到 "+52% gain" 但要 mental arithmetic 去知道 "呢個 position 我投資咗 $6000"
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (9 insertions / 4 deletions):
+  - `templates/index.html` (+2): new `<th data-i18n="portfolio.holdings_cost_value">成本合計</th>` between cost_basis + current_price columns + matching `<td>${formatCurrency(h.cost_value)}</td>` in loadPortfolioHoldings() row template
+  - `static/css/components.css` (+0/-2 mod): update mobile @media (max-width: 480px) to hide nth-child(5) (current_price) instead of nth-child(4) (which is now cost_value). On phones, cost_value (total $ invested) is more useful than live current_price
+  - `static/js/i18n.js` (+2 keys): `portfolio.holdings_cost_value: '成本合計' / 'Cost Total'`
+- ✅ 0 backend / DB / schema changes — endpoint already returns cost_value (3/3 holdings populated)
+- ✅ **Verification**:
+  - 275/276 tests passing (pre-existing failure `test_old_smoke_news_reach_response` unrelated to this change, documented in v3.4.46)
+  - node --check on extracted index.html script + i18n.js both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+  - / 200 OK; new `<th data-i18n="portfolio.holdings_cost_value">` + matching `<td>${formatCurrency(h.cost_value)}</td>` rendered
+  - /api/portfolio/breakdown 3 holdings (TSLA/MSFT/NVDA) all have cost_value populated
+- ✅ Touch: templates/index.html (+2/-0), static/css/components.css (+1/-3 mod), static/js/i18n.js (+2 keys). Template-only → no restart needed
+- Commit: cdf4bfe
 
 **v3.4.55 (2026-08-31) — Files page drill-down to report detail (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/files` returns 7 fields per row (category, created_at, file_path, file_size, filename, id, **report_id**) — but `templates/files.html renderFiles()` only consumed 5 (icon/filename/category-badge/size/date + download href). `report_id` field (302/302 rows populated) was silently dropped between API 同 DOM。Every file card on /files let user download 原始 file (HTML/PDF/TXT)，但完全冇 way 去 navigate 去 structured `/report/<id>` view (with v3.4.49 summary, v3.4.50 category badge, v3.4.51 created_at header)
