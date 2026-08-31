@@ -2,8 +2,22 @@
 
 ## 當前狀態（截至 2026-08-31 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit d04125e (v3.4.47)
-**Latest commit**: <next> [P3] feat: surface summary field in report detail header
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 2e7ceaa (v3.4.50)
+**Latest commit**: 2e7ceaa [P3] feat: surface week52_high/low on stocks-list card (Pattern 9b)
+
+**v3.4.50 (2026-08-31) — Stocks-list 52-week range line (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/tickers` returns 19 top-level keys 包括 `week52_high` 同 `week52_low` (10/10 active tickers 全部 populated)，但 `index.html` 嘅 `renderStocks()` 只 consume 17 個 — 52-week range silently dropped between API 同 DOM。每張 stock card 顯示 symbol/sector/price/change 但冇 52W 範圍 context (而 `/stock/<sym>` detail page 已經有 high_52w/low_52w tile)
+- ✅ **Fix scope** — pure frontend 4-file addition:
+  - `templates/index.html` (+5): 第 3 行喺 `stock-name` 下面，顯示 `"$66.14 – $271.78"` 範圍，title 用 `t('index.week52_range')` tooltip
+  - `static/js/i18n.js` (+2 keys): `'index.week52_range': '52周範圍' / '52W Range'`
+  - `static/css/components.css` (+13): `.stock-week52` muted monospace 0.65rem with ellipsis (matches existing `.stock-name` pattern)
+- ✅ 0 backend / DB / schema changes — endpoint already 返 data
+- ✅ **Verification**:
+  - 276/276 tests passing (no regressions)
+  - node --check 喺 `index.html` script + `i18n.js` both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 個 modified files
+  - / 200 OK; `stock-week52` class 喺 source 出現 10 次 (每 ticker 一次)
+- Commit: 2e7ceaa
 
 **v3.4.49 (2026-08-31) — Report detail summary preview header (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/reports/<id>` 返 11 個 top-level keys (`analysis`, `category`, `content`, `created_at`, `file_path`, `id`, `published_at`, `source`, `summary`, `title`, `url`) — but `templates/report_detail.html` 只 wire 6 個 (title/published_at/source/url/content/analysis)。`summary` 字段 (e.g. "GLW 10-Q 年度/季度財報，提交日期 2026-05-01") 完全冇 surface — 用戶開 `/report/<id>` 只睇到 title + date + source badge，要 scroll 落原文內容先知報告講咩。99% reports 都有 populated summary (v3.4 ai_analyzer.generate_summary 已寫入)
@@ -16,7 +30,7 @@
   - node --check on extracted 15514-char script OK
   - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits
   - git diff = templates/report_detail.html (+10/-0). Template-only → no restart needed
-- Commit: <next>
+- Commit: 9e411cc
 
 **v3.4.48 (2026-08-31) — Stock detail Next Earnings stat tile (Pattern 1 orphan field)**:
 - ✅ **Bug class**: `/api/stock/<sym>/detail` returns `next_earnings: {date, title}` for 9/10 active tickers (only MRVU has none) — but `templates/stock_detail.html` stats grid only rendered 5 financial tiles (market_cap / pe_ratio / eps / high_52w / low_52w). The `next_earnings` field was silently dropped — every stock_detail page rendered `—` for what is actually a populated API field
