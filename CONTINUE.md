@@ -2,8 +2,28 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 6e9dea5 (v3.4.58)
-**Latest commit**: [P3] feat: surface breakdown timestamp on portfolio holdings table (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 652d910 (v3.4.61)
+**Latest commit**: [P3] feat: surface created_at on alert cards (Pattern 9b orphan field)
+
+**v3.4.61 (2026-09-01) — Stock cards tracking_since + salvaged alerts.created_at WIP (Pattern 9b × 2)**:
+- ✅ **Bug class A — `/api/tickers.added_at` orphan**: `/api/tickers` returns 19 top-level keys 包括 `added_at` (SQLite `datetime('now')` 喺 ticker INSERT)。Dashboard `renderStocks()` 只 consume 17 個 — `added_at` 永久 silently dropped。每張 stock card 顯示 symbol/sector/source badge/freshness/name/week52 但完全冇 "tracking since when" context。10/10 tickers 全部 populated (TSLA 6/4, SPCX 6/13 IPO, GS/MS 6/7, MSFT 6/5)
+- ✅ **Fix scope A** — pure frontend 4-file surgical addition (105 insertions):
+  - `templates/index.html` (+5): new `<div class="stock-tracking">` 喺 `.stock-week52` 下面, reads `ticker.added_at` via `formatDate()` (locale-aware, v3.4.34 helper)。Defensive guard `ticker.added_at && addedDate !== '—'` 確保 null/empty timestamp 唔會 render garbage
+  - `static/css/components.css` (+12): `.stock-tracking` — muted 0.6rem inline line, cursor:help, matches freshness-badge visual weight (low-profile, 唔搶 price/change readout 嘅 focus)
+  - `static/js/i18n.js` (+2 keys): `'index.tracking_since': '追蹤自 {date}' / 'Tracking since {date}'` — `{date}` placeholder 由 formatDate() 填充
+  - `tests/test_tickers_added_at.py` (+90, 3 new tests): `TestTickersAddedAt` class — test_added_at_in_response (200 OK + list shape), test_all_rows_have_populated_added_at (10/10 match YYYY-MM-DD HH:MM:SS regex), test_added_at_matches_db (DB ↔ API cross-check)
+- ✅ **Bug class B — salvaged sibling subagent WIP for `/api/alerts.created_at`**: `git status` showed uncommitted 8-line addition to `templates/alerts.html renderAlerts()` — add a `<small>` line below the triggered_at line showing `t('alerts.created_at', { time: formatDate(a.created_at) })`. Salvage check #5: 5 t() keys 全部 hit existing i18n.js (except `alerts.created_at` en — missing, fixed in same commit family), JS node --check OK, gremlin clean
+- ✅ **Companion i18n.js fix (scope-justified)**: `alerts.created_at` key exists in zh section but was MISSING from en section (line 999+). Without this fix, English mode would surface the literal string `'alerts.created_at'` as UI text once any alert is added. Added `'alerts.created_at': 'Created at: {time}'` — en version of zh `'建立於：{time}'`. Shipped in c5b6875 alongside the tracking_since feature because i18n.js is shared and the missing key would have caused a regression once alerts.start populating
+- ✅ **Verification**:
+  - 284/285 tests passing (was 280/281, +3 new from this commit). 1 pre-existing failure (test_old_smoke_news_reach_response, 已 fail 喺 v3.4.47 之後因為 industry news 191→713 破壞咗 smoke-prefix 排序假設, 唔關今次 change 事)
+  - node --check i18n.js + extracted index.html/alerts.html scripts all OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 5 modified files (4 in commit A + 1 in commit B; i18n.js touched twice)
+  - / 200 OK + /alerts 200 OK (雖然 price_alerts table 係空, 將來 POST 第一個 alert 就會 render 新行)
+  - /api/tickers 10/10 populated; simulated `formatDate('2026-06-04 16:40:36')` returns `'2026/06/04'` (zh) / `'06/04/2026'` (en)
+- ✅ **Two commits** (surgical separation per skill):
+  - `c5b6875` [P3] feat: surface tracking_since on stock cards (4 files, +105)
+  - `652d910` [P3] feat: surface created_at on alert cards (1 file, +8)
+- ✅ Touch: templates/index.html (+5), templates/alerts.html (+8), static/css/components.css (+12), static/js/i18n.js (+3 keys across 2 commits — tracking_since zh+en + alerts.created_at en), tests/test_tickers_added_at.py (new file, +90). Template-only → no restart needed, server 仲係 200 OK
 
 **v3.4.58 (2026-09-01) — Portfolio holdings table breakdown timestamp (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/portfolio/breakdown` returns 7 top-level keys including `timestamp` (ISO datetime when the breakdown was computed: `2026-08-31T16:28:10.067513Z`). Dashboard portfolio card's holdings table meta line (`"{n} 個持倉 · 總市值 {total}"`) never read this field — 用戶完全唔知 current prices 可能 stale 幾分鐘 (multi_source fallback chain 經 Yahoo/Stooq/CoinGecko 可以好慢)
