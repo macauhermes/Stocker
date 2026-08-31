@@ -139,6 +139,8 @@
         <button type="button" id="tickers-export-btn" class="stocks-toolbar-btn"
                 data-i18n="index.export_holdings_csv" data-i18n-title="index.export_holdings_title"
                 title="匯出所有持倉到 CSV">📤 匯出持倉 CSV</button>
+        <span id="refresh-badge" class="refresh-badge" data-i18n-title="index.refresh_badge_title"
+              title="市場狀態 / NY 時間" style="display:none;"></span>
         <span id="tickers-export-toast" class="stocks-toolbar-toast" style="display:none;"></span>
     </div>
     <!-- Stock list filters (v3.4.14) — sector pills + sort dropdown + holdings-only toggle.
@@ -1510,15 +1512,40 @@
             const r = await fetch('/api/refresh-interval');
             const d = await r.json();
             pollInterval = d.interval || 60;
-            // Update visible badge if present (v3.4.33 — wired to i18n keys)
+            // Update visible badge if present (v3.4.33 — wired to i18n keys,
+            // v3.4.62 — surface et_time orphan field, show badge by default)
             const badge = document.getElementById('refresh-badge');
             if (badge) {
                 const reasonKey = 'index.refresh_reason_' + d.reason;
                 const reasonLabel = t(reasonKey);
-                badge.textContent = `${reasonLabel !== reasonKey ? reasonLabel : d.reason} • ${pollInterval}s`;
+                const reasonText = reasonLabel !== reasonKey ? reasonLabel : d.reason;
+                const etTime = d.et_time || '';
+                const etPrefix = etTime ? `${etTime} · ` : '';
+                badge.textContent = `${etPrefix}${reasonText} • ${pollInterval}s`;
                 badge.dataset.reason = d.reason;
+                badge.dataset.etTime = etTime;
+                badge.dataset.reasonText = reasonText;
+                badge.style.display = 'inline-flex';
             }
         } catch (e) { console.debug('refresh interval fetch failed', e); }
+    }
+
+    // v3.4.62 — re-apply langchange translations for refresh badge.
+    // The badge holds the live reason/et_time in data-* attrs; on langchange
+    // we rebuild textContent from those + fresh t() lookups so the user
+    // sees the badge in their current language without waiting 5min for
+    // the next /api/refresh-interval poll.
+    function rerenderRefreshBadge() {
+        const badge = document.getElementById('refresh-badge');
+        if (!badge || badge.style.display === 'none') return;
+        const reasonKey = 'index.refresh_reason_' + (badge.dataset.reason || '');
+        const reasonLabel = t(reasonKey);
+        const reasonText = reasonLabel !== reasonKey ? reasonLabel : (badge.dataset.reasonText || '');
+        const etTime = badge.dataset.etTime || '';
+        const etPrefix = etTime ? `${etTime} · ` : '';
+        const secs = badge.textContent.match(/•\s*(\d+)s/);
+        const interval = secs ? secs[1] : pollInterval;
+        badge.textContent = `${etPrefix}${reasonText} • ${interval}s`;
     }
 
     // ── SSE client for live price updates ───────────────────────
@@ -1694,6 +1721,9 @@
         loadPortfolioSnapshotsLog();
         // Re-render groups dashboard so the ticker count "{n} 股"/"{n} stocks" re-translates
         loadGroupsDashboard();
+        // v3.4.62 — refresh the market-status badge so et_time + reason
+        // re-translate to the user's new language immediately
+        rerenderRefreshBadge();
     });
 </script>
 {% endblock %}

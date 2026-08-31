@@ -85,6 +85,7 @@ const I18N = {
     'index.refresh_reason_us_extended_hours': '盤後',
     'index.refresh_reason_us_off_hours': '收盤',
     'index.refresh_reason_weekend': '週末',
+    'index.refresh_badge_title': '市場狀態 / NY 時間',
     'index.preview_loading': '載入中…',
 
     // Stock table
@@ -679,6 +680,7 @@ const I18N = {
     'index.refresh_reason_us_extended_hours': 'Extended hours',
     'index.refresh_reason_us_off_hours': 'Off hours',
     'index.refresh_reason_weekend': 'Weekend',
+    'index.refresh_badge_title': 'Market status / NY time',
     'index.preview_loading': 'Loading…',
 
     // Stock table
