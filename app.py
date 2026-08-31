@@ -867,6 +867,33 @@ def api_refresh_stock(symbol):
 
 # ── API: Reports ───────────────────────────────────────────────────────
 
+def _derive_ticker_symbol(file_path: str) -> 'Optional[str]':
+    """Extract ticker symbol from report file_path basename prefix.
+
+    Filenames look like "TSLA_10-Q_2026-05-01.htm" or
+    "Technology_industry_Xanadu_Charts_Path..." (sector news has no ticker).
+    Returns UPPERCASE 1-5 alpha-char symbol, or None if basename doesn't
+    encode a ticker (sector industry news, malformed, etc.).
+
+    Mirrors the recipe in services/metrics.py:734 — keep the two in sync.
+    """
+    if not file_path:
+        return None
+    fname = file_path.split('/')[-1] if '/' in file_path else file_path.split('\\')[-1]
+    sym = fname.split('_')[0].split('.')[0].upper()
+    if sym.isalpha() and 1 <= len(sym) <= 5:
+        return sym
+    return None
+
+
+def _attach_ticker_symbol(report: dict) -> dict:
+    """Add `ticker_symbol` field to a report dict (if derivable from file_path)."""
+    sym = _derive_ticker_symbol(report.get('file_path', '') or '')
+    if sym:
+        report['ticker_symbol'] = sym
+    return report
+
+
 @app.route('/api/reports', methods=['GET'])
 def api_get_reports():
     """Get list of reports.
@@ -884,6 +911,9 @@ def api_get_reports():
     - Filters supplied: dict {results, count, filters[, total_count]}
 
     v3.4.3 — adds search/filter capability on top of plain list.
+    v3.4.57 — adds `ticker_symbol` field to each report (derived from file_path),
+              so the dashboard reports tab can display the ticker badge per card
+              without re-parsing file_path client-side.
     """
     # v3.4.46: cap raised 500 → 2000 so dashboard reports tab covers the full
     # DB (1095 reports as of 2026-08-31). The previous cap silently dropped all
@@ -901,8 +931,8 @@ def api_get_reports():
 
     if not has_filters:
         # Plain list — preserves the pre-v3.4.3 response shape (bare array).
-        reports = models.get_reports(limit=limit)
-        return jsonify([dict(r) for r in reports])
+        reports = [_attach_ticker_symbol(dict(r)) for r in models.get_reports(limit=limit)]
+        return jsonify(reports)
 
     # Filtered search — new object response shape with metadata.
     reports = models.search_reports(
@@ -910,7 +940,7 @@ def api_get_reports():
     )
 
     payload = {
-        'results': [dict(r) for r in reports],
+        'results': [_attach_ticker_symbol(dict(r)) for r in reports],
         'count': len(reports),
         'filters': {
             'q': q,
@@ -941,7 +971,7 @@ def api_get_report(report_id):
     report = models.get_report(report_id)
     if not report:
         return jsonify({'error': 'Report not found'}), 404
-    return jsonify(dict(report))
+    return jsonify(_attach_ticker_symbol(dict(report)))
 
 
 @app.route('/api/reports/collect', methods=['POST'])

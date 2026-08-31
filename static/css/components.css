@@ -801,6 +801,33 @@
   color: var(--text-muted);
 }
 
+/* v3.4.57: ticker badge on report cards (Pattern 9b orphan field).
+   Renders the ticker symbol derived from file_path basename prefix.
+   Only shows on ticker-attached reports (earnings / analyst_report /
+   investment_bank_report / sec_filing); sector industry news omits it. */
+.report-ticker-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 4px 10px;
+  background: rgba(73, 79, 223, 0.12);
+  color: var(--blue);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 6px;
+  border: 1px solid rgba(73, 79, 223, 0.25);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.report-ticker-badge:hover {
+  background: rgba(73, 79, 223, 0.22);
+  border-color: var(--blue);
+}
+
 .report-source {
   display: flex;
   align-items: center;

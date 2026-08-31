@@ -1234,7 +1234,17 @@
                 iconBg = 'rgba(255, 145, 0, 0.15)';
                 iconColor = 'var(--orange)';
             }
-            
+
+            // v3.4.57: ticker badge — surfaces ticker_symbol derived from
+            // file_path basename prefix (Pattern 9b orphan field). Industry
+            // sector news has no ticker — r.ticker_symbol is undefined and
+            // the badge is omitted so the user sees only "sector news" cards.
+            const tickerBadge = r.ticker_symbol ? `
+                <span class="report-ticker-badge" data-i18n-title="report.ticker_badge" title="${t('report.ticker_badge', { symbol: r.ticker_symbol })}">
+                    ${r.ticker_symbol}
+                </span>
+            ` : '';
+
             const card = document.createElement('a');
             card.href = '/report/' + r.id;
             card.className = 'report-card';
@@ -1247,6 +1257,7 @@
                         <div class="report-title">${r.title || t('common.untitled')}</div>
                         <div class="report-summary">${summary}</div>
                     </div>
+                    ${tickerBadge}
                 </div>
                 <div class="report-meta">
                     <span class="report-source">

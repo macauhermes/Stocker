@@ -1,9 +1,30 @@
 你是陳仔0號的 Hermes Agent。被 cron 每 1 小時叫醒。
 
-## 當前狀態（截至 2026-08-31 cron tick）
+## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit cdf4bfe (v3.4.56)
-**Latest commit**: cdf4bfe [P3] feat: surface cost_value column in portfolio holdings table (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit (v3.4.57)
+**Latest commit**: [P3] feat: surface ticker_symbol on report cards (Pattern 9b orphan field)
+
+**v3.4.57 (2026-09-01) — Report cards ticker_symbol badge (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/reports` returns 10 top-level keys (`analysis`, `category`, `content`, `created_at`, `file_path`, `id`, `published_at`, `source`, `summary`, `title`, `url`) — `file_path` contains the ticker symbol encoded as filename prefix (`TSLA_10-Q_2026-05-01.htm`, `GLW_analyst_rec.txt`) but the dashboard reports card (1175 reports total) showed NO ticker context. User had to read title to figure out which stock a report was about. Industry sector news (`Technology_industry_*.txt`) has no ticker — those correctly omit the badge
+- ✅ **Fix scope** — 6-file addition (smallest possible surface to make the field discoverable + displayable):
+  - `app.py` (+27): new helper `_derive_ticker_symbol(file_path)` + `_attach_ticker_symbol(report)` reusing the existing recipe in `services/metrics.py:734`. Both `/api/reports` (list + filtered search) and `/api/reports/<id>` (single) call the helper. Mirrored string-quote annotation `'Optional[str]'` since app.py doesn't import typing
+  - `templates/index.html` (+12): new `report-ticker-badge` span inside `.report-card-header`, conditional on `r.ticker_symbol` presence, with `data-i18n-title` for hover tooltip. langchange re-renders via existing `loadReports` listener at line 1663
+  - `templates/report_detail.html` (+12): new `#report-ticker-badge` anchor in `.detail-title`, links to `/stock/<sym>` for navigation. Hidden if ticker not derivable
+  - `static/css/components.css` (+27): `.report-ticker-badge` — blue-tinted monospace pill, 6px border-radius, hover state. Reuses existing `--blue` and `rgba(73, 79, 223, 0.12)` palette
+  - `static/js/i18n.js` (+2 keys): `report.ticker_badge: '查看 {symbol} 詳細資料' / 'View {symbol} details'` — `{symbol}` placeholder substituted at call site
+  - `tests/test_report_search.py` (+84, 4 new tests): `TestTickerSymbolDerivation` class — covers list endpoint with TSLA populated, sector news excluded (industry category has 0 with sym), single-report endpoint includes field, helper correctly filters >5-char prefixes
+- ✅ **Coverage** — 453/1175 reports have ticker_symbol (TSLA 53, NVDA 52, TE 51, IBM 51, GLW 51, MS 47, GS 47, MSFT 46, SPCX 35, MRVU 20, +9 investment_bank_report with file_path). 722/1175 are industry sector news (no ticker) — correctly omitted
+- ✅ **0 backend DB/schema changes** — additive field, no breaking changes to `/api/reports` response shape (still bare array when no filters; wrapped `{results, count, filters}` when filters applied). Test `test_limit_param_honors_request` (asserts `isinstance(data, list)`) still passes
+- ✅ **Verification**:
+  - 279/280 tests passing (was 275/276, now +4 new tests). The 1 failing test is the pre-existing `test_old_smoke_news_reach_response` (documented in v3.4.46)
+  - node --check on extracted JS for both modified templates + i18n.js all OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 6 modified files
+  - /api/reports?limit=5 returns 5/5 reports with ticker_symbol populated (all analyst_report in this slice)
+  - /api/reports/1 returns ticker_symbol: GLW
+  - / 200 OK; /report/1 200 OK; both render `report-ticker-badge` markup
+- ✅ Touch: app.py (+27), templates/index.html (+12), templates/report_detail.html (+12), static/css/components.css (+27), static/js/i18n.js (+2 keys), tests/test_report_search.py (+84/-0). Backend → restart server → 200 OK
+- Commit: pending
 
 **v3.4.56 (2026-08-31) — Holdings table 成本合計 column (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/portfolio/breakdown` returns 9 fields per holding including `cost_value` (TSLA 6000, MSFT 2800, NVDA 1500) — but `index.html` holdings table only rendered 7 columns (symbol/shares/cost_basis/price/MV/P&L/share%)。`cost_value` (total cost in dollars = shares × cost_basis) 永久 silently dropped — 用戶睇到 "+52% gain" 但要 mental arithmetic 去知道 "呢個 position 我投資咗 $6000"

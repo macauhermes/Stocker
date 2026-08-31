@@ -210,6 +210,7 @@ const I18N = {
     'report.rating.3m': '3個月前',
     'report.rating.4m': '4個月前',
     'report.rating.5m': '5個月前',
+    'report.ticker_badge': '查看 {symbol} 詳細資料',            // v3.4.57 — Pattern 9b orphan field (ticker_symbol)
 
     // Industry
     'industry.title': '行業新聞與報告',
@@ -797,6 +798,7 @@ const I18N = {
     'report.rating.3m': '3 months ago',
     'report.rating.4m': '4 months ago',
     'report.rating.5m': '5 months ago',
+    'report.ticker_badge': 'View {symbol} details',               // v3.4.57 — Pattern 9b orphan field (ticker_symbol)
 
     // Industry
     'industry.title': 'Industry News & Reports',
