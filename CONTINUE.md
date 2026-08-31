@@ -3,7 +3,20 @@
 ## 當前狀態（截至 2026-08-31 cron tick）
 
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit d04125e (v3.4.47)
-**Latest commit**: 4df93b8 [P3] feat: surface next_earnings field in stock detail stats grid
+**Latest commit**: <next> [P3] feat: surface summary field in report detail header
+
+**v3.4.49 (2026-08-31) — Report detail summary preview header (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/reports/<id>` 返 11 個 top-level keys (`analysis`, `category`, `content`, `created_at`, `file_path`, `id`, `published_at`, `source`, `summary`, `title`, `url`) — but `templates/report_detail.html` 只 wire 6 個 (title/published_at/source/url/content/analysis)。`summary` 字段 (e.g. "GLW 10-Q 年度/季度財報，提交日期 2026-05-01") 完全冇 surface — 用戶開 `/report/<id>` 只睇到 title + date + source badge，要 scroll 落原文內容先知報告講咩。99% reports 都有 populated summary (v3.4 ai_analyzer.generate_summary 已寫入)
+- ✅ **Fix scope** — pure frontend 10-line addition:
+  - `templates/report_detail.html` (+10): 新加 `<div id="report-summary" style="display:none; ...">` 喺 `<div id="report-date">` 下面；JS handler 讀 `data.summary`，存在就 display block，null/empty 就 keep hidden。textContent (而非 innerHTML) 防 XSS
+  - 0 i18n keys 新增 (key 已存在: `report.summary: '摘要' / 'Summary'`，但呢個 page 用唔到 — summary 係 API field 名，不是 UI label)
+- ✅ **Companion orphans** (not fixed in this tick — 同 endpoint 仲有 4 個 unreferenced fields，可做 future pattern 9b 應用): `category` / `created_at` / `file_path` / `id`
+- ✅ **Verification**:
+  - /report/1 200 OK; `report-summary` div + JS handler 喺 served HTML
+  - node --check on extracted 15514-char script OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits
+  - git diff = templates/report_detail.html (+10/-0). Template-only → no restart needed
+- Commit: <next>
 
 **v3.4.48 (2026-08-31) — Stock detail Next Earnings stat tile (Pattern 1 orphan field)**:
 - ✅ **Bug class**: `/api/stock/<sym>/detail` returns `next_earnings: {date, title}` for 9/10 active tickers (only MRVU has none) — but `templates/stock_detail.html` stats grid only rendered 5 financial tiles (market_cap / pe_ratio / eps / high_52w / low_52w). The `next_earnings` field was silently dropped — every stock_detail page rendered `—` for what is actually a populated API field

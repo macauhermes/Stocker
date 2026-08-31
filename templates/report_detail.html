@@ -12,6 +12,7 @@
         <div class="detail-title">
             <div id="report-title" style="font-size:1.2rem; font-weight:600;" data-i18n="common.loading">載入中...</div>
             <div id="report-date" style="font-size:0.85rem; color:var(--text-muted);"></div>
+            <div id="report-summary" style="display:none; font-size:0.85rem; color:var(--text-secondary); margin-top:4px; line-height:1.4;"></div>
         </div>
         <div id="report-source-badge" style="display:none;"></div>
     </div>
@@ -68,6 +69,15 @@
             document.getElementById('report-title').textContent = data.title || 'Untitled';
             if (data.published_at) {
                 document.getElementById('report-date').textContent = formatDate(data.published_at);
+            }
+
+            // Summary preview — AI-generated one-liner shown above the original content card
+            const summaryEl = document.getElementById('report-summary');
+            if (data.summary && data.summary.trim()) {
+                summaryEl.textContent = data.summary;
+                summaryEl.style.display = 'block';
+            } else {
+                summaryEl.style.display = 'none';
             }
 
             // Source badge
