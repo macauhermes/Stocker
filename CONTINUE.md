@@ -2,8 +2,24 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5c5d2d6 (v3.4.67)
-**Latest commit**: [P3] feat: position summary on stock detail (Pattern 9b orphan-field surfacing)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 95dff97 (v3.4.68)
+**Latest commit**: [P3] feat: surface total_cost on dashboard portfolio card (Pattern 9b orphan field)
+
+**v3.4.68 (2026-09-01 cron tick) — Dashboard portfolio card total_cost tile (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/portfolio/summary` 返 `latest.total_cost = 10300.0` (「錢投入咗幾多」baseline) — but `portfolio-summary-card` 嘅 4-tile layout 只 bind 4 個 field (total_value / total_pnl / change_30d / holdings_count)。User 見到 "+57% P&L" 但完全冇 baseline context — 唔知自己原來投資咗 $10,300 而家值 $16,200。total_cost 由 v3.4.2 portfolio_snapshots ships 起永久 silently dropped between API 同 DOM
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (172 insertions):
+  - `templates/index.html` (+11): 新加 5th `<div class="portfolio-stat">` tile 喺 total_value 同 unrealized 之間, `data-i18n="portfolio.total_cost"` (i18n key 早已存在)。JS handler 讀 `v.total_cost` via `formatCurrency()`, defensive `v.total_cost != null` guard 確保 0-invested portfolio render `—` 而唔係 `$0.00`
+  - `static/css/components.css` (+7/-1): `.portfolio-summary-row` 從 4-col 擴展去 5-col, 新加 `@media (max-width: 960px)` 3-col tablet breakpoint, 保留原有 720px 2-col mobile fallback
+  - `tests/test_total_cost_surfacing.py` (new file, 7 tests): `TestTotalCostAPI` (1: summary endpoint 返 non-empty total_cost) + `TestTotalCostMarkup` (3: portfolio-cost tile + data-i18n binding + JS handler + 5 tiles in row) + `TestTotalCostCSS` (1: grid is 5-col) + `TestTotalCostI18n` (2: portfolio.total_cost exists in BOTH zh + en — Pattern 5d sub-class v3.4.61 bilingual coverage guard)
+- ✅ **0 backend / DB / schema changes** — endpoint already 返 total_cost (latest.total_cost=10300.0 curl 確認)
+- ✅ **Verification**:
+  - 318/318 tests passing (was 311, +7 new from this commit). 1 pre-existing failure `test_old_smoke_news_reach_response` (documented v3.4.46, 唔關今次 change 事)
+  - node --check OK 跨 extracted index.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+  - / 200 OK; served HTML 含 `id="portfolio-cost"` + `data-i18n="portfolio.total_cost"`
+  - /api/portfolio/summary 返 `total_cost=10300.0` (live endpoint check, populated 1/1 active snapshot)
+- ✅ Touch: templates/index.html (+11), static/css/components.css (+8/-1), tests/test_total_cost_surfacing.py (new +194). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 95dff97
 
 **v3.4.67 (2026-09-01) — Stock detail position summary (Pattern 9b orphan-field surfacing)**:
 - ✅ **Bug class**: `/api/portfolio/breakdown` returns 4 user-facing per-holding fields `market_value / cost_value / unrealized_pl / unrealized_pl_pct` — but `/stock/<sym>` 嘅 holdings form (shares + cost_basis inputs + save button) 完全冇任何 position feedback。Save 之後用戶要 bounce 去 dashboard 先睇到 MV / P&L。即時 portfolio feedback silently dropped from holding-edit flow
