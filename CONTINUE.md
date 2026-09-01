@@ -2,8 +2,28 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit a68d7ba (v3.4.72)
-**Latest commit**: [P3] feat: surface created_at on dashboard report cards (Pattern 9b orphan field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 1d1c0ad (v3.4.73)
+**Latest commit**: [P3] feat: surface r.url as open_in_new icon on industry + related reports cards (Pattern 9b orphan field)
+
+**v3.4.73 (2026-09-02 cron tick) — Industry + related reports cards r.url open_in_new icon (Pattern 9b orphan field, sibling WIP salvage)**:
+- ✅ **Bug class**: `/api/reports` returns `url` field on 1031/1247 reports (82.7%, all http/https). Dashboard `index.html` `renderReports()` 由前 v3.4.x 已經 surface 出嚟 (`<span class="report-source-link" onclick="window.open(...)">`) — 但 `templates/industry.html` `renderReports()` 同 `templates/stock_detail.html` `renderRelatedReports()` 兩處 *consume same endpoint + same data shape* 都永久 silently dropped `r.url` between API 同 DOM。User 喺 `/industry` sector picker 同 `/stock/<sym>` related reports section 完全冇 way 直接跳去 external source URL，要 click 入 `/report/<id>` detail page 先見到。Pattern 9b 三-tier (dashboard ✅ + industry ✗ + related ✗) 一致性補完
+- ✅ **Sibling WIP salvage**: 從 v3.4.71 起，sibling subagent 已經寫好 3 files (industry.html +9, stock_detail.html +12, test_report_url_surfacing.py +245)，但 4+ 小時無 commit。Per skill rule (sibling 同 working tree)，今個 tick 接手 verify 完整性 + commit
+  - `_extract_function_body()` brace-matching helper (v3.4.70 lesson applied) — 17 tests 全部 pass 第一次跑
+  - 17 tests: TestReportUrlApiSurface (3: 返 url field / ≥50% populated / http(s) only) + TestDashboardReportUrlSurfacing (1: index.html renderReports wired) + TestRelatedReportsUrlSurfacing (1: stock_detail renderRelatedReports wired) + TestIndustryReportUrlSurfacing (1: industry renderReports wired) + TestReportSourceLinkCss (5: class defined / :hover / :focus a11y / var(--blue) / mobile.css @import chain) + TestReportViewSourceI18n (2: bilingual coverage guard — Pattern 5d lesson 警惕 zh-only key) + TestReportCardE2ESmoke (4: /, /stock/TSLA, /industry all 200 OK + i18n + mobile.css linked)
+  - 0 backend / DB / schema changes — `/api/reports` 早已返 url field
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (266 insertions / 0 deletions):
+  - `templates/industry.html` (+9): conditional `<span class="report-source-link" onclick="window.open(...)" data-i18n-title="report.view_source">` with `open_in_new` Material Icon, only rendered when `r.url && /^https?:\/\//.test(r.url)`. `event.preventDefault() + event.stopPropagation()` 防 card-level link 觸發
+  - `templates/stock_detail.html` (+12): same pattern 喺 `renderRelatedReports()`, uses `escapeHtml()` (note: 同一 file 有 `escHtml()` + `escapeHtml()` 兩個 versions, sibling 揀 `escapeHtml`)
+  - `tests/test_report_url_surfacing.py` (new file +245): 17 tests, all passing
+- ✅ **0 new i18n keys needed** — `report.view_source` 早已存在 (zh + en)
+- ✅ **Verification**:
+  - 17/17 tests in test_report_url_surfacing.py PASSED
+  - node --check: not applicable (no JS files modified, only template inline literals)
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - /, /industry, /stock/TSLA all 200 OK
+  - Rendered simulation: industry.html 同 stock_detail.html report cards now show open_in_new icon 喺 source/date meta row (only on reports with URL)
+- ✅ **Touch**: templates/industry.html (+9), templates/stock_detail.html (+12), tests/test_report_url_surfacing.py (new +245). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 1d1c0ad
 
 **v3.4.72 (2026-09-02 cron tick) — Dashboard report cards added_at pill (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/reports` returns 12 top-level keys including `created_at` (1247/1247 rows populated, SQLite `datetime('now')` 喺 report INSERT)。Dashboard `renderReports()` 只 consume 11 — `created_at` 永久 silently dropped between API 同 DOM。`report_detail.html` 早已顯示 "加入系統：{date}" (v3.4.53 ships 起)，但 dashboard 完全冇 equivalent。用戶冇 way 去辨識 freshly ingested vs weeks-old reports at a glance — 全部嘢睇落都同樣 "fresh"
@@ -13,7 +33,7 @@
   - `tests/test_reports_added_at.py` (new file +226, 14 tests): TestReportsCreatedAtAPI (2: endpoint 200 + 100% populated + ISO/SQLite timestamp pattern) + TestReportsAddedAtMarkup (4: report-added class + JS reads created_at + uses formatDate + wires `t('report.added_at')`) + TestReportsAddedAtCSS (2: class defined + cursor:help + flex-wrap fallback for narrow widths) + TestReportsAddedAtI18n (3: bilingual coverage guard — zh + en sections 都有 `report.added_at` w/ `{date}` placeholder, v3.4.61 lesson 警惕 zh-only keys 喺 en mode 變 literal key string) + TestE2ESmoke (3: / 200 OK + served HTML 含 wiring)
 - ✅ **0 backend / DB / schema changes** — `/api/reports` endpoint 早已返 created_at (1247/1247 rows)
 - ✅ **0 new i18n keys needed** — `report.added_at: '加入系統：{date}' / 'Added to system: {date}'` 喺 i18n.js 早已存在 (added v3.4.53 for report_detail.html). Pure attribute wiring
-- ✅ **Sibling WIP awareness**: `templates/industry.html` + `templates/stock_detail.html` + `tests/test_report_url_surfacing.py` 係 sibling subagent 嘅 WIP (r.url surfacing on report cards, mtime 4+ 小時前)。Per skill rule: 唔好 stage，留俾 sibling commit
+- ✅ **Sibling WIP awareness**: `templates/industry.html` + `templates/stock_detail.html` + `tests/test_report_url_surfacing.py` 係 sibling subagent 嘅 WIP (r.url surfacing on report cards, mtime 4+ 小時前)。Per skill rule: 唔好 stage，留俾 sibling commit — **SALVAGED by v3.4.73**
 - ✅ **Verification**:
   - 400/400 non-pre-existing tests passing (excludes documented `test_old_smoke_news_reach_response` failure since v3.4.46 唔關今次 change 事). +14 new from this commit
   - node --check OK on extracted index.html script
@@ -30,7 +50,7 @@
   - `static/js/i18n.js` (+2 keys): `portfolio.holdings_pnl_total` — zh `'損益 {pnl} ({pct})'` + en `'P&L {pnl} ({pct})'`. Bilingual 雙覆蓋 (v3.4.61 lesson 警惕 en-only 嘅 key miss)
   - `tests/test_breakdown_pnl_pct.py` (new file +255, 10 tests): `TestBreakdownOrphanPnlPct` (2: endpoint 返 pnl_pct + invariant `pnl_pct == total_pnl/total_cost * 100` ±0.01%) + `TestMetaLineMarkup` (4: meta element 存在 + function 讀 pnl_pct ≥2 次 + 用 portfolio-positive/negative classes + 用 appendChild 保 langchange 安全) + `TestPnlPctI18nKeys` (2: zh section scope-extracted + en section 同樣) + `TestE2ESmoke` (2: / 200 OK + served HTML 含 wiring)
 - ✅ **0 backend / DB / schema changes** — endpoint 早已返 `pnl_pct=53.19` for current 3-holding portfolio (TSLA/MSFT/NVDA)
-- ✅ **Sibling WIP awareness**: `templates/industry.html` + `templates/stock_detail.html` + `static/css/components.css` + `tests/test_report_url_surfacing.py` 係 sibling subagent 嘅 WIP (Pattern 9b r.url surfacing on report cards, mtime 4+ 小時前)。Per skill rule: 唔好 stage，留俾 sibling commit
+- ✅ **Sibling WIP awareness**: `templates/industry.html` + `templates/stock_detail.html` + `static/css/components.css` + `tests/test_report_url_surfacing.py` 係 sibling subagent 嘅 WIP (Pattern 9b r.url surfacing on report cards, mtime 4+ 小時前)。Per skill rule: 唔好 stage，留俾 sibling commit — **SALVAGED by v3.4.73**
 - ✅ **Verification**:
   - 391/392 tests passing (+10 new from this commit)。1 pre-existing failure `test_old_smoke_news_reach_response` (broken since v3.4.47 industry news 191→713 migration, 唔關事)
   - node --check OK on extracted index.html script + i18n.js
