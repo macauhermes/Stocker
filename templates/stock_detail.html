@@ -86,6 +86,9 @@
             <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
                 <input type="checkbox" data-indicator="macd" onchange="toggleMacdSubchart()"> MACD
             </label>
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                <input type="checkbox" data-indicator="volume" onchange="toggleVolumeSubchart()"> <span data-i18n="detail.volume_label">成交量</span>
+            </label>
         </div>
         
         <div style="position:relative; height:250px;">
@@ -116,6 +119,15 @@
                 </span>
             </div>
             <canvas id="rsi-chart"></canvas>
+        </div>
+
+        <!-- Volume sub-chart (hidden by default; toggle with checkbox above) — v3.4.70 -->
+        <div id="volume-chart-wrapper" class="indicator-chart-wrapper" style="display:none; position:relative; height:100px; margin-top:8px;">
+            <div class="indicator-chart-label">
+                <span class="material-icons-outlined" style="font-size:14px;">bar_chart</span>
+                <span data-i18n="detail.volume_label">成交量</span>
+            </div>
+            <canvas id="volume-chart"></canvas>
         </div>
     </div>
 
@@ -281,6 +293,7 @@
     let compareSymbol = null;   // symbol of the comparison stock
     let macdChart = null;       // MACD sub-chart instance
     let rsiChart = null;        // RSI sub-chart instance
+    let volumeChart = null;     // Volume sub-chart instance (v3.4.70)
 
     // ── Indicator sub-chart toggles (MACD + RSI) ──
     function toggleMacdSubchart() {
@@ -451,6 +464,90 @@
                             color: (ctx) => [30, 70].includes(ctx.tick.value) ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)',
                             lineWidth: (ctx) => [30, 70].includes(ctx.tick.value) ? 1 : 0.5
                         }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Volume sub-chart toggle + render (v3.4.70 Pattern 9b orphan field) ──
+    // Reads prices_full.volume (65 points fully populated) + prices_full.open/close for color
+    function toggleVolumeSubchart() {
+        const wrapper = document.getElementById('volume-chart-wrapper');
+        const cb = document.querySelector('[data-indicator="volume"]');
+        if (!wrapper || !cb) return;
+        wrapper.style.display = cb.checked ? 'block' : 'none';
+        if (cb.checked && chartData) {
+            renderVolumeChart(chartData);
+        } else if (!cb.checked && volumeChart) {
+            volumeChart.destroy();
+            volumeChart = null;
+        }
+    }
+
+    function renderVolumeChart(data) {
+        const canvas = document.getElementById('volume-chart');
+        if (!canvas) return;
+        const labels = getVisibleSlice(data.dates || []);
+        const vol = getVisibleSlice((data.prices_full && data.prices_full.volume) || []);
+        const openArr = getVisibleSlice((data.prices_full && data.prices_full.open) || []);
+        const closeArr = getVisibleSlice((data.prices_full && data.prices_full.close) || []);
+
+        if (vol.length === 0) return;
+
+        if (volumeChart) volumeChart.destroy();
+        const ctx = canvas.getContext('2d');
+        // Color bars by direction: green if close >= open (bullish), red otherwise
+        const colors = vol.map((_, i) => {
+            const o = openArr[i], c = closeArr[i];
+            if (o == null || c == null) return 'rgba(120,120,140,0.5)';
+            return c >= o ? 'rgba(0,200,83,0.65)' : 'rgba(255,23,68,0.65)';
+        });
+        volumeChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Volume',
+                    data: vol,
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    barPercentage: 0.85,
+                    categoryPercentage: 0.95
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e1e26',
+                        titleColor: '#fff',
+                        bodyColor: '#ccc',
+                        borderColor: '#2a2a35',
+                        borderWidth: 1,
+                        titleFont: { family: 'JetBrains Mono', size: 10 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 },
+                        callbacks: {
+                            label: (ctx) => 'Vol: ' + formatVolume(ctx.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#666', maxTicksLimit: 6, font: { family: 'Inter', size: 9 } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        position: 'right',
+                        ticks: {
+                            color: '#666',
+                            font: { family: 'JetBrains Mono', size: 9 },
+                            callback: (v) => formatVolume(v)
+                        },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
                     }
                 }
             }
@@ -936,6 +1033,8 @@
         if (macdCb && macdCb.checked) renderMacdChart(data);
         const rsiCb = document.querySelector('[data-indicator="rsi"]');
         if (rsiCb && rsiCb.checked) renderRsiChart(data);
+        const volumeCb = document.querySelector('[data-indicator="volume"]');
+        if (volumeCb && volumeCb.checked) renderVolumeChart(data);
 
         // ── Native crosshair + wheel-zoom + drag-to-pan (lightweight replacement) ──
         // Attach listeners only once per canvas to avoid duplication on zoom re-render

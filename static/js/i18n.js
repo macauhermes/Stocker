@@ -146,6 +146,7 @@ const I18N = {
     'detail.next_earnings': '下次財報',
     'detail.macd_label': 'MACD 指標',
     'detail.rsi_label': 'RSI 指標',
+    'detail.volume_label': '成交量',
     'detail.rsi_overbought': '超買 ≥70',
     'detail.rsi_oversold': '超賣 ≤30',
     'detail.news': '最近新聞',
@@ -755,6 +756,7 @@ const I18N = {
     'detail.next_earnings': 'Next Earnings',
     'detail.macd_label': 'MACD',
     'detail.rsi_label': 'RSI',
+    'detail.volume_label': 'Volume',
     'detail.rsi_overbought': 'Overbought ≥70',
     'detail.rsi_oversold': 'Oversold ≤30',
     'detail.news': 'Recent News',
@@ -1308,6 +1310,22 @@ function formatMarketCap(n) {
   if (n >= 1e6)  return '$' + (n / 1e6).toFixed(2) + 'M';
   if (n >= 1e3)  return '$' + (n / 1e3).toFixed(2) + 'K';
   return '$' + n.toFixed(2);
+}
+
+/**
+ * Compact volume formatter (v3.4.70 Pattern 9b).
+ * 44_937_900 → '44.94M',  115_606_400 → '115.6M',  18_840_852 → '18.84M'.
+ * Used by stock_detail volume sub-chart y-axis + tooltip.
+ * Locale-neutral because share counts are conventionally unitless numbers.
+ */
+function formatVolume(n) {
+  if (n == null || isNaN(Number(n))) return '—';
+  n = Number(n);
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3)  return (n / 1e3).toFixed(2) + 'K';
+  return n.toFixed(0);
 }
 
 /**
