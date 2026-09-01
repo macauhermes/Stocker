@@ -2,8 +2,27 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 09fa819 (v3.4.66)
-**Latest commit**: [P3] feat: surface dismissed_at on events upcoming list (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5c5d2d6 (v3.4.67)
+**Latest commit**: [P3] feat: position summary on stock detail (Pattern 9b orphan-field surfacing)
+
+**v3.4.67 (2026-09-01) — Stock detail position summary (Pattern 9b orphan-field surfacing)**:
+- ✅ **Bug class**: `/api/portfolio/breakdown` returns 4 user-facing per-holding fields `market_value / cost_value / unrealized_pl / unrealized_pl_pct` — but `/stock/<sym>` 嘅 holdings form (shares + cost_basis inputs + save button) 完全冇任何 position feedback。Save 之後用戶要 bounce 去 dashboard 先睇到 MV / P&L。即時 portfolio feedback silently dropped from holding-edit flow
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (315 insertions / 0 deletions, all WIP):
+  - `templates/stock_detail.html` (+70): 新加 `.holdings-summary` block 喺現有 holdings form 下面, grid 3-col (Market Value / Cost Total / Unrealized P&L, 480px 以下 collapse 1-col). `shares_held === 0` 時 `display:none` 隱藏。`saveHoldings()` success 路徑加 `loadHoldingsSummary()` call — 用戶 save 之後即時睇到新 MV/P&L 唔需要 page bounce。`portfolio-positive` / `portfolio-negative` class 從 dashboard portfolio card reuse 配色一致
+  - `static/js/i18n.js` (+10 keys, 5 zh + 5 en): `detail.holdings_summary` / `detail.holdings_market_value` / `detail.holdings_cost_total` / `detail.holdings_unrealized_pl` / `detail.holdings_no_position`. Bilingual 雙覆蓋 (v3.4.61 lesson 警惕 en-only 嘅 key miss 唔再 ship)
+  - `static/css/components.css` (+63): `.holdings-summary` / `.holdings-summary-grid` / `.holdings-summary-title` / `.holdings-summary-item` / `.holdings-summary-label` / `.holdings-summary-value` (reuses .portfolio-positive / .portfolio-negative for P&L coloring), `@media (max-width: 480px)` collapse 3-col → 1-col
+  - `tests/test_holdings_summary.py` (new file +171, 12 tests): `TestBreakdownFields` (4: 200 / holdings array / required 4 fields / market_value populated) + `TestTemplateMarkup` (5: 3 hs-* IDs + 4 data-i18n keys + function defined + wired into saveHoldings + wired into loadDetail) + `TestCSS` (2: class defined + mobile responsive) + `TestI18nKeys` (1: bilingual coverage guard 5 zh + 5 en — Pattern 5d sub-class from v3.4.61)
+- ✅ **WIP salvage audit passed**: 5/5 i18n keys exist 雙語, 9/9 CSS classes present in components.css, `/api/portfolio/breakdown` first holding has all 4 fields populated (3/3 active holdings), `formatCurrency()` helper available (added v3.4.45 by stock-week52), JS node --check OK, gremlin (U+FFFD/U+00AD/U+200B/U+FEFF) clean
+- ✅ **Companion key reserved**: `detail.holdings_no_position` wired up but no current code path renders it — kept for future variant that wants text-only fallback when shares=0 instead of display:none
+- ✅ **0 backend / DB / schema changes** — `/api/portfolio/breakdown` endpoint 早已返 4 個 fields
+- ✅ **Verification**:
+  - 311/312 tests passing (12 new from this commit, 1 pre-existing failure `test_sector_truncation.test_old_smoke_news_reach_response` 唔關事 since v3.4.47)
+  - JS node --check OK 跨 extracted stock_detail.html script + i18n.js
+  - Gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files + 1 new test file
+  - /stock/TSLA 200 OK; served HTML 含 `holdings-summary` 13 times (1 wrapper + 3 items + 3 value IDs + title + CSS class + 3 child refs + 2 wire-up)
+  - `/api/portfolio/breakdown` first holding: market_value populated 3/3, cost_value 3/3, unrealized_pl 3/3, unrealized_pl_pct 3/3
+- ✅ Touch: templates/stock_detail.html (+70), static/js/i18n.js (+10 keys), static/css/components.css (+63), tests/test_holdings_summary.py (new file +171). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 5c5d2d6
 
 **v3.4.66 (2026-09-01) — Events upcoming list dismissed_at timestamp (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/events/upcoming` returns 8 top-level keys 包括 `dismissed_at` (ISO timestamp 標記事件為已知悉嘅時間) — but `templates/events.html renderUpcoming()` 只 consume 7 個。dismissed_at 永久 silently dropped — 用戶見到個 dismissed event tag「已 dismiss」但完全唔知幾時 dismiss 嘅 (係今日 / 1 個月前 / 半年前)
