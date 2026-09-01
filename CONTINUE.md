@@ -5,6 +5,26 @@
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 95dff97 (v3.4.68)
 **Latest commit**: [P3] feat: surface total_cost on dashboard portfolio card (Pattern 9b orphan field)
 
+**v3.4.69 (2026-09-01) — Stock detail MACD + RSI sub-charts (orphan field surfacing)**:
+- ✅ **Bug class**: `/api/stock/<sym>/chart-data` returns 10 series including `macd`, `macd_signal`, `macd_hist`, `rsi` — but `templates/stock_detail.html` only wired 5 (dates, prices, ma5/20/60). 4 indicator series permanently silently dropped。MACD + RSI checkboxes in indicator toolbar 由 v3.3 ships 起存在，但 onchange handlers call `updateChart()` 永遠唔 render 佢哋 — pure dead controls。Pattern 9b 應用 (chart_data 嘅 fields)
+- ✅ **Fix scope** — pure frontend 4-file surgical addition (452 insertions / 2 deletions):
+  - `templates/stock_detail.html` (+224): 2 個 hidden sub-chart wrappers (macd-chart-wrapper + rsi-chart-wrapper, 120px each, display:none by default) 喺主 price chart 下面；新加 `toggleMacdSubchart()` + `toggleRsiSubchart()` functions 控制 wrapper visibility + render/destroy Chart.js instances；新加 `renderMacdChart()` + `renderRsiChart()` functions 讀 `data.macd / data.macd_signal / data.macd_hist / data.rsi`。`renderChart()` 喺 zoom/pan re-render 嗰陣同時 re-render sub-charts 同步 `getVisibleSlice()` window。onchange handlers 由 `updateChart()` 換去 `toggleMacdSubchart()` / `toggleRsiSubchart()`
+  - `static/js/i18n.js` (+8 keys): 4 zh + 4 en (`detail.macd_label`, `detail.rsi_label`, `detail.rsi_overbought`, `detail.rsi_oversold`)
+  - `static/css/components.css` (+22): `.indicator-chart-wrapper` + `.indicator-chart-label` classes, `@media (max-width:480px)` mobile height shrink 100px
+  - `tests/test_indicator_subcharts.py` (new +210, 21 tests): TestChartDataOrphanFields (API returns orphan series + length alignment) + TestSubChartMarkup (wrappers + hidden-by-default + onchange wiring) + TestSubChartJSFunctions (toggle/render defined + consume orphan fields + destroy on toggle off + re-render on zoom) + TestSubChartI18nKeys (bilingual coverage guard — Pattern 5d lesson) + TestSubChartCSS (class + mobile responsive)
+- ✅ **Chart design**:
+  - **MACD**: bar chart with histogram (綠/紅 by sign) + 2 line overlays (MACD 藍, Signal 橘). Legend 喺 top
+  - **RSI**: line chart 0-100 scale with 30/70 overbought/oversold threshold gridlines (highlighted). 紅 fill above 70, 綠 fill below 30. Leading nulls filtered (RSI 要 ~14 periods 先 compute 到)
+- ✅ **0 backend / DB / schema changes** — `/api/stock/<sym>/chart-data` endpoint 早已返 4 個 orphan series
+- ✅ **Verification**:
+  - 339/340 tests passing (was 318/319, +21 new from this commit). 1 pre-existing failure `test_old_smoke_news_reach_response` (documented v3.4.47 唔關今次 change 事)
+  - node --check OK 跨 extracted stock_detail.html script + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+  - /stock/TSLA 200 OK; served HTML 含 `macd-chart-wrapper` + `rsi-chart-wrapper` + 2 toggle onchange handlers + 2 `data-indicator` checkboxes
+  - /api/stock/TSLA/chart-data 返 macd(64), macd_signal(64), macd_hist(64), rsi(64) 全部 aligned with prices(64) — 100% populated
+- ✅ **Touch**: templates/stock_detail.html (+224), static/css/components.css (+22), static/js/i18n.js (+8 keys), tests/test_indicator_subcharts.py (new file +210). Template-only → no restart needed
+- Commit: cf1dcdb
+
 **v3.4.68 (2026-09-01 cron tick) — Dashboard portfolio card total_cost tile (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/portfolio/summary` 返 `latest.total_cost = 10300.0` (「錢投入咗幾多」baseline) — but `portfolio-summary-card` 嘅 4-tile layout 只 bind 4 個 field (total_value / total_pnl / change_30d / holdings_count)。User 見到 "+57% P&L" 但完全冇 baseline context — 唔知自己原來投資咗 $10,300 而家值 $16,200。total_cost 由 v3.4.2 portfolio_snapshots ships 起永久 silently dropped between API 同 DOM
 - ✅ **Fix scope** — pure frontend 3-file surgical addition (172 insertions):
