@@ -388,7 +388,12 @@
                 changeEl.textContent = '—';
                 changeEl.classList.remove('portfolio-positive', 'portfolio-negative');
             }
-            dateEl.textContent = t('portfolio.snapshot_today', { date: v.snapshot_date });
+            // v3.4.75: surface captured_at time-of-day alongside snapshot_date —
+            //   users can see exactly when the snapshot was captured (e.g. 12:02 PM
+            //   nightly vs morning manual capture). Field is populated 10/10 times.
+            const capturedStr = v.captured_at ? formatDateTime(v.captured_at) : '';
+            dateEl.textContent = t('portfolio.snapshot_today', { date: v.snapshot_date })
+                + (capturedStr ? ` · ${capturedStr}` : '');
             card.style.display = 'block';
         } catch (err) {
             console.error('Failed to load portfolio summary:', err);
