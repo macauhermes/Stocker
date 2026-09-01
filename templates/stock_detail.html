@@ -81,10 +81,10 @@
                 <input type="checkbox" data-indicator="ma60" checked onchange="updateChart()"> MA60
             </label>
             <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
-                <input type="checkbox" data-indicator="rsi" onchange="updateChart()"> RSI
+                <input type="checkbox" data-indicator="rsi" onchange="toggleRsiSubchart()"> RSI
             </label>
             <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
-                <input type="checkbox" data-indicator="macd" onchange="updateChart()"> MACD
+                <input type="checkbox" data-indicator="macd" onchange="toggleMacdSubchart()"> MACD
             </label>
         </div>
         
@@ -94,6 +94,28 @@
                 <div class="spinner-sm"></div>
                 <span style="margin-left:8px; color:var(--text-muted);" data-i18n="detail.chart_loading">載入圖表中...</span>
             </div>
+        </div>
+
+        <!-- MACD sub-chart (hidden by default; toggle with checkbox above) -->
+        <div id="macd-chart-wrapper" class="indicator-chart-wrapper" style="display:none; position:relative; height:120px; margin-top:8px;">
+            <div class="indicator-chart-label">
+                <span class="material-icons-outlined" style="font-size:14px;">multiline_chart</span>
+                <span data-i18n="detail.macd_label">MACD</span>
+            </div>
+            <canvas id="macd-chart"></canvas>
+        </div>
+
+        <!-- RSI sub-chart (hidden by default; toggle with checkbox above) -->
+        <div id="rsi-chart-wrapper" class="indicator-chart-wrapper" style="display:none; position:relative; height:120px; margin-top:8px;">
+            <div class="indicator-chart-label">
+                <span class="material-icons-outlined" style="font-size:14px;">timeline</span>
+                <span data-i18n="detail.rsi_label">RSI</span>
+                <span style="margin-left:auto; font-size:0.6rem; color:var(--text-muted);">
+                    <span style="color:#ff1744;" data-i18n="detail.rsi_overbought">超買 ≥70</span> ·
+                    <span style="color:#00c853;" data-i18n="detail.rsi_oversold">超賣 ≤30</span>
+                </span>
+            </div>
+            <canvas id="rsi-chart"></canvas>
         </div>
     </div>
 
@@ -257,6 +279,183 @@
     // Compare mode state
     let compareData = null;     // chart data for the comparison stock
     let compareSymbol = null;   // symbol of the comparison stock
+    let macdChart = null;       // MACD sub-chart instance
+    let rsiChart = null;        // RSI sub-chart instance
+
+    // ── Indicator sub-chart toggles (MACD + RSI) ──
+    function toggleMacdSubchart() {
+        const wrapper = document.getElementById('macd-chart-wrapper');
+        const cb = document.querySelector('[data-indicator="macd"]');
+        if (!wrapper || !cb) return;
+        wrapper.style.display = cb.checked ? 'block' : 'none';
+        if (cb.checked && chartData) {
+            renderMacdChart(chartData);
+        } else if (!cb.checked && macdChart) {
+            macdChart.destroy();
+            macdChart = null;
+        }
+    }
+
+    function toggleRsiSubchart() {
+        const wrapper = document.getElementById('rsi-chart-wrapper');
+        const cb = document.querySelector('[data-indicator="rsi"]');
+        if (!wrapper || !cb) return;
+        wrapper.style.display = cb.checked ? 'block' : 'none';
+        if (cb.checked && chartData) {
+            renderRsiChart(chartData);
+        } else if (!cb.checked && rsiChart) {
+            rsiChart.destroy();
+            rsiChart = null;
+        }
+    }
+
+    function renderMacdChart(data) {
+        const canvas = document.getElementById('macd-chart');
+        if (!canvas) return;
+        const labels = getVisibleSlice(data.dates || []);
+        const macd = getVisibleSlice(data.macd || []);
+        const signal = getVisibleSlice(data.macd_signal || []);
+        const hist = getVisibleSlice(data.macd_hist || []);
+
+        if (macd.length === 0 && signal.length === 0) return;
+
+        if (macdChart) macdChart.destroy();
+        const ctx = canvas.getContext('2d');
+        macdChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Histogram',
+                        data: hist,
+                        backgroundColor: hist.map(v => v == null ? 'transparent' : (v >= 0 ? 'rgba(0,200,83,0.5)' : 'rgba(255,23,68,0.5)')),
+                        borderWidth: 0,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.9
+                    },
+                    {
+                        label: 'MACD',
+                        data: macd,
+                        type: 'line',
+                        borderColor: '#2979ff',
+                        borderWidth: 1.2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: false
+                    },
+                    {
+                        label: 'Signal',
+                        data: signal,
+                        type: 'line',
+                        borderColor: '#ff9100',
+                        borderWidth: 1.2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#8888a0', font: { family: 'Inter', size: 9 }, boxWidth: 10, padding: 6 }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e1e26',
+                        titleColor: '#fff',
+                        bodyColor: '#ccc',
+                        borderColor: '#2a2a35',
+                        borderWidth: 1,
+                        titleFont: { family: 'JetBrains Mono', size: 10 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#666', maxTicksLimit: 6, font: { family: 'Inter', size: 9 } },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 9 } },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderRsiChart(data) {
+        const canvas = document.getElementById('rsi-chart');
+        if (!canvas) return;
+        const labels = getVisibleSlice(data.dates || []);
+        const rsi = getVisibleSlice(data.rsi || []);
+
+        // Filter out leading nulls (RSI needs ~14 periods to compute)
+        const validStart = rsi.findIndex(v => v != null);
+        if (validStart === -1) return;
+
+        if (rsiChart) rsiChart.destroy();
+        const ctx = canvas.getContext('2d');
+        rsiChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'RSI(14)',
+                        data: rsi,
+                        borderColor: '#9c27b0',
+                        borderWidth: 1.2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: {
+                            target: 'origin',
+                            above: 'rgba(255,23,68,0.08)',
+                            below: 'rgba(0,200,83,0.08)'
+                        }
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e1e26',
+                        titleColor: '#fff',
+                        bodyColor: '#ccc',
+                        borderColor: '#2a2a35',
+                        borderWidth: 1,
+                        titleFont: { family: 'JetBrains Mono', size: 10 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#666', maxTicksLimit: 6, font: { family: 'Inter', size: 9 } },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 9 }, stepSize: 25 },
+                        grid: {
+                            color: (ctx) => [30, 70].includes(ctx.tick.value) ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)',
+                            lineWidth: (ctx) => [30, 70].includes(ctx.tick.value) ? 1 : 0.5
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     // ── Compare mode ──
     function toggleCompare() {
@@ -731,6 +930,12 @@
                 }
             }
         });
+
+        // Re-render indicator sub-charts to match new zoom window (if visible)
+        const macdCb = document.querySelector('[data-indicator="macd"]');
+        if (macdCb && macdCb.checked) renderMacdChart(data);
+        const rsiCb = document.querySelector('[data-indicator="rsi"]');
+        if (rsiCb && rsiCb.checked) renderRsiChart(data);
 
         // ── Native crosshair + wheel-zoom + drag-to-pan (lightweight replacement) ──
         // Attach listeners only once per canvas to avoid duplication on zoom re-render
