@@ -1530,6 +1530,15 @@
   color: var(--text-muted);
 }
 
+/* v3.4.74 — surface dismissed_at timestamp inline next to the dismissed tag
+   so user can tell "dismissed 5m ago" vs "5 days ago" at a glance */
+.event-row-dismissed-at {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+  cursor: help;
+}
+
 @media (max-width: 480px) {
   .event-row {
     gap: 8px;

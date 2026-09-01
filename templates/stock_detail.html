@@ -1444,11 +1444,17 @@
             const dim = (isPast || isDismissed) ? ' event-row-dim' : '';
             const upcomingTag = (!isPast && !isDismissed) ? ' <span class="event-row-tag">' + t('detail.events_upcoming_tag') + '</span>' : '';
             const dismissedTag = isDismissed ? ' <span class="event-row-tag event-row-tag-dismissed">' + t('detail.events_dismissed_tag') + '</span>' : '';
+            // v3.4.74 — surface `dismissed_at` (Pattern 9b orphan field).
+            // Parity with events.html upcoming list (v3.4.66): shows when the event
+            // was dismissed so user can tell "dismissed 5m ago" vs "5 days ago".
+            const dismissedAtHtml = (isDismissed && e.dismissed_at)
+                ? ' <span class="event-row-dismissed-at" title="' + t('events.dismissed_at_tooltip') + '">' + t('events.dismissed_at', { time: formatDate(e.dismissed_at) }) + '</span>'
+                : '';
             return `<div class="event-row${dim}">
                 <span class="event-row-icon event-row-icon-${type}"><span class="material-icons-outlined" style="font-size:18px;">${typeIcon}</span></span>
                 <span class="event-row-date">${dateStr}</span>
                 <span class="event-row-type">${typeLabel}</span>
-                <span class="event-row-title">${escHtml(e.title || '')}${upcomingTag}${dismissedTag}</span>
+                <span class="event-row-title">${escHtml(e.title || '')}${upcomingTag}${dismissedTag}${dismissedAtHtml}</span>
             </div>`;
         }).join('');
     }
