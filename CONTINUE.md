@@ -2,8 +2,26 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit c48ea95 (v3.4.71)
-**Latest commit**: [P3] feat: surface portfolio pnl_pct on dashboard holdings meta line (Pattern 9b orphan field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit a68d7ba (v3.4.72)
+**Latest commit**: [P3] feat: surface created_at on dashboard report cards (Pattern 9b orphan field)
+
+**v3.4.72 (2026-09-02 cron tick) — Dashboard report cards added_at pill (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/reports` returns 12 top-level keys including `created_at` (1247/1247 rows populated, SQLite `datetime('now')` 喺 report INSERT)。Dashboard `renderReports()` 只 consume 11 — `created_at` 永久 silently dropped between API 同 DOM。`report_detail.html` 早已顯示 "加入系統：{date}" (v3.4.53 ships 起)，但 dashboard 完全冇 equivalent。用戶冇 way 去辨識 freshly ingested vs weeks-old reports at a glance — 全部嘢睇落都同樣 "fresh"
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (216 insertions):
+  - `templates/index.html` (+10): 新加 `const addedRaw = r.created_at ? formatDate(r.created_at) : ''` 喺 date variable 隔離; conditional `<span class="report-added">` w/ `bookmark_added` Material Icon 喺 date 同 sourceLink 之間, XSS-safe via `escHtml()`, conditional on addedRaw truthy. `escHtml(t('report.added_at', { date: addedRaw }))` 喺 title= 同 visible text 雙用
+  - `static/css/components.css` (+19): 新加 `.report-added` class (0.7rem, opacity 0.7, cursor:help for hover tooltip). Plus `.report-meta` 攞 `flex-wrap: wrap` + `gap: 6px 10px` so 4 children (source/date/added/sourceLink) 唔會 overflow 喺窄 width
+  - `tests/test_reports_added_at.py` (new file +226, 14 tests): TestReportsCreatedAtAPI (2: endpoint 200 + 100% populated + ISO/SQLite timestamp pattern) + TestReportsAddedAtMarkup (4: report-added class + JS reads created_at + uses formatDate + wires `t('report.added_at')`) + TestReportsAddedAtCSS (2: class defined + cursor:help + flex-wrap fallback for narrow widths) + TestReportsAddedAtI18n (3: bilingual coverage guard — zh + en sections 都有 `report.added_at` w/ `{date}` placeholder, v3.4.61 lesson 警惕 zh-only keys 喺 en mode 變 literal key string) + TestE2ESmoke (3: / 200 OK + served HTML 含 wiring)
+- ✅ **0 backend / DB / schema changes** — `/api/reports` endpoint 早已返 created_at (1247/1247 rows)
+- ✅ **0 new i18n keys needed** — `report.added_at: '加入系統：{date}' / 'Added to system: {date}'` 喺 i18n.js 早已存在 (added v3.4.53 for report_detail.html). Pure attribute wiring
+- ✅ **Sibling WIP awareness**: `templates/industry.html` + `templates/stock_detail.html` + `tests/test_report_url_surfacing.py` 係 sibling subagent 嘅 WIP (r.url surfacing on report cards, mtime 4+ 小時前)。Per skill rule: 唔好 stage，留俾 sibling commit
+- ✅ **Verification**:
+  - 400/400 non-pre-existing tests passing (excludes documented `test_old_smoke_news_reach_response` failure since v3.4.46 唔關今次 change 事). +14 new from this commit
+  - node --check OK on extracted index.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 2 modified files
+  - / 200 OK; served HTML 含 `report-added` class + `report.added_at` binding + `bookmark_added` icon
+  - Rendered simulation: 每個 report card 嘅 report-meta row 會顯示 "SEC EDGAR · 2026/05/01 · 加入系統：2026/06/05 ↗" (zh mode) / "SEC EDGAR · 05/01/2026 · Added to system: 06/05/2026 ↗" (en mode)
+- ✅ **Touch**: templates/index.html (+10), static/css/components.css (+19), tests/test_reports_added_at.py (new file +226). Template-only → no restart needed, server 仲係 200 OK
+- Commit: a68d7ba
 
 **v3.4.71 (2026-09-02 cron tick) — Portfolio holdings meta line P&L percentage (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/portfolio/breakdown` 返 7 個 top-level keys 包括 `pnl_pct` (53.19% — `total_pnl / total_cost * 100`) — but `templates/index.html` `loadPortfolioHoldings()` meta line 只消費 6 個 (`timestamp` + `total_value` + `holdings_count` + `total_cost` + `total_pnl` + `holdings` array)。用戶見到 "+$5,478.06 total_pnl" 但完全冇 percentage context — 唔知係 +5% 定 +53% gain，要 mental arithmetic 計 `total_pnl / total_cost`。`pnl_pct` 由 v3.4.2 portfolio_snapshots ships 起永久 silently dropped between API 同 DOM
