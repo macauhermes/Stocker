@@ -17,6 +17,11 @@
             <div class="portfolio-stat-label" data-i18n="portfolio.total_value">總市值</div>
             <div class="portfolio-stat-value" id="portfolio-value">—</div>
         </div>
+        <!-- v3.4.68: surfaced total_cost from /api/portfolio/summary — shows "money invested" alongside "money now worth" -->
+        <div class="portfolio-stat">
+            <div class="portfolio-stat-label" data-i18n="portfolio.total_cost">總成本</div>
+            <div class="portfolio-stat-value" id="portfolio-cost">—</div>
+        </div>
         <div class="portfolio-stat">
             <div class="portfolio-stat-label" data-i18n="portfolio.unrealized">未實現損益</div>
             <div class="portfolio-stat-value portfolio-stat-pnl" id="portfolio-pnl">—</div>
@@ -358,12 +363,18 @@
             }
             const v = data.latest;
             const valueEl = document.getElementById('portfolio-value');
+            const costEl = document.getElementById('portfolio-cost');  // v3.4.68 — surfaced total_cost
             const pnlEl = document.getElementById('portfolio-pnl');
             const changeEl = document.getElementById('portfolio-change');
             const holdingsEl = document.getElementById('portfolio-holdings');
             const dateEl = document.getElementById('portfolio-snapshot-date');
 
             valueEl.textContent = formatCurrency(v.total_value);
+            if (costEl && v.total_cost != null) {
+                costEl.textContent = formatCurrency(v.total_cost);
+            } else if (costEl) {
+                costEl.textContent = '—';
+            }
             pnlEl.textContent = formatPnl(v.total_pnl, v.pnl_pct);
             pnlEl.classList.toggle('portfolio-positive', v.total_pnl > 0);
             pnlEl.classList.toggle('portfolio-negative', v.total_pnl < 0);
