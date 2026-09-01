@@ -5,6 +5,28 @@
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit 95dff97 (v3.4.68)
 **Latest commit**: [P3] feat: surface total_cost on dashboard portfolio card (Pattern 9b orphan field)
 
+**v3.4.70 (2026-09-02 cron tick) — Stock detail volume sub-chart (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/stock/<sym>/chart-data` 嘅 `prices_full` dict 返 5 個 keys (close/high/low/open/volume)，但 `templates/stock_detail.html` 只消費 4 個。`volume` 永久 silently dropped between API 同 DOM — 跟 v3.4.69 MACD/RSI 一樣係 Pattern 9b orphan-field surfacing
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (~140 insertions):
+  - `templates/stock_detail.html` (+94): 新加 `volume-chart-wrapper` (100px bar chart, hidden by default) 喺主 price chart 下面；新加 `toggleVolumeSubchart()` + `renderVolumeChart()` 讀 `prices_full.volume` (65 points fully populated) 用 bullish/bearish color coding (close >= open → 綠, 唔係 → 紅)；zoom re-render wire 落 MACD + RSI 並列 call `renderVolumeChart`
+  - `static/js/i18n.js` (+22): `formatVolume()` helper (T/B/M/K 4-tier, unitless — 股數唔似 market cap 有 `$` prefix)，2 個新 keys (`detail.volume_label` zh + en)
+  - `tests/test_volume_subchart.py` (new file +303, 25 tests): covers API orphan field + template markup + JS function bodies (用 `_extract_function_body` brace-matching helper from v3.4.70 lesson — 之前 regex `(.*?)\}` 喺 nested-brace functions 失敗) + i18n bilingual coverage + formatVolume tier coverage + E2E smoke (served HTML 有 6 個 wiring markers)
+- ✅ **Tick tool budget rescue**: 開 tick 嘅時候發現 `tests/test_volume_subchart.py` 之前 fail 12 個 tests 因為 function body extraction 用 regex 而唔係 brace-matching — 同 skill `v3.4.70 Template-Inline JS Test Extraction` 警告完全脗合。30 秒 fix 6 個 extraction call sites 去用 helper，全部 25 tests pass
+- ✅ **0 backend / DB / schema changes** — `/api/stock/<sym>/chart-data` endpoint 早已返 `prices_full.volume`
+- ✅ **Verification**:
+  - 364/365 tests passing (+25 new, 1 pre-existing failure `test_old_smoke_news_reach_response` documented v3.4.47 唔關事)
+  - node --check OK 跨 extracted stock_detail.js script + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 files
+  - /stock/TSLA 200 OK; served HTML 含 10 個 volume wiring references (toggle/render/wrapper/data-i18n)
+  - /api/stock/TSLA/chart-data returns `prices_full.volume` 65 entries, avg ~41M 股/日 (TSLA typical)
+- ✅ **Pattern 9b coverage check (chart-data endpoint orphans)**:
+  - consumed v3.4.48: `next_earnings`
+  - consumed v3.4.69: `macd` / `macd_signal` / `macd_hist` / `rsi`
+  - consumed v3.4.70: `volume` ← 呢個 commit
+  - 剩餘 orphans: 0 (prices_full.{close,high,low,open} 全部由 candlestick plugin 用緊)
+- ✅ Touch: templates/stock_detail.html (+94), static/js/i18n.js (+22), tests/test_volume_subchart.py (new +303). Template-only → no restart needed, server stays 200 OK
+- Commit: 1f4ae18
+
 **v3.4.69 (2026-09-01) — Stock detail MACD + RSI sub-charts (orphan field surfacing)**:
 - ✅ **Bug class**: `/api/stock/<sym>/chart-data` returns 10 series including `macd`, `macd_signal`, `macd_hist`, `rsi` — but `templates/stock_detail.html` only wired 5 (dates, prices, ma5/20/60). 4 indicator series permanently silently dropped。MACD + RSI checkboxes in indicator toolbar 由 v3.3 ships 起存在，但 onchange handlers call `updateChart()` 永遠唔 render 佢哋 — pure dead controls。Pattern 9b 應用 (chart_data 嘅 fields)
 - ✅ **Fix scope** — pure frontend 4-file surgical addition (452 insertions / 2 deletions):
