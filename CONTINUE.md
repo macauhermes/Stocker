@@ -2,8 +2,22 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 456fa38 (v3.4.65)
-|**Latest commit**: [P3] feat: surface P/E / EPS / market cap on stock cards (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 09fa819 (v3.4.66)
+**Latest commit**: [P3] feat: surface dismissed_at on events upcoming list (Pattern 9b)
+
+**v3.4.66 (2026-09-01) — Events upcoming list dismissed_at timestamp (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/events/upcoming` returns 8 top-level keys 包括 `dismissed_at` (ISO timestamp 標記事件為已知悉嘅時間) — but `templates/events.html renderUpcoming()` 只 consume 7 個。dismissed_at 永久 silently dropped — 用戶見到個 dismissed event tag「已 dismiss」但完全唔知幾時 dismiss 嘅 (係今日 / 1 個月前 / 半年前)
+- ✅ **Fix scope** — pure frontend 2-file surgical addition (12 insertions / 1 deletion):
+  - `templates/events.html` (+9/-1): 新加 `dismissedAtHtml` span 喺 dismissedTag 後面, conditional on `e.dismissed && e.dismissed_at` truthy, 用 v3.4.34 `formatDate()` 渲染 (locale-aware — en "09/01/2026" vs zh "2026/09/01")
+  - `static/js/i18n.js` (+4 keys): `events.dismissed_at: '於 {time} dismiss' / 'Dismissed on {time}'` + `events.dismissed_at_tooltip: 'dismiss 時間' / 'Dismissal timestamp'` (for title attribute)
+- ✅ **0 backend / DB / schema changes** — endpoint already returns dismissed_at
+- ✅ **Verification**:
+  - node --check i18n.js + extracted events.html script both OK
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 2 modified files
+  - /events 200 OK; served HTML 含 5 個 `dismissed_at` references (4 occurrences in source: 1 in JS dismiss click handler `ev.dismissed_at = new Date().toISOString()` + 1 conditional render)
+  - langchange re-render: events.html langchange handler 已 call `renderUpcoming()` (line 297), 所以切 zh/en 即時 re-render dismissedAtHtml textContent
+- ✅ Touch: templates/events.html (+9/-1), static/js/i18n.js (+4 keys). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 09fa819
 
 **v3.4.65 (2026-09-01) — Stock cards P/E / EPS / market cap line (Pattern 9b)**:
 - ✅ **Bug class**: `/api/tickers` returns 19 top-level keys。`pe_ratio` (8/10 populated, P/E ratio 計算要盈利 ≥0), `eps` (9/10 populated, 每股盈利), `market_cap` (9/10 populated, market value in USD) 全部 silently dropped — `renderStocks()` 只 consume 16 個 field, 3 個 financial metrics 永久 silently dropped between API 同 DOM。每張 stock card 顯示 symbol/price/change/week52 但完全冇財務 context (而 stock_detail.html 已有 market_cap/pe_ratio/eps tiles)。Pre-existing stock-card context lines: stock-week52 (v3.4.50) + stock-tracking (v3.4.61)
