@@ -217,6 +217,30 @@
                 <span data-i18n="detail.save_holdings">保存</span>
             </button>
         </div>
+        <!-- v3.4.67: Position Summary — surfaces /api/portfolio/breakdown's
+             per-holding market_value / cost_value / unrealized_pl so the user
+             can see the impact of their holdings save without bouncing back
+             to the dashboard. Hidden when shares_held is 0 (no position yet). -->
+        <div id="holdings-summary" class="holdings-summary" style="display:none;">
+            <div class="holdings-summary-title">
+                <span class="material-icons-outlined" style="font-size:14px;">insights</span>
+                <span data-i18n="detail.holdings_summary">持倉摘要</span>
+            </div>
+            <div class="holdings-summary-grid">
+                <div class="holdings-summary-item">
+                    <div class="holdings-summary-label" data-i18n="detail.holdings_market_value">市值</div>
+                    <div class="holdings-summary-value" id="hs-market-value">—</div>
+                </div>
+                <div class="holdings-summary-item">
+                    <div class="holdings-summary-label" data-i18n="detail.holdings_cost_total">成本合計</div>
+                    <div class="holdings-summary-value" id="hs-cost-total">—</div>
+                </div>
+                <div class="holdings-summary-item">
+                    <div class="holdings-summary-label" data-i18n="detail.holdings_unrealized_pl">未實現損益</div>
+                    <div class="holdings-summary-value" id="hs-unrealized-pl">—</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -471,6 +495,11 @@
             if (data.cost_basis != null) {
                 document.getElementById('input-cost-basis').value = data.cost_basis;
             }
+
+            // v3.4.67 — Position summary (market value / cost / unrealized P&L)
+            // populated from /api/portfolio/breakdown. Only shown when the user
+            // actually has a position (shares_held > 0).
+            loadHoldingsSummary(data.shares_held);
 
             // Events — show next non-dismissed UPCOMING event in banner
             // (data is sorted by event_date ASC; first item could be a past dividend)
@@ -1135,6 +1164,9 @@
             });
             if (!res.ok) throw new Error(t('detail.holdings_update_error'));
             showToast(t('detail.holdings_updated'), 'success');
+            // v3.4.67 — re-fetch position summary after save so the user sees
+            // their new MV / cost / P&L immediately without bouncing to dashboard.
+            loadHoldingsSummary(parseFloat(shares) || 0);
         } catch (err) {
             console.error(err);
             showToast(err.message, 'error');
@@ -1144,6 +1176,44 @@
                 <span class="material-icons-outlined">save</span>
                 <span>${t('detail.save_holdings')}</span>
             `;
+        }
+    }
+
+    // v3.4.67 — Position summary: fetches /api/portfolio/breakdown and renders
+    // this ticker's MV / cost / P&L beneath the holdings form. Hidden when
+    // shares_held is 0 (no position yet). Defensive against breakdown fetch
+    // failure (no toast spam — just leave the existing state alone).
+    async function loadHoldingsSummary(sharesHeld) {
+        const wrapper = document.getElementById('holdings-summary');
+        if (!wrapper) return;
+        if (!sharesHeld || sharesHeld <= 0) {
+            wrapper.style.display = 'none';
+            return;
+        }
+        try {
+            const res = await fetch('/api/portfolio/breakdown');
+            if (!res.ok) return;
+            const data = await res.json();
+            const holding = (data.holdings || []).find(h => h.symbol === SYMBOL);
+            if (!holding) return;
+            const mvEl = document.getElementById('hs-market-value');
+            const costEl = document.getElementById('hs-cost-total');
+            const pnlEl = document.getElementById('hs-unrealized-pl');
+            mvEl.textContent = formatCurrency(holding.market_value);
+            costEl.textContent = formatCurrency(holding.cost_value);
+            const pnl = holding.unrealized_pl;
+            const pct = holding.unrealized_pl_pct;
+            const sign = pnl >= 0 ? '+' : '';
+            const pctText = (pct != null && !isNaN(pct))
+                ? ` (${sign}${Number(pct).toFixed(2)}%)`
+                : '';
+            pnlEl.textContent = `${sign}${formatCurrency(pnl)}${pctText}`;
+            pnlEl.classList.toggle('portfolio-positive', pnl > 0);
+            pnlEl.classList.toggle('portfolio-negative', pnl < 0);
+            wrapper.style.display = 'block';
+        } catch (err) {
+            console.error('Failed to load position summary:', err);
+            // Silent on failure — don't toast spam the user
         }
     }
 

@@ -156,6 +156,11 @@ const I18N = {
     'detail.load_chart_error': '載入圖表失敗',
     'detail.holdings_updated': '持倉已更新',
     'detail.holdings_update_error': '保存失敗',
+    'detail.holdings_summary': '持倉摘要',          // v3.4.67
+    'detail.holdings_market_value': '市值',         // v3.4.67
+    'detail.holdings_cost_total': '成本合計',       // v3.4.67
+    'detail.holdings_unrealized_pl': '未實現損益', // v3.4.67
+    'detail.holdings_no_position': '尚未輸入持倉',  // v3.4.67
     'detail.refreshing': '更新中...',
     'detail.refresh_error': '更新失敗',
     'detail.refreshed': '已更新',
@@ -756,6 +761,11 @@ const I18N = {
     'detail.load_chart_error': 'Failed to load chart',
     'detail.holdings_updated': 'Holdings updated',
     'detail.holdings_update_error': 'Save failed',
+    'detail.holdings_summary': 'Position Summary',    // v3.4.67
+    'detail.holdings_market_value': 'Market Value',   // v3.4.67
+    'detail.holdings_cost_total': 'Cost Total',       // v3.4.67
+    'detail.holdings_unrealized_pl': 'Unrealized P&L', // v3.4.67
+    'detail.holdings_no_position': 'No position yet',  // v3.4.67
     'detail.refreshing': 'Updating...',
     'detail.refresh_error': 'Update failed',
     'detail.refreshed': 'Updated',
