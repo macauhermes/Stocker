@@ -557,16 +557,39 @@
                 </tr>`;
             }).join('');
 
-            // Meta line: show count + total + as-of timestamp
+            // Meta line: show count + total + P&L% + as-of timestamp
             // v3.4.58 — surface `timestamp` field (Pattern 9b orphan field).
             // /api/portfolio/breakdown already returns `timestamp`; without
             // it the user has no signal that current prices may be a few
             // minutes stale (multi_source fallback chain can be slow).
+            // v3.4.71 — also surface `pnl_pct` (Pattern 9b orphan field) —
+            // total_pnl alone shows dollars but not how big the gain is in
+            // percentage terms (e.g. +$5478 vs +53.19% tell different stories).
             const asOf = data.timestamp ? formatDateTime(data.timestamp) : '';
-            metaEl.textContent = t('portfolio.holdings_count_total', {
-                n: holdings.length,
-                total: formatCurrency(data.total_value || 0),
-            }) + (asOf && asOf !== '—' ? ' · ' + t('portfolio.holdings_as_of', { time: asOf }) : '');
+            metaEl.innerHTML = '';  // clear previous render for langchange re-runs
+            metaEl.appendChild(document.createTextNode(
+                t('portfolio.holdings_count_total', {
+                    n: holdings.length,
+                    total: formatCurrency(data.total_value || 0),
+                })
+            ));
+            if (data.pnl_pct != null && !isNaN(data.pnl_pct)) {
+                const pnlSign = data.pnl_pct >= 0 ? '+' : '';
+                const pnlClass = data.total_pnl > 0 ? 'portfolio-positive' : (data.total_pnl < 0 ? 'portfolio-negative' : '');
+                const pnlSpan = document.createElement('span');
+                pnlSpan.className = pnlClass;
+                pnlSpan.textContent = ` · ${t('portfolio.holdings_pnl_total', {
+                    pnl: formatCurrency(data.total_pnl || 0),
+                    pct: `${pnlSign}${Number(data.pnl_pct).toFixed(2)}%`,
+                })}`;
+                metaEl.appendChild(pnlSpan);
+            }
+            if (asOf && asOf !== '—') {
+                metaEl.appendChild(document.createTextNode(' · '));
+                const asOfSpan = document.createElement('span');
+                asOfSpan.textContent = t('portfolio.holdings_as_of', { time: asOf });
+                metaEl.appendChild(asOfSpan);
+            }
             emptyEl.style.display = 'none';
             wrapper.style.display = 'block';
         } catch (err) {
@@ -1300,6 +1323,18 @@
             const card = document.createElement('a');
             card.href = '/report/' + r.id;
             card.className = 'report-card';
+            // v3.4.71 — surface r.url (1031/1247 reports = 82.7% have a source URL).
+            // Clicking the open_in_new icon opens the original source in a new tab.
+            // Stop propagation + preventDefault so the parent <a> doesn't follow /report/<id>.
+            const sourceLink = (r.url && /^https?:\/\//.test(r.url)) ? `
+                <span class="report-source-link"
+                      role="button" tabindex="0"
+                      title="${escHtml(r.url)}"
+                      onclick="event.preventDefault(); event.stopPropagation(); window.open(${JSON.stringify(r.url)}, '_blank', 'noopener,noreferrer');"
+                      data-i18n-title="report.view_source">
+                    <span class="material-icons-outlined" style="font-size:14px">open_in_new</span>
+                </span>
+            ` : '';
             card.innerHTML = `
                 <div class="report-card-header">
                     <div class="report-icon" style="background:${iconBg}">
@@ -1320,6 +1355,7 @@
                         <span class="material-icons-outlined" style="font-size:14px">schedule</span>
                         ${date}
                     </span>
+                    ${sourceLink}
                 </div>
             `;
             list.appendChild(card);

@@ -487,6 +487,7 @@ const I18N = {
     'portfolio.holdings_as_of': '資料時間：{time}',            // v3.4.58 — Pattern 9b orphan field (breakdown timestamp)
     'portfolio.holdings_empty': '暫無持倉',
     'portfolio.holdings_count_total': '{n} 個持倉 · 總市值 {total}',
+    'portfolio.holdings_pnl_total': '損益 {pnl} ({pct})',            // v3.4.71 — Pattern 9b orphan field (breakdown pnl_pct)
     'portfolio.actions_title': '快捷操作',
     'portfolio.capture_now': '📸 拍攝快照',
     'portfolio.export_csv': '📥 匯出 CSV',
@@ -1096,6 +1097,7 @@ const I18N = {
     'portfolio.holdings_as_of': 'As of: {time}',               // v3.4.58 — Pattern 9b orphan field (breakdown timestamp)
     'portfolio.holdings_empty': 'No holdings yet',
     'portfolio.holdings_count_total': '{n} holdings · total {total}',
+    'portfolio.holdings_pnl_total': 'P&L {pnl} ({pct})',             // v3.4.71 — Pattern 9b orphan field (breakdown pnl_pct)
     'portfolio.actions_title': 'Quick actions',
     'portfolio.capture_now': '📸 Capture snapshot',
     'portfolio.export_csv': '📥 Export CSV',
