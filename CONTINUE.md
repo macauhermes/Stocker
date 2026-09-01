@@ -2,8 +2,25 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 95dff97 (v3.4.68)
-**Latest commit**: [P3] feat: surface total_cost on dashboard portfolio card (Pattern 9b orphan field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit c48ea95 (v3.4.71)
+**Latest commit**: [P3] feat: surface portfolio pnl_pct on dashboard holdings meta line (Pattern 9b orphan field)
+
+**v3.4.71 (2026-09-02 cron tick) — Portfolio holdings meta line P&L percentage (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/portfolio/breakdown` 返 7 個 top-level keys 包括 `pnl_pct` (53.19% — `total_pnl / total_cost * 100`) — but `templates/index.html` `loadPortfolioHoldings()` meta line 只消費 6 個 (`timestamp` + `total_value` + `holdings_count` + `total_cost` + `total_pnl` + `holdings` array)。用戶見到 "+$5,478.06 total_pnl" 但完全冇 percentage context — 唔知係 +5% 定 +53% gain，要 mental arithmetic 計 `total_pnl / total_cost`。`pnl_pct` 由 v3.4.2 portfolio_snapshots ships 起永久 silently dropped between API 同 DOM
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (203 insertions / 5 deletions):
+  - `templates/index.html` (+28/-4): 重寫 meta line render path 由 `textContent` → `appendChild` chain (保留 colored P&L span 跨 langchange re-renders); 新加 conditional P&L span with `portfolio-positive` / `portfolio-negative` color coding, defensive guard `data.pnl_pct != null && !isNaN(data.pnl_pct)`, sign from `data.pnl_pct` (zero cross-platform support)。3-section structure: text(count+total) → conditional span(pnl+pct) → conditional span(as_of_timestamp)
+  - `static/js/i18n.js` (+2 keys): `portfolio.holdings_pnl_total` — zh `'損益 {pnl} ({pct})'` + en `'P&L {pnl} ({pct})'`. Bilingual 雙覆蓋 (v3.4.61 lesson 警惕 en-only 嘅 key miss)
+  - `tests/test_breakdown_pnl_pct.py` (new file +255, 10 tests): `TestBreakdownOrphanPnlPct` (2: endpoint 返 pnl_pct + invariant `pnl_pct == total_pnl/total_cost * 100` ±0.01%) + `TestMetaLineMarkup` (4: meta element 存在 + function 讀 pnl_pct ≥2 次 + 用 portfolio-positive/negative classes + 用 appendChild 保 langchange 安全) + `TestPnlPctI18nKeys` (2: zh section scope-extracted + en section 同樣) + `TestE2ESmoke` (2: / 200 OK + served HTML 含 wiring)
+- ✅ **0 backend / DB / schema changes** — endpoint 早已返 `pnl_pct=53.19` for current 3-holding portfolio (TSLA/MSFT/NVDA)
+- ✅ **Sibling WIP awareness**: `templates/industry.html` + `templates/stock_detail.html` + `static/css/components.css` + `tests/test_report_url_surfacing.py` 係 sibling subagent 嘅 WIP (Pattern 9b r.url surfacing on report cards, mtime 4+ 小時前)。Per skill rule: 唔好 stage，留俾 sibling commit
+- ✅ **Verification**:
+  - 391/392 tests passing (+10 new from this commit)。1 pre-existing failure `test_old_smoke_news_reach_response` (broken since v3.4.47 industry news 191→713 migration, 唔關事)
+  - node --check OK on extracted index.html script + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - / 200 OK; served HTML 含 `id="portfolio-holdings-meta"` + pnl_pct references 10 次
+  - Rendered: meta line now `3 個持倉 · 總市值 $15,778.06 · 損益 +$5,478.06 (+53.19%) · 資料時間：2026/9/1 下午4:28` (zh mode)
+- ✅ Touch: templates/index.html (+28/-4), static/js/i18n.js (+2 keys), tests/test_breakdown_pnl_pct.py (new +255). Template-only → no restart needed, server 仲係 200 OK
+- Commit: c48ea95
 
 **v3.4.70 (2026-09-02 cron tick) — Stock detail volume sub-chart (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/stock/<sym>/chart-data` 嘅 `prices_full` dict 返 5 個 keys (close/high/low/open/volume)，但 `templates/stock_detail.html` 只消費 4 個。`volume` 永久 silently dropped between API 同 DOM — 跟 v3.4.69 MACD/RSI 一樣係 Pattern 9b orphan-field surfacing
