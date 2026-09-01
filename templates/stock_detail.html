@@ -1364,6 +1364,17 @@
             const card = document.createElement('a');
             card.href = '/report/' + r.id;
             card.className = 'report-card';
+            // v3.4.71 — surface r.url (Pattern 9b orphan-field; matches index.html).
+            // Same pattern as renderReports(): span with click handler + stopPropagation.
+            const sourceLink = (r.url && /^https?:\/\//.test(r.url)) ? `
+                <span class="report-source-link"
+                      role="button" tabindex="0"
+                      title="${escapeHtml(r.url)}"
+                      onclick="event.preventDefault(); event.stopPropagation(); window.open(${JSON.stringify(r.url)}, '_blank', 'noopener,noreferrer');"
+                      data-i18n-title="report.view_source">
+                    <span class="material-icons-outlined" style="font-size:14px">open_in_new</span>
+                </span>
+            ` : '';
             card.innerHTML = `
                 <div class="report-card-header">
                     <div class="report-icon" style="background:${iconBg}">
@@ -1383,6 +1394,7 @@
                         <span class="material-icons-outlined" style="font-size:14px">schedule</span>
                         ${dateStr}
                     </span>
+                    ${sourceLink}
                 </div>
             `;
             list.appendChild(card);
