@@ -952,6 +952,21 @@
             const trackingSinceHtml = (ticker.added_at && addedDate !== '—')
                 ? `<div class="stock-tracking" title="${t('index.tracking_since', { date: addedDate })}">${t('index.tracking_since', { date: addedDate })}</div>`
                 : '';
+            // v3.4.65 Pattern 9b — surface eps / pe_ratio / market_cap (8-9/10 populated)
+            // Compact cap: 1.5T / 128B / 12M
+            const finParts = [];
+            if (ticker.pe_ratio != null) {
+                finParts.push(`${t('index.pe_label')}: ${Number(ticker.pe_ratio).toFixed(2)}`);
+            }
+            if (ticker.eps != null) {
+                finParts.push(`EPS ${formatCurrency(ticker.eps)}`);
+            }
+            if (ticker.market_cap != null) {
+                finParts.push(`${t('index.cap_label')}: ${formatMarketCap(ticker.market_cap)}`);
+            }
+            const financialsHtml = finParts.length > 0
+                ? `<div class="stock-financials" data-financials="${ticker.symbol}" title="${t('index.financials_title')}">${finParts.join(' · ')}</div>`
+                : '';
             card.innerHTML = `
                 <div class="stock-icon">${ticker.symbol.substring(0, 2)}</div>
                 <div class="stock-info">
@@ -963,6 +978,7 @@
                     </div>
                     <div class="stock-name">${ticker.name || '—'}</div>
                     <div class="stock-week52" data-week52="${ticker.symbol}" title="${t('index.week52_range')}">${week52Range}</div>
+                    ${financialsHtml}
                     ${trackingSinceHtml}
                 </div>
                 <div class="stock-mini-chart">

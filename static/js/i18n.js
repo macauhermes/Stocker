@@ -515,6 +515,9 @@ const I18N = {
     'index.stocks_empty_filtered': '冇符合條件嘅股票',
     'index.week52_range': '52周範圍',
     'index.tracking_since': '追蹤自 {date}',
+    'index.pe_label': '本益比',
+    'index.cap_label': '市值',
+    'index.financials_title': '本益比 / EPS / 市值',
 
     // System page (/system)
     'nav.system': '系統',
@@ -1109,6 +1112,9 @@ const I18N = {
     'index.stocks_empty_filtered': 'No stocks match the current filters',
     'index.week52_range': '52W Range',
     'index.tracking_since': 'Tracking since {date}',
+    'index.pe_label': 'P/E',
+    'index.cap_label': 'Cap',
+    'index.financials_title': 'P/E ratio / EPS / market cap',
 
     // System page (/system)
     'nav.system': 'System',
@@ -1264,6 +1270,22 @@ function formatNumber(n, opts) {
 function formatCurrency(n, opts) {
   const fmtOpts = Object.assign({ minimumFractionDigits: 2, maximumFractionDigits: 2 }, opts || {});
   return '$' + formatNumber(n, fmtOpts);
+}
+
+/**
+ * Compact market-cap formatter (v3.4.65 Pattern 9b).
+ * 1_450_000_000_000 → '$1.45T',  128_000_000_000 → '$128B',  12_500_000 → '$12.5M'.
+ * Pure JS — locale-neutral because stock prices/caps are conventionally USD worldwide
+ * and T/B/M suffixes are universal across all Stocker users.
+ */
+function formatMarketCap(n) {
+  if (n == null || isNaN(Number(n))) return '—';
+  n = Number(n);
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3)  return '$' + (n / 1e3).toFixed(2) + 'K';
+  return '$' + n.toFixed(2);
 }
 
 /**

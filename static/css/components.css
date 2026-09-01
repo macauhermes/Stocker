@@ -491,6 +491,19 @@
   cursor: help;
 }
 
+/* P/E · EPS · Cap line (v3.4.65 Pattern 9b) — between week52 and tracking_since */
+.stock-financials {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  cursor: help;
+}
+
 .stock-price-section {
   text-align: right;
   flex-shrink: 0;
