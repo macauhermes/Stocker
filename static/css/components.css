@@ -865,6 +865,50 @@
   gap: 4px;
 }
 
+/* v3.4.72 — "Added to Stocker" pill on report cards (Pattern 9b orphan field).
+   Sits between report-date and report-source-link in the report-meta flex row.
+   Slightly smaller than source/date to convey secondary importance. Cursor:help
+   gives the i18n-translated tooltip on hover. flex-wrap on .report-meta ensures
+   the row collapses gracefully when 4 children overflow on narrow widths. */
+.report-meta {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.report-added {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  cursor: help;
+}
+
+/* v3.4.71 — open_in_new icon on report cards that have r.url.
+   Renders inside report-meta as the rightmost child. Hover lifts
+   color to blue + slight bg tint; click opens source in new tab
+   without triggering the parent <a href="/report/<id>">. */
+.report-source-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+}
+
+.report-source-link:hover {
+  color: var(--blue);
+  background: rgba(73, 79, 223, 0.12);
+}
+
+.report-source-link:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
 /* ============================================================
    SECTOR PILLS
    ============================================================ */

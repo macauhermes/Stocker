@@ -1277,6 +1277,10 @@
         reports.forEach(r => {
             const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '—';
             const date = r.published_at ? formatDate(r.published_at) : '—';
+            // v3.4.72 — surface created_at as "added to Stocker" pill (Pattern 9b
+            // orphan field). Same field already wired into /report/<id> (v3.4.53);
+            // dashboard cards silently dropped it. Defensive guard for null/empty.
+            const addedRaw = r.created_at ? formatDate(r.created_at) : '';
 
             // Determine icon based on category
             let icon = 'description';
@@ -1355,6 +1359,12 @@
                         <span class="material-icons-outlined" style="font-size:14px">schedule</span>
                         ${date}
                     </span>
+                    ${addedRaw ? `
+                    <span class="report-added" title="${escHtml(t('report.added_at', { date: addedRaw }))}">
+                        <span class="material-icons-outlined" style="font-size:12px">bookmark_added</span>
+                        ${escHtml(t('report.added_at', { date: addedRaw }))}
+                    </span>
+                    ` : ''}
                     ${sourceLink}
                 </div>
             `;
