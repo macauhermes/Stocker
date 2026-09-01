@@ -386,6 +386,13 @@ function renderUpcoming() {
         // v3.4.54: dismissed events render muted with × dismiss button
         const dismissedClass = e.dismissed ? ' dismissed' : '';
         const dismissedTag = e.dismissed ? ' <span style="font-size:0.65rem; color:var(--text-muted); margin-left:4px;">(' + t('events.dismissed_tag') + ')</span>' : '';
+        // v3.4.66 — surface `dismissed_at` (Pattern 9b orphan field).
+        // /api/events/upcoming returns dismissed_at ISO timestamp but the row
+        // never showed it — users couldn't tell *when* a long-dismissed event
+        // was marked as such. Format via formatDate() (locale-aware, v3.4.34).
+        const dismissedAtHtml = (e.dismissed && e.dismissed_at)
+            ? `<span style="font-size:0.65rem; color:var(--text-muted); margin-left:6px;" title="${t('events.dismissed_at_tooltip')}">${t('events.dismissed_at', { time: formatDate(e.dismissed_at) })}</span>`
+            : '';
         // × button: present on non-dismissed events (click to dismiss)
         // Skip on already-dismissed events to avoid pointless clicks
         const dismissBtn = e.dismissed ? '' :
@@ -395,7 +402,7 @@ function renderUpcoming() {
         return `<div class="upcoming-item${dismissedClass}">
             <span class="upcoming-badge ${type}">${type === 'earnings' ? '📊 ' + t('events.type.earnings') : type === 'dividend' ? '💰 ' + t('events.type.dividend') : type === 'sec_filing' ? '📄 ' + t('events.type.sec_filing') : '📌 ' + type}</span>
             <span class="upcoming-date">${dateStr}</span>
-            <span class="upcoming-title">${e.title || e.symbol}${dismissedTag}</span>
+            <span class="upcoming-title">${e.title || e.symbol}${dismissedTag}${dismissedAtHtml}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">${e.symbol || ''}</span>
             ${dismissBtn}
         </div>`;
