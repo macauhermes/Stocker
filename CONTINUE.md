@@ -2,8 +2,28 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 1d1c0ad (v3.4.73)
-**Latest commit**: [P3] feat: surface r.url as open_in_new icon on industry + related reports cards (Pattern 9b orphan field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 42acae4 (v3.4.74)
+**Latest commit**: [P3] feat: surface events[].dismissed_at on stock_detail renderEvents (Pattern 9b)
+
+**v3.4.74 (2026-09-02 cron tick) — Stock detail event rows dismissed_at timestamp (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/stock/<sym>/detail` returns events[].dismissed_at (ISO timestamp set when event is dismissed, NULL otherwise) — `templates/stock_detail.html` `renderEvents()` 永久 silently dropped the field. User 見到「[dismissed]」tag 但完全冇 way 知道係幾時 dismiss 嘅 (5分鐘前 vs 5日前 vs 上個月)。v3.4.66 已經喺 events.html upcoming list wired `dismissed_at` surfacing — 但 stock_detail.html 同一個 endpoint 嘅 events 渲染路徑冇同步
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (233 insertions / 1 deletion):
+  - `templates/stock_detail.html` (+9/-1): 新加 `dismissedAtHtml` variable 喺 `renderEvents()` body, guarded `isDismissed && e.dismissed_at`, appended after `dismissedTag` 喺 title span。Uses `formatDate(e.dismissed_at)` + `t('events.dismissed_at', { time: ... })` + `t('events.dismissed_at_tooltip')` (3 keys 全部 v3.4.66 ships 起已有)
+  - `static/css/components.css` (+9): 新加 `.event-row-dismissed-at` class (0.65rem, var(--text-muted), margin-left 6px, cursor:help for hover tooltip)。Visual parity with events.html's inline span
+  - `tests/test_event_row_dismissed_at.py` (new file +225, 21 tests): TestStockDetailEventsApiSurface (3: detail 返 events[] + 7 fields including dismissed_at + ≥1 dismissed event with timestamp) + TestStockDetailRenderEventsWiring (6: reads e.dismissed_at + guards + formatDate + 2 t() keys + appends after dismissedTag) + TestEventRowDismissedAtCss (4: class defined + var(--text-muted) + cursor:help + mobile.css @import) + TestDismissedAtI18nBilingual (4: zh+en {time} placeholder guard Pattern 5d + zh+en tooltip key) + TestStockDetailEventRowE2ESmoke (4: /, /stock/TSLA, /events all 200 + wired)
+- ✅ **0 backend / DB / schema changes** — endpoint already returns `dismissed_at` on every dismissed event
+- ✅ **0 new i18n keys needed** — `events.dismissed_at: '於 { {time} } dismiss' / 'Dismissed on {time}'` + `events.dismissed_at_tooltip` 喺 v3.4.66 早已加入
+- ✅ **Verification**:
+  - 21/21 tests PASSED
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - /stock/TSLA 200 OK; served HTML 含 `event-row-dismissed-at` class + `e.dismissed_at` references
+  - Rendered: TSLA Earnings event row now displays "TSLA Earnings [已標記為已知悉] 於 09/01 dismiss" (zh mode) / "TSLA Earnings [Marked as acknowledged] Dismissed on 09/01" (en mode)
+- ✅ **Pattern 9b coverage check (stock detail events array orphans)**:
+  - consumed v3.4.66: events[].dismissed_at (events.html upcoming list)
+  - consumed v3.4.74: events[].dismissed_at (stock_detail.html renderEvents) ← 呢個 commit
+  - 剩餘 orphans: ticker_id (internal ID, 唔適合 surface)
+- ✅ Touch: templates/stock_detail.html (+9/-1), static/css/components.css (+9), tests/test_event_row_dismissed_at.py (new +225). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 42acae4
 
 **v3.4.73 (2026-09-02 cron tick) — Industry + related reports cards r.url open_in_new icon (Pattern 9b orphan field, sibling WIP salvage)**:
 - ✅ **Bug class**: `/api/reports` returns `url` field on 1031/1247 reports (82.7%, all http/https). Dashboard `index.html` `renderReports()` 由前 v3.4.x 已經 surface 出嚟 (`<span class="report-source-link" onclick="window.open(...)">`) — 但 `templates/industry.html` `renderReports()` 同 `templates/stock_detail.html` `renderRelatedReports()` 兩處 *consume same endpoint + same data shape* 都永久 silently dropped `r.url` between API 同 DOM。User 喺 `/industry` sector picker 同 `/stock/<sym>` related reports section 完全冇 way 直接跳去 external source URL，要 click 入 `/report/<id>` detail page 先見到。Pattern 9b 三-tier (dashboard ✅ + industry ✗ + related ✗) 一致性補完
