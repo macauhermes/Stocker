@@ -2,8 +2,35 @@
 
 ## 當前狀態（截至 2026-09-01 cron tick）
 
-|**Stocker repo**: ~/repos/Stocker/，git 已 push commit cbcb144 (v3.4.62)
-|**Latest commit**: [P3] feat: surface et_time on dashboard refresh badge (Pattern 1 + 9b combo)
+|**Stocker repo**: ~/repos/Stocker/，git 已 push commit 456fa38 (v3.4.65)
+|**Latest commit**: [P3] feat: surface P/E / EPS / market cap on stock cards (Pattern 9b)
+
+**v3.4.65 (2026-09-01) — Stock cards P/E / EPS / market cap line (Pattern 9b)**:
+- ✅ **Bug class**: `/api/tickers` returns 19 top-level keys。`pe_ratio` (8/10 populated, P/E ratio 計算要盈利 ≥0), `eps` (9/10 populated, 每股盈利), `market_cap` (9/10 populated, market value in USD) 全部 silently dropped — `renderStocks()` 只 consume 16 個 field, 3 個 financial metrics 永久 silently dropped between API 同 DOM。每張 stock card 顯示 symbol/price/change/week52 但完全冇財務 context (而 stock_detail.html 已有 market_cap/pe_ratio/eps tiles)。Pre-existing stock-card context lines: stock-week52 (v3.4.50) + stock-tracking (v3.4.61)
+- ✅ **Fix scope** — pure frontend 4-file surgical addition (189 insertions total):
+  - `templates/index.html` (+16): 新加 `.stock-financials` div 喺 `.stock-week52` 同 `.stock-tracking` 中間, 有條件 append 3 個 metrics (缺嗰個就唔出, 唔出 "— — —" 垃圾): `pe_ratio` → "本益比: 322.76", `eps` → `EPS $1.08` (locale-aware via v3.4.45 formatCurrency), `market_cap` → via 新 `formatMarketCap()` helper "市值: $1.45T"。Defensive guards 用 `!= null` 而唔係 truthy 確保 `0.0` 仍 render
+  - `static/js/i18n.js` (+22): `formatMarketCap(n)` helper 加喺 `formatCurrency()` 之後 — `$1.45T / $128B / $12.5M / $1.23K` 4-tier compact rendering, null/NaN/0-safe。3 zh + 3 en i18n keys (`index.pe_label: '本益比' / 'P/E'`, `index.cap_label: '市值' / 'Cap'`, `index.financials_title: '本益比 / EPS / 市值' / 'P/E ratio / EPS / market cap'`)
+  - `static/css/components.css` (+13): `.stock-financials` style — JetBrains Mono font + 0.6rem + 0.7 opacity (matches stock-tracking weight, 比 stock-week52 0.75 略低用 PE/EPS/Cap 嘅 high-density 數字) + cursor:help (toggletooltip via title=)
+  - `tests/test_stock_financials.py` (new file +138, 9 tests): TestTickersFinancialFields (3: API response shape + field presence + >=50% population invariant) + TestFormatMarketCapHelper (4: helper definition exists + called from stock-card + CSS class defined + markup in template) + TestFinancialsI18nKeys (2: zh section scope-extracted via regex — pre-v3.4.61 lesson learned about bilingual coverage guard, en section ≥2 hits each)
+- ✅ **0 backend / DB / schema changes** — endpoint already 返 `pe_ratio` / `eps` / `market_cap` 3 個 field
+- ✅ **Verification**:
+  - 299/300 tests passing (was 290/291, +9 new). 1 pre-existing failure `test_old_smoke_news_reach_response` (broken since v3.4.46 industry news 191→713 migration, 唔關今次 change 事)
+  - JS node --check OK 跨 extracted index.html script + i18n.js
+  - Gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF) 0 hits 跨 3 modified files
+  - / 200 OK; served HTML has `.stock-financials` class + `formatMarketCap(` call + financial-metric markup rendered
+  - Rendered simulation 10 tickers:
+    - GLW: 本益比: 68.54 · EPS $2.18 · 市值: $128.11B
+    - GS: 本益比: 15.97 · EPS $64.73 · 市值: $298.71B
+    - IBM: 本益比: 20.92 · EPS $11.26 · 市值: $220.34B
+    - MS: 本益比: 17.36 · EPS $12.37 · 市值: $335.03B
+    - MSFT: 本益比: 28.56 · EPS $17.97 · 市值: $3.77T
+    - NVDA: 本益比: 27.88 · EPS $7.92 · 市值: $5.33T
+    - MRVU: 本益比: 71.05 (only P/E populated — defensive condition skip missing values ✓)
+    - SPCX: EPS $-1.10 · 市值: $1.89T
+    - TE: EPS $-1.81 · 市值: $1.31B (no P/E since earnings negative)
+    - TSLA: 本益比: 322.76 · EPS $1.08 · 市值: $1.45T
+- ✅ **Touch**: templates/index.html (+16), static/css/components.css (+13), static/js/i18n.js (+22: 6 i18n keys + formatMarketCap helper), tests/test_stock_financials.py (new +138). Template-only → no restart needed, / 200 OK
+- Commit: 456fa38
 
 **v3.4.62 (2026-09-01) — Dashboard refresh badge + et_time surfacing (Pattern 1 + 9b combo)**:
 |- ✅ **Two-bug combo in one feature**: `<div id="refresh-badge">` markup 完全唔存在 — `templates/index.html:1514` 嘅 JS update code 由 v3.4.33 ships 起一直 silently no-op (getElementById 返 null)。`.refresh-badge` CSS class 連同 `[data-reason="us_market_open|us_extended_hours|us_off_hours|weekend"]::before` color-coded dot 喺 static/css/variables.css:68-92 早已準備好，但從未被任何 template reference。同時 `/api/refresh-interval` 返 `et_time` ("17:44 ET") 但永遠冇 surface
