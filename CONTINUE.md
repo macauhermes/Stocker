@@ -2,8 +2,30 @@
 
 ## 當前狀態（截至 2026-09-02 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 2c34942 (v3.4.78)
-**Latest commit**: [P3] feat: surface report file_path as local-file pill (Pattern 9b orphan field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 312d221 (v3.4.79)
+**Latest commit**: [P3] feat: surface file_path on /files page (Pattern 9b orphan field, v3.4.78 sibling)
+
+**v3.4.79 (2026-09-02 cron tick) — Files page file_path hint pill (Pattern 9b orphan field, v3.4.78 sibling)**:
+- ✅ **Bug class**: `/api/files` returns `file_path` on 338/338 rows (99%+ coverage across all 3 categories: earnings/analyst_report/sec_filing)。v3.4.78 ships 時 surface 咗 `/api/reports/<id>.file_path` 喺 `templates/report_detail.html`，但完全 miss 咗 parallel endpoint `/api/files.file_path` 喺 `templates/files.html` 嘅 renderFiles()。User 可以 download + view-report 但完全冇 visibility 個 file 喺 disk 邊個目錄 (`earnings/`、`analyst_report/`、`sec_filing/`)
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (188 insertions / 2 deletions):
+  - `templates/files.html` (+3/-2): filename `<div>` 加 `title="${escHtml(f.file_path)}"` + `data-i18n-title="files.local_file_tooltip"` (full path on hover)；meta row 加 inline `.file-path-hint` span showing parent dir (`📁 earnings/`, `📁 analyst_report/`, `📁 sec_filing/`)。`split('/').slice(-2,-1)` clean parent-dir extraction。XSS-safe via `escHtml()`。Conditional on `f.file_path` truthy — industry news files legitimately NULL
+  - `static/js/i18n.js` (+2 keys): `files.local_file_tooltip` — zh '本機已存檔完整檔案於此路徑' / en 'Complete file saved locally at this path'. Bilingual 雙覆蓋 (Pattern 5d v3.4.61 lesson). langchange re-renders via existing renderFiles() listener (line 331)
+  - `static/css/components.css` (+9): `.file-path-hint` — JetBrains Mono + var(--orange, #ff9100) + 0.7 opacity + cursor:help (hover shows native browser tooltip w/ full path). Visual parity with v3.4.78 `.report-local-file`
+  - `tests/test_files_file_path.py` (new +230, 17 tests): TestFilesFilePathApiSurface (3: field exists + ≥90% populated + ≥1 path matches disk) + TestFilesTemplateMarkup (4: hint class + f.file_path ref + data-i18n-title + escHtml + slice(-2,-1)) + TestFilesPathHintCss (3: class + orange + cursor:help) + TestFilesPathHintI18n (2: zh CJK + en ASCII bilingual guard) + TestFilesE2ESmoke (3: /files 200 + served HTML wiring + langchange) + TestFilesJsSyntax (1) + TestFilesI18nSyntax (1)
+- ✅ **0 backend / DB / schema changes** — `/api/files` endpoint already returns file_path
+- ✅ **Verification**:
+  - 17/17 new tests PASSED
+  - 494/495 全 suite passing (+17 from this commit)。1 pre-existing failure `test_old_smoke_news_reach_response` (documented v3.4.46 industry news migration, 唔關今次 change 事)
+  - node --check OK on extracted files.html script + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - /files 200 OK; served HTML 含 `f.file_path` 5 references + 2 `data-i18n-title="files.local_file_tooltip"` + `file-path-hint` class + langchange listener
+  - Simulated parent-dir extraction verified: GLW_10-Q path → "📁 earnings/", TSLA_analyst → "📁 analyst_report/", SPCX_S-1 → "📁 sec_filing/"
+- ✅ **Pattern 9b parallel-orbit check (file_path field across endpoints)**:
+  - consumed v3.4.78: report.file_path (report_detail.html)
+  - consumed v3.4.79: files.file_path (files.html) ← 呢個 commit
+  - remaining file_path refs: only on `/api/reports/<id>` and `/api/files` (both consumed)
+- ✅ Touch: templates/files.html (+3/-2), static/js/i18n.js (+2 keys), static/css/components.css (+9), tests/test_files_file_path.py (new +230). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 312d221
 
 **v3.4.78 (2026-09-02 cron tick) — Report detail local-file pill (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/reports` 同 `/api/reports/<id>` 兩個 endpoint 都返 populated `file_path` field (1238/1247 reports, 99.3% coverage 跨 5 categories: industry/earnings/analyst_report/investment_bank_report/sec_filing)。由 v3.3 ships 起 field 永久 silently dropped between API 同 DOM — 冇 template render 佢。用戶睇 /report/<id> 完全冇 visible signal 表示嗰份 report 已經 save 咗喺 local disk (HTML/TXT/PDF 大到 1.2 MB for full SEC 10-Q)
