@@ -557,7 +557,7 @@
                     <td class="num">${formatCurrency(h.cost_value)}</td>
                     <td class="num">${formatCurrency(h.current_price)}</td>
                     <td class="num">${formatCurrency(h.market_value)}</td>
-                    <td class="num ${plClass}">${plSign}${formatCurrency(Math.abs(pl))} (${plSign}${(h.unrealized_pl_pct || 0).toFixed(2)}%)</td>
+                    <td class="num ${plClass}"><span class="material-icons-outlined portfolio-pl-icon ${plClass}" aria-hidden="true">${pl > 0 ? 'trending_up' : (pl < 0 ? 'trending_down' : 'trending_flat')}</span>${plSign}${formatCurrency(Math.abs(pl))} (${plSign}${(h.unrealized_pl_pct || 0).toFixed(2)}%)</td>
                     <td class="num share-cell">${shareSign}${(h.share_of_portfolio || 0).toFixed(2)}%</td>
                 </tr>`;
             }).join('');

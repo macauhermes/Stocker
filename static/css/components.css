@@ -1040,6 +1040,24 @@
   color: #ef5350;
 }
 
+/* v3.4.80 — Per-row trend icon in portfolio holdings table.
+   P&L cell shows trending_up / trending_down Material icon next to the
+   dollar amount, color-coded via portfolio-positive/negative classes. */
+.portfolio-pl-icon {
+  font-size: 14px;
+  vertical-align: middle;
+  margin-right: 4px;
+  display: inline-block;
+}
+
+.portfolio-pl-icon.portfolio-positive {
+  color: #4caf50;
+}
+
+.portfolio-pl-icon.portfolio-negative {
+  color: #ef5350;
+}
+
 .portfolio-meta {
   margin-top: 12px;
   padding-top: 12px;
