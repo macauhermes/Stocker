@@ -2,8 +2,8 @@
 
 ## 當前狀態（截至 2026-09-02 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 312d221 (v3.4.79)
-**Latest commit**: [P3] feat: surface file_path on /files page (Pattern 9b orphan field, v3.4.78 sibling)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5b264dc (v3.4.80)
+**Latest commit**: [P3] feat: portfolio holdings trend icon (UX polish)
 
 **v3.4.79 (2026-09-02 cron tick) — Files page file_path hint pill (Pattern 9b orphan field, v3.4.78 sibling)**:
 - ✅ **Bug class**: `/api/files` returns `file_path` on 338/338 rows (99%+ coverage across all 3 categories: earnings/analyst_report/sec_filing)。v3.4.78 ships 時 surface 咗 `/api/reports/<id>.file_path` 喺 `templates/report_detail.html`，但完全 miss 咗 parallel endpoint `/api/files.file_path` 喺 `templates/files.html` 嘅 renderFiles()。User 可以 download + view-report 但完全冇 visibility 個 file 喺 disk 邊個目錄 (`earnings/`、`analyst_report/`、`sec_filing/`)
@@ -26,6 +26,28 @@
   - remaining file_path refs: only on `/api/reports/<id>` and `/api/files` (both consumed)
 - ✅ Touch: templates/files.html (+3/-2), static/js/i18n.js (+2 keys), static/css/components.css (+9), tests/test_files_file_path.py (new +230). Template-only → no restart needed, server 仲係 200 OK
 - Commit: 312d221
+
+**v3.4.80 (2026-09-02 cron tick) — Dashboard portfolio holdings trend icon (UX polish)**:
+- ✅ **Scope**: All major Pattern audits (1/5/5b/5c/5d/8b/8c/9b) came up clean — every orphan field had been surfacing in v3.4.42-v3.4.79 series. Pivot to opportunistic UX polish per skill budget-gate rule (25-call pivot threshold)
+- ✅ **Improvement**: Dashboard portfolio holdings table P&L cell (per-row dollar + percentage, already in v3.4.7) gains a small `trending_up` / `trending_down` / `trending_flat` Material icon next to the dollar amount, color-coded via `portfolio-positive` (green #4caf50) / `portfolio-negative` (red #ef5350) classes (same palette as P&L cell text). Makes row direction visually scannable at a glance — before, 3 portfolio positions (TSLA +78.05% / MSFT +43.15% / NVDA -27.52%) all looked like "+$X.XX" dollar amounts with same shape; now NVDA row has a red down-arrow icon distinguishing it from the green up-arrows without reading the % number
+- ✅ **Fix scope** — pure frontend 2-file surgical addition (177 insertions / 1 deletion):
+  - `templates/index.html` (+1/-1): P&L cell wraps the existing dollar + percentage content with `<span class="material-icons-outlined portfolio-pl-icon ${plClass}" aria-hidden="true">${pl > 0 ? 'trending_up' : (pl < 0 ? 'trending_down' : 'trending_flat')}</span>` — icon ternary on pl value (zero/break-even → trending_flat). 3-state ternary matches the existing `plClass` 3-state logic (positive/negative/zero)
+  - `static/css/components.css` (+18): `.portfolio-pl-icon` base class (font-size:14px + vertical-align:middle + margin-right:4px + display:inline-block) + `.portfolio-pl-icon.portfolio-positive { color:#4caf50 }` + `.portfolio-pl-icon.portfolio-negative { color:#ef5350 }` — color palette matches existing `.portfolio-positive` / `.portfolio-negative` rules
+  - `tests/test_portfolio_pl_icon.py` (new +185, 13 tests): TestPortfolioPlIconMarkup (4: icon span in row template + trending_up/down/flat ternary + plClass on span + inside P&L cell) + TestPortfolioPlIconCss (3: base class + green positive + red negative) + TestPortfolioPlIconE2E (3: / 200 OK + served HTML has markup + served CSS has class) + TestPortfolioPlIconJsSyntax (1: node --check) + TestPortfolioPlIconGremlin (2: U+FFFD/U+00AD/U+200B/U+FEFF clean across both files)
+- ✅ **0 backend / DB / schema changes** — pure template/CSS/test addition
+- ✅ **0 new i18n keys needed** — icons are language-neutral (Material Icons font glyphs)
+- ✅ **Sibling WIP awareness**: `static/css/components.css` had a sibling subagent edit (`.portfolio-stat-pnl.portfolio-negative` block restructuring between my read + write) — sibling wrote new `.holdings-summary-value.portfolio-negative` block at line 1948. Re-read before patching to avoid clobbering; verified both my change + sibling's coexist cleanly via `git diff`
+- ✅ **Verification**:
+  - 13/13 tests in test_portfolio_pl_icon.py PASSED
+  - 494/495 全 suite tests passing (1 pre-existing failure `test_old_smoke_news_reach_response` documented since v3.4.47 industry news migration, 唔關今次 change 事)
+  - node --check OK on extracted index.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 2 modified files
+  - / 200 OK; served HTML 含 1 `portfolio-pl-icon` span (rendered server-side via Jinja; actual per-holding rows populated by loadPortfolioHoldings() client-side)
+  - /static/css/components.css served with 3 `.portfolio-pl-icon*` rules
+  - Rendered simulation: TSLA row: "↗ +$4,682.70 (+78.05%)" green icon, MSFT: "↗ +$1,208.16 (+43.15%)" green icon, NVDA: "↘ -$412.80 (-27.52%)" red icon
+- ✅ Touch: templates/index.html (+1/-1), static/css/components.css (+18), tests/test_portfolio_pl_icon.py (new +185). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 5b264dc
+
 
 **v3.4.78 (2026-09-02 cron tick) — Report detail local-file pill (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/reports` 同 `/api/reports/<id>` 兩個 endpoint 都返 populated `file_path` field (1238/1247 reports, 99.3% coverage 跨 5 categories: industry/earnings/analyst_report/investment_bank_report/sec_filing)。由 v3.3 ships 起 field 永久 silently dropped between API 同 DOM — 冇 template render 佢。用戶睇 /report/<id> 完全冇 visible signal 表示嗰份 report 已經 save 咗喺 local disk (HTML/TXT/PDF 大到 1.2 MB for full SEC 10-Q)
