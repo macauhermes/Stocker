@@ -225,6 +225,22 @@ let _currentGroupId = null;
 // Load groups on page load
 document.addEventListener('DOMContentLoaded', loadGroups);
 
+// v3.4.77 — Pattern 5d sub-class fix: re-render on langchange so dynamic
+// t() calls inside renderGroups() (empty_title, empty_hint, ticker_count,
+// common.edit, common.delete, watchlists.add_ticker) and the modal title
+// get fresh translations instead of staying frozen at the original load-time
+// language. Without this listener, switching zh ⇄ en leaves group cards + add
+// ticker button + edit/delete tooltips stuck in the original language.
+window.addEventListener('langchange', () => {
+    if (typeof renderGroups === 'function') renderGroups();
+    // Re-render modal title if the modal is currently open
+    const modal = document.getElementById('group-modal');
+    if (modal && modal.style.display === 'flex' && typeof _currentGroupId !== 'undefined') {
+        const titleEl = document.getElementById('group-modal-title');
+        if (titleEl) titleEl.textContent = _currentGroupId ? t('watchlists.edit_title') : t('watchlists.add_title');
+    }
+});
+
 async function loadGroups() {
     try {
         const res = await fetch('/api/watchlist-groups');

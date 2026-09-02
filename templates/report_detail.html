@@ -466,5 +466,15 @@
 
     // Init
     loadReport();
+
+    // v3.4.77 — Pattern 5d sub-class fix: re-render report detail on langchange
+    // so dynamic t() calls inside loadReport() (report.source_external,
+    // report.no_source, report.no_analysis, report.rating_summary, report.rating.{buy,hold,sell},
+    // report.analysts, common.error, report.ticker_badge, report.added_at, files.cat.X)
+    // get fresh translations. Without this listener, switching zh ⇄ en leaves
+    // the rendered detail page stuck in the original load-time language.
+    window.addEventListener('langchange', () => {
+        if (typeof loadReport === 'function') loadReport();
+    });
 </script>
 {% endblock %}
