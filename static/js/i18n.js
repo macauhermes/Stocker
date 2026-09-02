@@ -269,6 +269,7 @@ const I18N = {
     'files.view_report': '查看報告',
     'files.load_error': '載入檔案列表失敗',
     'files.empty': '暫無檔案',
+    'files.local_file_tooltip': '本機已存檔完整檔案於此路徑',
 
     // File categories
     'files.cat.all': '全部',
@@ -886,6 +887,7 @@ const I18N = {
     'files.view_report': 'View Report',
     'files.load_error': 'Failed to load file list.',
     'files.empty': 'No files',
+    'files.local_file_tooltip': 'Complete file saved locally at this path',
 
     // File categories
     'files.cat.all': 'All',

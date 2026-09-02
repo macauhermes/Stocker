@@ -217,11 +217,11 @@
                     <span class="material-icons-outlined" style="color:${iconColor}">${icon}</span>
                 </div>
                 <div class="file-info">
-                    <div class="file-name">${f.filename || '—'}</div>
+                    <div class="file-name"${f.file_path ? ` data-i18n-title="files.local_file_tooltip" title="${escHtml(f.file_path)}"` : ''}>${f.filename || '—'}</div>
                     <div class="file-meta">
                         <span class="badge" style="background:${iconBg}; color:${iconColor}; font-size:0.7rem;">${categoryLabel}</span>
                         <span>${size}</span>
-                        <span>${date}</span>
+                        <span>${date}</span>${f.file_path ? `<span class="file-path-hint" title="${escHtml(f.file_path)}" data-i18n-title="files.local_file_tooltip">📁 ${escHtml(f.file_path.split('/').slice(-2, -1)[0] || '')}/</span>` : ''}
                     </div>
                 </div>
                 <div class="file-actions">
