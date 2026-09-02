@@ -1,9 +1,44 @@
 你是陳仔0號的 Hermes Agent。被 cron 每 1 小時叫醒。
 
-## 當前狀態（截至 2026-09-01 cron tick）
+## 當前狀態（截至 2026-09-02 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 42acae4 (v3.4.74)
-**Latest commit**: [P3] feat: surface events[].dismissed_at on stock_detail renderEvents (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 868eff7 (v3.4.76)
+**Latest commit**: [P3] feat: preserve <code> children in system.html description (Pattern 5 sub-class)
+
+**v3.4.76 (2026-09-02 cron tick) — System page description paragraph <code> children preservation (Pattern 5 sub-class)**:
+- ✅ **Bug class**: `templates/system.html:19` had `<p data-i18n="system.desc">即時顯示... <code>/api/metrics/summary</code> + <code>/health</code>。</p>` — `applyI18n()` 喺 `i18n.js:1358` 行 `el.textContent = text` 會 destroy 所有 inline child elements。User 喺 langchange 之後睇唔到 `<code>` monospace styling，API path 顯示成普通文字。Latent since v3.4.10 (system page ships)
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (212 insertions / 2 deletions):
+  - `templates/system.html` (+2/-2): 將原來 `<p data-i18n="system.desc">...</p>` 拆成 3 個 i18n-wrapped `<span>` (desc_prefix / desc_plus / desc_suffix) + 2 個 static `<code>` siblings。Static API paths (language-neutral) 唔需要 translation，內置 markup 保留
+  - `static/js/i18n.js` (+6 keys, 3 zh + 3 en): `system.desc_prefix` / `system.desc_plus` / `system.desc_suffix`，both zh + en sections。Legacy `system.desc` key 保留作 backward compat
+  - `tests/test_system_desc_i18n.py` (new file +247, 10 tests): TestSystemDescMarkup (4: 冇 data-i18n on outer <p> + 使用 span fragments + <code> 係 static siblings 唔係 nested inside span + 2 個 <code> 數量正確) + TestSystemDescI18nKeys (3: zh + en keys exist + legacy system.desc 保留) + TestApplyI18nPreservesChildren (1: simulation 證明 <code> 唔會被 textContent destroy) + TestE2ESmoke (2: /system 200 + served HTML 有 3 個 fragment spans)
+- ✅ **0 backend / DB / schema changes** — pure template markup restructure
+- ✅ **Verification**:
+  - 10/10 tests in test_system_desc_i18n.py PASSED
+  - 447/448 全 suite tests passing (1 pre-existing failure `test_old_smoke_news_reach_response` documented v3.4.46 唔關事)
+  - node --check OK on i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - /system 200 OK; served HTML 含 3 個 fragment spans + 2 個 `<code>` static siblings
+- ✅ **Pattern 5 sub-class coverage**: 第一個 detection (templates/system.html:19) — 其他 templates 經 grep 確認冇類似 data-i18n-on-parent-of-inline-HTML pattern
+- ✅ Touch: templates/system.html (+2/-2), static/js/i18n.js (+6 keys), tests/test_system_desc_i18n.py (new +247). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 868eff7
+
+**v3.4.75 (2026-09-02 cron tick) — Dashboard portfolio card captured_at time-of-day (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/portfolio/summary` 返 `latest.captured_at = '2026-09-01 12:02:02'` (10/10 snapshots populated, SQLite datetime timestamp) — `loadPortfolioSummary()` 只 consume `snapshot_date = '2026-09-01'` (just date part)。User 見到 "今日快照：2026-09-01" 但完全冇 time-of-day context — 唔知係 nightly 20:00 拍嘅定 manual morning capture 定 backfilled row。`portfolio.snapshots_log` table 早已用 `captured_at` (v3.4.49 ships)，但 dashboard portfolio summary card 永久 silently dropped
+- ✅ **Fix scope** — pure frontend 2-file surgical addition (216 insertions / 1 deletion):
+  - `templates/index.html` (+5/-1): `loadPortfolioSummary()` 嘅 `dateEl.textContent` assignment 改寫，`v.captured_at` truthy guard 後 `formatDateTime()` 渲染，append 用 `·` separator。Defensive guard `v.captured_at ? formatDateTime(...) : ''` 防 empty string → 'Invalid Date'
+  - `tests/test_captured_at_surfacing.py` (new file +211, 11 tests): TestCapturedAtAPI (1: endpoint 返 non-empty captured_at + SQLite timestamp pattern match) + TestCapturedAtMarkup (4: JS 讀 v.captured_at + 用 formatDateTime + dateEl receives both + truthy conditional guard) + TestFormatDateTimeHelper (2: helper 定義 + _lang locale 讀 — Pattern 5e guard) + TestSnapshotTodayI18n (2: zh CJK + en ASCII + 兩者都有 {date} placeholder — Pattern 5d sub-class v3.4.61 lesson) + TestCapturedAtE2ESmoke (2: / 200 + served HTML 有 v.captured_at binding)
+- ✅ **0 backend / DB / schema changes** — endpoint 早已返 captured_at populated
+- ✅ **0 new i18n keys needed** — `portfolio.snapshot_today: '今日快照：{date}' / 'Today snapshot: {date}'` 早已存在 (v3.4.2 ships 起)，{date} placeholder 直接重用塞 `2026-09-01 12:02:02` 整個 string
+- ✅ **Verification**:
+  - 11/11 tests in test_captured_at_surfacing.py PASSED
+  - 432/432 全 suite tests passing (excluding documented v3.4.46 pre-existing failure)
+  - node --check OK on extracted index.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits
+  - / 200 OK; served HTML 含 `v.captured_at` 2 次 (truthy guard + textContent assignment)
+  - /api/portfolio/summary 返 `latest.captured_at='2026-09-01 12:02:02'` (live endpoint check)
+- ✅ **Rendered simulation**: dashboard portfolio card 之前 "今日快照：2026-09-01" → 而家 "今日快照：2026-09-01 · 2026/09/01 下午12:02:02" (zh) / "Today snapshot: 2026-09-01 · 09/01/2026, 12:02:02 PM" (en)
+- ✅ Touch: templates/index.html (+5/-1), tests/test_captured_at_surfacing.py (new +211). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 30a11b8
 
 **v3.4.74 (2026-09-02 cron tick) — Stock detail event rows dismissed_at timestamp (Pattern 9b orphan field)**:
 - ✅ **Bug class**: `/api/stock/<sym>/detail` returns events[].dismissed_at (ISO timestamp set when event is dismissed, NULL otherwise) — `templates/stock_detail.html` `renderEvents()` 永久 silently dropped the field. User 見到「[dismissed]」tag 但完全冇 way 知道係幾時 dismiss 嘅 (5分鐘前 vs 5日前 vs 上個月)。v3.4.66 已經喺 events.html upcoming list wired `dismissed_at` surfacing — 但 stock_detail.html 同一個 endpoint 嘅 events 渲染路徑冇同步
