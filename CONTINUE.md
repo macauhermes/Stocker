@@ -2,8 +2,34 @@
 
 ## 當前狀態（截至 2026-09-02 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 136af69 (v3.4.77)
-**Latest commit**: [P3] feat: langchange listeners for watchlists + report_detail (Pattern 5d fix)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 2c34942 (v3.4.78)
+**Latest commit**: [P3] feat: surface report file_path as local-file pill (Pattern 9b orphan field)
+
+**v3.4.78 (2026-09-02 cron tick) — Report detail local-file pill (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/reports` 同 `/api/reports/<id>` 兩個 endpoint 都返 populated `file_path` field (1238/1247 reports, 99.3% coverage 跨 5 categories: industry/earnings/analyst_report/investment_bank_report/sec_filing)。由 v3.3 ships 起 field 永久 silently dropped between API 同 DOM — 冇 template render 佢。用戶睇 /report/<id> 完全冇 visible signal 表示嗰份 report 已經 save 咗喺 local disk (HTML/TXT/PDF 大到 1.2 MB for full SEC 10-Q)
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (~80 insertions):
+  - `templates/report_detail.html` (+40): 新加 `<div id="report-local-file">` 喺 detail-header (display:none default); `loadReport()` 讀 `data.file_path` 然後 conditionally render 一個 orange "📁 filename · 24 KB" pill. Filename 經 `.split('/').pop()` derive, size 透過 `/api/files` filename index + `formatFileSize()`. HTML `title=` attribute 帶 full absolute path for native tooltip; `data-i18n-title="report.local_file_tooltip"` for translated tooltip 喺 langchange. 新加 `formatFileSize(bytes)` helper 4-tier boundaries (B/KB/MB/GB, 1024-based) 加 defensive guard 防 non-number/negative/Infinity input
+  - `static/js/i18n.js` (+4 keys): `report.local_file` (zh '本地存檔' / en 'Local file') + `report.local_file_tooltip` (zh '本機已存檔完整檔案於此路徑' / en 'Complete file saved locally at this path'). Bilingual 雙覆蓋 (Pattern 5d v3.4.61 lesson)
+  - `static/css/components.css` (+18): 新加 `.report-local-file` class — orange tint, monospace font, cursor:help, word-break:break-all for long filenames. Visual parity with `.report-added` (v3.4.72) 同 `.report-ticker-badge` (v3.4.57) for badge row consistency
+- ✅ **0 backend / DB / schema changes** — `/api/reports` 同 `/api/reports/<id>` endpoint 早已返 file_path populated
+- ✅ **0 new i18n keys needed beyond the 4 above** — all 新
+- ✅ **Verification**:
+  - 20/20 tests 喺 test_report_local_file.py PASSED (new file)
+  - 474/475 full suite passing (+20 new, 1 pre-existing failure `test_old_smoke_news_reach_response` documented v3.4.47 唔關事)
+  - node --check OK on extracted report_detail.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - /report/1 200 OK; served HTML 含 id="report-local-file" + data.file_path JS reference + data-i18n-title attribute
+  - /static/css/components.css served with .report-local-file class
+  - /api/reports/1 returns file_path='/home/.../GLW_10-Q_2026-05-01.htm' (real disk path, 1.2 MB on disk)
+  - Rendered: detail header now 顯示 "📁 GLW_10-Q_2026-05-01.htm · 1.2 MB" pill 喺 source/category badges 下面, full path tooltip on hover
+- ✅ **Pattern 9b coverage check (orphan fields on /api/reports + /api/reports/<id>)**:
+  - consumed v3.4.57: ticker_symbol
+  - consumed v3.4.66: events[].dismissed_at (events.html upcoming)
+  - consumed v3.4.74: events[].dismissed_at (stock_detail.html renderEvents)
+  - consumed v3.4.78: file_path ← 呢個 commit
+  - remaining orphans: 0 top-level fields
+- ✅ Touch: templates/report_detail.html (+40), static/js/i18n.js (+4 keys), static/css/components.css (+18), tests/test_report_local_file.py (new +315). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 2c34942
 
 **v3.4.77 (2026-09-02 cron tick) — langchange listeners for watchlists + report_detail (Pattern 5d sub-class fix)**:
 - ✅ **Bug class**: Dynamic `t()` calls 喺 JS template literals render 嗰陣用 load-time 嘅語言, 之後切語言就永遠 stay 喺原 language 直至 page reload — 因為冇 `addEventListener('langchange', ...)` 鉤去 trigger re-render。Pattern 5d sub-class (missing langchange listener despite dynamic t() calls) — 雖然其他 9 個 templates (alerts/banks/events/files/index/industry/sources/stock_detail/system) 全部早已 wired, 但 watchlists.html + report_detail.html 兩頁從未補上
