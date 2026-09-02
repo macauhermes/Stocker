@@ -2,8 +2,28 @@
 
 ## 當前狀態（截至 2026-09-02 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 868eff7 (v3.4.76)
-**Latest commit**: [P3] feat: preserve <code> children in system.html description (Pattern 5 sub-class)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit 136af69 (v3.4.77)
+**Latest commit**: [P3] feat: langchange listeners for watchlists + report_detail (Pattern 5d fix)
+
+**v3.4.77 (2026-09-02 cron tick) — langchange listeners for watchlists + report_detail (Pattern 5d sub-class fix)**:
+- ✅ **Bug class**: Dynamic `t()` calls 喺 JS template literals render 嗰陣用 load-time 嘅語言, 之後切語言就永遠 stay 喺原 language 直至 page reload — 因為冇 `addEventListener('langchange', ...)` 鉤去 trigger re-render。Pattern 5d sub-class (missing langchange listener despite dynamic t() calls) — 雖然其他 9 個 templates (alerts/banks/events/files/index/industry/sources/stock_detail/system) 全部早已 wired, 但 watchlists.html + report_detail.html 兩頁從未補上
+- ✅ **Bug A — templates/watchlists.html (no langchange listener)**: `renderGroups()` 經 `${t('watchlists.empty_title')}` + `${t('watchlists.empty_hint')}` + `${t('watchlists.ticker_count', {n: g.ticker_count})}` + `${t('common.edit')}` + `${t('common.delete')}` + `${t('watchlists.add_ticker')}` 全部 freeze 喺 load-time language。Modal title (openGroupModal line 292) 動態 set textContent `t('watchlists.edit_title')` / `t('watchlists.add_title')` 都係 stale。Latent since v3.3 ships
+- ✅ **Bug B — templates/report_detail.html (no langchange listener)**: `loadReport()` 嘅 ~10 個 dynamic strings (report.source_external / report.no_source / report.no_analysis / report.rating_summary / report.rating.{buy,hold,sell} / report.analysts / common.error / report.ticker_badge / report.added_at / files.cat.X) 全部 freeze 喺 load-time language。Latent since v3.3 ships
+- ✅ **Fix scope** — 2 純 template 嘅 surgical additions (26 insertions / 0 deletions):
+  - `templates/watchlists.html` (+16): 新加 `window.addEventListener('langchange', () => { renderGroups(); /* modal title re-render if open */ })`
+  - `templates/report_detail.html` (+10): 新加 `window.addEventListener('langchange', () => { loadReport(); })` — 簡單 re-fetch + re-render 因為 page 簡單 (single report)
+  - `tests/test_langchange_listeners.py` (new file +233, 10 tests): TestWatchlistsLangchange (4: listener exists + calls renderGroups + re-renders modal title + /watchlists 200) + TestReportDetailLangchange (3: listener exists + calls loadReport + /report/1 200) + TestJsSyntaxValid (2: node --check on extracted scripts) + TestPattern5dLangchangeAudit (1: all 11 dynamic-t() templates 都 wired 了)
+- ✅ **0 backend / DB / schema changes** — pure template markup
+- ✅ **0 new i18n keys needed** — 所有 referenced `t()` keys 全部早已喺 i18n.js 存在
+- ✅ **Verification**:
+  - 10/10 tests PASSED in test_langchange_listeners.py
+  - 457/458 全 suite tests passing (+10 from this commit)。1 pre-existing failure `test_sector_truncation.test_old_smoke_news_reach_response` (documented since v3.4.47 industry news migration, 唔關今次 change 事)
+  - node --check OK on extracted watchlists.js + report_detail.js scripts
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF): 0 hits 跨 3 modified files
+  - /watchlists + /report/1 both 200 OK
+  - served HTML 含 langchange listener wiring (3 occurrences each = event registration + handler body + comment)
+- ✅ **Touch**: templates/report_detail.html (+10), templates/watchlists.html (+16), tests/test_langchange_listeners.py (new +233). Template-only → no restart needed, server 仲係 200 OK
+- Commit: 136af69
 
 **v3.4.76 (2026-09-02 cron tick) — System page description paragraph <code> children preservation (Pattern 5 sub-class)**:
 - ✅ **Bug class**: `templates/system.html:19` had `<p data-i18n="system.desc">即時顯示... <code>/api/metrics/summary</code> + <code>/health</code>。</p>` — `applyI18n()` 喺 `i18n.js:1358` 行 `el.textContent = text` 會 destroy 所有 inline child elements。User 喺 langchange 之後睇唔到 `<code>` monospace styling，API path 顯示成普通文字。Latent since v3.4.10 (system page ships)
