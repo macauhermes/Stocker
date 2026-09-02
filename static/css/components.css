@@ -904,6 +904,25 @@
   background: rgba(73, 79, 223, 0.12);
 }
 
+/* v3.4.78 — Pattern 9b orphan field (file_path). Inline pill on report
+   detail header showing the local filename + human-readable size. Hover
+   tooltip carries the full absolute path. Matches the muted-text + cursor:help
+   pattern used by .report-added (v3.4.72) for visual consistency. */
+.report-local-file {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  margin-top: 6px;
+  background: rgba(255, 145, 0, 0.10);
+  color: var(--orange);
+  font-size: 0.72rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 145, 0, 0.25);
+  cursor: help;
+  word-break: break-all;
+}
+
 .report-source-link:focus {
   outline: 2px solid var(--blue);
   outline-offset: 1px;

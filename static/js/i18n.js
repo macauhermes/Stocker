@@ -222,6 +222,9 @@ const I18N = {
     'report.rating.4m': '4個月前',
     'report.rating.5m': '5個月前',
     'report.ticker_badge': '查看 {symbol} 詳細資料',            // v3.4.57 — Pattern 9b orphan field (ticker_symbol)
+    // v3.4.78 — Pattern 9b orphan field (file_path). Tooltip explains the local file pill.
+    'report.local_file': '本地存檔',
+    'report.local_file_tooltip': '本機已存檔完整檔案於此路徑',
 
     // Industry
     'industry.title': '行業新聞與報告',
@@ -836,6 +839,9 @@ const I18N = {
     'report.rating.4m': '4 months ago',
     'report.rating.5m': '5 months ago',
     'report.ticker_badge': 'View {symbol} details',               // v3.4.57 — Pattern 9b orphan field (ticker_symbol)
+    // v3.4.78 — Pattern 9b orphan field (file_path). Tooltip explains the local file pill.
+    'report.local_file': 'Local file',
+    'report.local_file_tooltip': 'Complete file saved locally at this path',
 
     // Industry
     'industry.title': 'Industry News & Reports',

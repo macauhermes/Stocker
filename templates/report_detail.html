@@ -18,6 +18,10 @@
         </div>
         <div id="report-source-badge" style="display:none;"></div>
         <div id="report-category-badge" style="display:none;"></div>
+        <!-- v3.4.78 — Pattern 9b orphan field (file_path).
+             Surfaces that the report is also saved locally on disk.
+             Shows filename + human-readable size; hover tooltip has full absolute path. -->
+        <div id="report-local-file" style="display:none;"></div>
     </div>
 
     <!-- Report Content -->
@@ -140,6 +144,32 @@
                 const link = document.getElementById('report-link');
                 link.href = data.url;
                 link.style.display = 'inline-flex';
+            }
+
+            // v3.4.78 — Pattern 9b orphan field: surface that this report is also
+            // stored on disk locally. file_path is populated on 1238/1247 reports
+            // (99.3% — all categories). Filename + size pill with full path in tooltip.
+            const localFileEl = document.getElementById('report-local-file');
+            if (data.file_path) {
+                const filename = data.file_path.split('/').pop();
+                let sizeStr = '';
+                try {
+                    // Read size via the /api/files endpoint instead of HEAD — sandboxed
+                    // browsers cannot read local file sizes. /api/files indexes by filename.
+                    // Fallback gracefully to filename-only if /api/files is unavailable.
+                    const sizeInfo = await fetch('/api/files?limit=2000').then(r => r.ok ? r.json() : []).catch(() => []);
+                    const entry = Array.isArray(sizeInfo) ? sizeInfo.find(f => f.filename === filename) : null;
+                    if (entry && typeof entry.file_size === 'number') {
+                        sizeStr = ' · ' + formatFileSize(entry.file_size);
+                    }
+                } catch (_) { /* silent fallback — basename only */ }
+                localFileEl.innerHTML =
+                    `<span class="report-local-file" data-i18n-title="report.local_file_tooltip" title="${escapeHtml(data.file_path)}">` +
+                    `<span class="material-icons-outlined" style="font-size:14px; vertical-align:middle; margin-right:4px;">folder</span>` +
+                    `${escapeHtml(filename)}${sizeStr}</span>`;
+                localFileEl.style.display = 'block';
+            } else {
+                localFileEl.style.display = 'none';
             }
 
             // Content - parse and display as structured data
@@ -462,6 +492,18 @@
         // Clean up nested <ul> from regex
         html = html.replace(/<\/ul><br><ul>/g, '');
         return html;
+    }
+
+    // v3.4.78 — formatFileSize helper for the local-file pill (Pattern 9b).
+    // Uses KB/MB/GB tiers — analyst report snippets are ~0.2 KB while full
+    // SEC 10-Q filings can be 1+ MB. Tier boundaries chosen to match the
+    // existing formatVolume() helper in i18n.js (1024-based, not 1000-based).
+    function formatFileSize(bytes) {
+        if (typeof bytes !== 'number' || bytes < 0 || !isFinite(bytes)) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
     }
 
     // Init
