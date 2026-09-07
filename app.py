@@ -787,6 +787,7 @@ def api_stock_detail(symbol):
             'name': info.get('name', symbol),
             'price': info.get('price'),
             'change_pct': info.get('change_pct'),
+            'prev_close': info.get('prev_close'),  # v3.4.86 — surface prev close (Pattern 9b)
             'market_cap': info.get('market_cap'),
             'pe_ratio': info.get('pe_ratio'),
             'eps': info.get('eps'),

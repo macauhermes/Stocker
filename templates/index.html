@@ -1048,6 +1048,7 @@
                 <div class="stock-price-section">
                     <div class="stock-price" data-price="${ticker.symbol}">${price != null ? '$' + price.toFixed(2) : '—'}</div>
                     <div class="stock-change ${changeClass}" data-change="${ticker.symbol}">${changePct != null ? sign(changePct) + changePct.toFixed(2) + '%' : '—'}</div>
+                    ${ticker.prev_close != null ? `<div class="stock-prev-close" data-prev-close="${ticker.symbol}" title="${t('stock.prev_close')}">${t('stock.prev_close')} $${Number(ticker.prev_close).toFixed(2)}</div>` : ''}
                 </div>
             `;
             container.appendChild(card);

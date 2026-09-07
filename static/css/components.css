@@ -521,6 +521,15 @@
   font-weight: 500;
 }
 
+/* v3.4.86 — surface prev_close (Pattern 9b orphan field) */
+.stock-prev-close {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
 .text-green { color: var(--green); }
 .text-red { color: var(--red); }
 

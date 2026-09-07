@@ -144,6 +144,7 @@ const I18N = {
     'detail.high_52w': '52周最高',
     'detail.low_52w': '52周最低',
     'detail.next_earnings': '下次財報',
+    'detail.prev_close': '昨收',  // v3.4.86 — surface prev_close (Pattern 9b)
     'detail.macd_label': 'MACD 指標',
     'detail.rsi_label': 'RSI 指標',
     'detail.volume_label': '成交量',
@@ -770,6 +771,7 @@ const I18N = {
     'detail.high_52w': '52W High',
     'detail.low_52w': '52W Low',
     'detail.next_earnings': 'Next Earnings',
+    'detail.prev_close': 'Prev Close',  // v3.4.86 — surface prev_close (Pattern 9b)
     'detail.macd_label': 'MACD',
     'detail.rsi_label': 'RSI',
     'detail.volume_label': 'Volume',

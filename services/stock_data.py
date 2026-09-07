@@ -123,6 +123,7 @@ def fetch_stock_info(symbol: str) -> dict:
                 "symbol": symbol.upper(),
                 "price": _round_safe(price),
                 "change_pct": change_pct,
+                "prev_close": _round_safe(prev_close),  # v3.4.86 — surface prev close (Pattern 9b orphan field)
                 "name": info.get("shortName") or info.get("longName", symbol),
                 "sector": info.get("sector", "N/A"),
                 "market_cap": info.get("marketCap"),
@@ -150,6 +151,7 @@ def fetch_stock_info(symbol: str) -> dict:
                 "symbol": symbol.upper(),
                 "price": fallback["price"],
                 "change_pct": fallback.get("change_pct"),
+                "prev_close": fallback.get("prev_close"),  # v3.4.86 — surface prev close (Pattern 9b)
                 "name": fallback.get("name", symbol),
                 "sector": fallback.get("sector", "N/A"),
                 "market_cap": fallback.get("market_cap"),
@@ -169,6 +171,7 @@ def fetch_stock_info(symbol: str) -> dict:
         "symbol": symbol.upper(),
         "price": None,
         "change_pct": None,
+        "prev_close": None,  # v3.4.86 — surface prev close (Pattern 9b)
         "name": symbol,
         "sector": "N/A",
         "market_cap": None,

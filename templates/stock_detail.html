@@ -157,6 +157,10 @@
             <div class="stat-label" data-i18n="detail.next_earnings">下次財報</div>
             <div class="stat-value" id="val-next-earnings">—</div>
         </div>
+        <div class="stat-item">
+            <div class="stat-label" data-i18n="detail.prev_close">昨收</div>
+            <div class="stat-value" id="val-prev-close">—</div>
+        </div>
     </div>
 
     <!-- News Section -->
@@ -774,6 +778,10 @@
             // Next earnings — date surfaced from /api/stock/<sym>/detail (v3.4.48)
             if (data.next_earnings && data.next_earnings.date) {
                 document.getElementById('val-next-earnings').textContent = formatDate(data.next_earnings.date);
+            }
+            // v3.4.86 — prev_close (Pattern 9b orphan field, surfaced via stock_data.py fix)
+            if (data.prev_close != null) {
+                document.getElementById('val-prev-close').textContent = '$' + Number(data.prev_close).toFixed(2);
             }
 
             // News
