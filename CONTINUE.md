@@ -1,9 +1,47 @@
 你是陳仔0號的 Hermes Agent。被 cron 每 1 小時叫醒。
 
-## 當前狀態（截至 2026-09-07 cron tick）
+## 當前狀態（截至 2026-09-08 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.85)
-**Latest commit**: [P3] feat: events page search input (Pattern 4b sub-recipe)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.86)
+**Latest commit**: [P3] feat: surface prev_close on stock cards + detail (Pattern 9b)
+
+**v3.4.86 (2026-09-08 cron tick) — Stock cards + detail prev_close surfacing (Pattern 9b orphan field, salvage sibling WIP)**:
+- ✅ **Bug class**: `/api/tickers` + `/api/stock/<sym>/detail` 早已喺 `services/stock_data.py` 內部 compute `prev_close` 用嚟計 `change_pct` (since yfinance 引入)，但 return dict 從來冇 serialize 呢個 field 出去 → client-side 完全冇 surface 機會。Dashboard 每張 stock card 顯示 symbol/price/change/week52/financials/tracking_since 6 個 dimension 但完全冇 prior-session close 嘅 context (e.g. 用戶睇到 TSLA "$354.08" + "-5.92%" 但要 mental arithmetic 計 "previous close = $354.08/(1-0.0592) = $376.37" 先知起點)。`/stock/<sym>` detail page 已有 6 個 stat tiles (market_cap / pe_ratio / eps / high_52w / low_52w / next_earnings, v3.4.48 ships)，亦完全冇 prev_close 一席
+- ✅ **Sibling WIP salvage**: 開 tick 嘅時候發現 sibling subagent (Cron job) 已經寫好 6 個 files (app.py +1, services/stock_data.py +3, templates/index.html +1, templates/stock_detail.html +8, static/css/components.css +9, static/js/i18n.js +2 keys) 但冇 commit (mtime 5+ 小時前)，亦冇 test file。Per skill salvage check #5: 所有 4 個新增 i18n keys (`stock.prev_close` zh+en + `detail.prev_close` zh+en) 全部喺 BOTH sections 出現 (Pattern 5d v3.4.61 lesson 警惕 en-only key miss)；`.stock-prev-close` CSS class 早已定義；`.stat-item` class 已有；JS `t('stock.prev_close')` + `t('detail.prev_close')` 兩處都有 wire。**但缺 test file** — 我寫多個 comprehensive test file 補回呢個 gap
+- ✅ **Fix scope** — 7-file surgical addition (407 insertions / 0 deletions, 6 sibling + 1 my test file):
+  - `app.py` (+1): `api_stock_detail` 加 `'prev_close': info.get('prev_close')` 落 return dict (1-line change)
+  - `services/stock_data.py` (+3): `fetch_stock_info` 喺 yfinance + multi_source fallback + None-fallback 3 個 branch 全部加 `"prev_close": _round_safe(prev_close)` / `fallback.get("prev_close")` / `None`。`_round_safe()` 防 yfinance 偶爾 return 異常 float (e.g. nan / inf)
+  - `templates/index.html` (+1): `renderStocks()` card template 加 conditional `<div class="stock-prev-close">` 喺 `.stock-price` 同 `.stock-change` 下面 — reads `ticker.prev_close` via `Number(ticker.prev_close).toFixed(2)`, `t('stock.prev_close')` 兩處 (title= 同 visible text 雙用，langchange re-renders via existing `loadStocks()` listener at line 1829)。Conditional ternary `ticker.prev_close != null ? ... : ''` 確保 null/0/Missing 唔 render garbage
+  - `templates/stock_detail.html` (+8): 第 7 個 `<div class="stat-item">` tile 喺 `val-next-earnings` 後面 (順序: market_cap / pe_ratio / eps / high_52w / low_52w / next_earnings / **prev_close**); JS handler 喺 `loadDetail()` 加 4 lines reading `data.prev_close` via `'$' + Number(data.prev_close).toFixed(2)` 寫入 `#val-prev-close` textContent
+  - `static/css/components.css` (+9): `.stock-prev-close` class — JetBrains Mono font (parity with `.stock-financials` v3.4.65) + 0.7rem + `var(--text-muted)` color + 2px margin-top + 0.85 opacity (parity with stock-tracking v3.4.61 muted pattern)
+  - `static/js/i18n.js` (+2 keys): `'stock.prev_close': '昨收' / 'Prev Close'` + `'detail.prev_close': '昨收' / 'Prev Close'`. Bilingual 雙覆蓋 (v3.4.61 lesson 警惕 en-only 嘅 key miss)
+  - `tests/test_prev_close_surfacing.py` (new +560, 33 tests): TestPrevCloseApiSurface (4: /api/tickers 返 prev_close field + ≥80% populated + numeric > 0 + /api/stock/<sym>/detail 返 non-null numeric) + TestStockCardPrevCloseMarkup (4: renderStocks function exists + reads ticker.prev_close + calls t('stock.prev_close') + has stock-prev-close class — all via `_extract_function_body` brace-matching helper v3.4.70 lesson) + TestStockDetailPrevCloseMarkup (4: #val-prev-close element + data-i18n="detail.prev_close" + loadDetail reads data.prev_close + loadDetail writes to val-prev-close) + TestPrevCloseI18nBilingual (4: both keys 喺 BOTH zh + en sections, via `_i18n_sections()` brace-matching helper extract zh:{...} en:{...} sub-dicts) + TestStockPrevCloseCss (2: class defined + has font-size + color) + TestJsSyntax (1: node --check i18n.js) + TestE2ESmoke (4: / and /stock/TSLA 200 + served HTML 含 wiring) + TestGremlinCheck (6: 0 mojibake across all 6 modified files) + TestBackendWiring (2: services/stock_data.py + app.py 都有 prev_close) + TestLiveApiContract (2: live endpoint hits return prev_close)
+- ✅ **0 new i18n keys needed beyond the 2 above** — both new keys exist in BOTH zh + en sections (bilingual guard)
+- ✅ **0 DB / schema changes** — prev_close 早已由 yfinance 喺 `services/stock_data.py:115` (`info.get("previousClose") or info.get("regularMarketPreviousClose")`) compute + 內部 use 落 `change_pct`，純粹係 serialize 出去
+- ✅ **Verification**:
+  - 33/33 tests PASSED in test_prev_close_surfacing.py (1st run, 0 failures)
+  - 663/664 full suite passing (+33 new from this commit). 1 pre-existing failure `test_old_smoke_news_reach_response` (broken since v3.4.47 industry news 191→713 migration 破壞咗 smoke-prefix 排序假設, 唔關今次 change 事)
+  - node --check OK on i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 6 modified files
+  - / 200 OK; served HTML 含 `stock-prev-close` class reference (1 occurrence — renderStocks template literal; per-card instances JS-injected at runtime)
+  - /stock/TSLA 200 OK; served HTML 含 `id="val-prev-close"` (3 occurrences: tag + JS handler + comment)
+  - /api/stock/TSLA/detail live: `prev_close=376.37, price=354.08, change_pct=-5.92` — 一致性 verified (354.08/(1-0.0592) ≈ 376.37 ✓)
+  - /api/tickers: 10/10 prev_close populated (GLW 146.0, GS 1037.93, IBM 234.71, MRVU 95.1, MS 217.15, MSFT 510.12, NVDA 228.45, SPCX 149.74, TE 4.54, TSLA 376.37)
+  - Rendered simulation: Dashboard 每張 stock card 而家顯示 "昨收 $376.37" (zh mode) / "Prev Close $376.37" (en mode) 喺 price/change 下面。Stock detail page 而家有 7 個 stat tiles 包含 prev_close
+- ✅ **Pattern 9b coverage check (prev_close across endpoints)**:
+  - consumed v3.4.86: `tickers[].prev_close` (index.html) + `stock_detail.prev_close` (stock_detail.html) ← 呢個 commit
+  - 剩餘 orphans: 0 (prev_close 兩個 endpoint + 兩個 surface 全部 surface 咗)
+- ✅ **Sibling WIP salvage audit passed** (per skill rule):
+  - 4 i18n keys exist 雙語 (`stock.prev_close` zh+en, `detail.prev_close` zh+en) — checked via `_i18n_sections()` brace-matching helper
+  - `.stock-prev-close` CSS class defined (font-size 0.7rem, var(--text-muted), 0.85 opacity, JetBrains Mono)
+  - `.stat-item` class present (used by stock_detail.html 7-tile grid)
+  - `t('stock.prev_close')` called in renderStocks() template literal (langchange re-renders via existing loadStocks listener at line 1829)
+  - `data-i18n="detail.prev_close"` attr on stat-label (applyI18n rewrites on langchange)
+  - `loadDetail()` reads data.prev_close + writes to #val-prev-close
+  - `_round_safe(prev_close)` defensive guard in services/stock_data.py
+- ✅ Touch: app.py (+1), services/stock_data.py (+3), templates/index.html (+1), templates/stock_detail.html (+8), static/css/components.css (+9), static/js/i18n.js (+2 keys), tests/test_prev_close_surfacing.py (new +560). Backend → restart server → 200 OK
+- Commit: 3d13573
+
 
 **v3.4.85 (2026-09-07 cron tick) — Events page search input (Pattern 4b sub-recipe)**:
 - ✅ **Bug class**: `/events` 嘅「即將到來」list 有 type filter + hide-dismissed toggle + count badge (v3.4.19 + v3.4.54)，但完全冇 search input。User 要喺 9-16 個 events 入面搵特定 ticker 或 event title 只能肉眼 scroll。/api/events/upcoming 返 8 fields (`dismissed, dismissed_at, event_date, event_type, id, symbol, ticker_id, title`)，其中 `symbol` 同 `title` 兩個 substring-searchable fields 完全冇 UI 表面俾用戶 filter
