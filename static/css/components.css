@@ -1441,6 +1441,24 @@
   cursor: help;
 }
 
+/* v3.4.81 — Δ vs 前次 column. Inline icon + signed currency, color-coded
+   green/red like P&L cells. NA cell (top row with no prior snapshot) uses
+   muted text to blend in. */
+.portfolio-snapshots-log-table td .snapshot-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-snapshots-log-table td .snapshot-delta-icon {
+  font-size: 14px;
+  vertical-align: middle;
+}
+.portfolio-snapshots-log-table td .snapshot-delta-na {
+  color: var(--text-muted, #6b7280);
+  font-weight: normal;
+}
+
 @media (max-width: 480px) {
   /* Hide cost column on small screens — value + P&L + P&L% are enough info
      to know how the portfolio is doing; cost is mostly internal accounting.
