@@ -262,6 +262,10 @@ const I18N = {
     'industry.count_total': '共 {total} 份',
     'industry.no_filter_match': '冇符合篩選嘅報告',
     'industry.try_other_filter': '試下揀另一個類別',
+    // v3.4.88 — Industry news search filter
+    'industry.news_search_placeholder': '搜尋新聞標題...',
+    'industry.news_search_no_match': '冇符合搜尋嘅新聞',
+    'industry.news_search_no_match_hint': '試下其他關鍵字',
 
     // Files
     'files.title': '檔案管理',
@@ -889,6 +893,10 @@ const I18N = {
     'industry.count_total': '{total} total',
     'industry.no_filter_match': 'No reports match the filter',
     'industry.try_other_filter': 'Try a different category',
+    // v3.4.88 — Industry news search filter (bilingual coverage for sibling WIP)
+    'industry.news_search_placeholder': 'Search news title...',
+    'industry.news_search_no_match': 'No news matches the search',
+    'industry.news_search_no_match_hint': 'Try a different keyword',
 
     // Files
     'files.title': 'File Manager',

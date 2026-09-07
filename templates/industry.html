@@ -37,6 +37,21 @@
             </div>
             <span id="news-count" class="card-meta"></span>
         </div>
+        <!-- v3.4.88: industry news filter row — search input + sort dropdown + count badge.
+             Hidden until first data load. Reuses .events-filter-row from v3.4.22. -->
+        <div id="news-filter-row" class="events-filter-row" style="display:none;">
+            <input type="text" id="news-search-input" class="input reports-search-input"
+                   data-i18n-placeholder="industry.news_search_placeholder"
+                   placeholder="搜尋新聞標題..."
+                   style="flex:1; min-width:180px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <select id="news-sort-select" class="stocks-control-select">
+                    <option value="desc" data-i18n="industry.sort_newest">最新優先</option>
+                    <option value="asc" data-i18n="industry.sort_oldest">最早優先</option>
+                </select>
+                <span id="news-filter-count" class="events-filter-count"></span>
+            </div>
+        </div>
         <div id="news-list" class="report-list"></div>
     </div>
 
@@ -79,6 +94,11 @@
     let allSectorReports = [];     // raw reports for active sector
     let reportsFilter = 'all';     // 'all' | 'earnings' | 'analyst_report' | 'sec_filing'
     let reportsSort = 'desc';      // 'desc' (newest first) | 'asc' (oldest first)
+
+    // v3.4.88 — Industry news filter state (module-scoped cache + search + sort)
+    let allNews = [];              // raw news for active sector
+    let newsSearchQuery = '';      // title substring filter (case-insensitive)
+    let newsSort = 'desc';         // 'desc' (newest first) | 'asc' (oldest first)
 
     // Load sector data
     document.addEventListener('DOMContentLoaded', loadSectors);
@@ -215,18 +235,22 @@
             fetch('/api/sectors/' + sectorEnc + '/reports').then(r => r.ok ? r.json() : []),
         ]);
 
-        // News panel
+        // News panel (v3.4.88 — caches raw news + delegates to renderNews())
         if (newsRes.status === 'fulfilled') {
-            const news = newsRes.value;
+            const news = newsRes.value || [];
+            allNews = news;
             newsCount.textContent = t('industry.news_count', { n: news.length });
-            renderReports(news, newsList, { isNews: true });
+            initNewsFilterRow();
+            renderNews();
         } else {
+            allNews = [];
             newsList.innerHTML = `
                 <div class="empty-state">
                     <span class="material-icons-outlined empty-state-icon">error</span>
                     <div class="empty-state-title">${t('industry.news_error')}</div>
                 </div>
             `;
+            document.getElementById('news-filter-row').style.display = 'none';
         }
 
         // Reports panel (broader per-ticker search)
@@ -335,6 +359,79 @@
         }
 
         renderReports(filtered, list, { isNews: false });
+    }
+
+    // v3.4.88 — Industry news filter + sort (mirrors renderSectorReports pattern).
+    // Applies title substring search + published_at/created_at sort to the cached
+    // allNews array, then delegates to renderReports() for card rendering.
+    function renderNews() {
+        const list = document.getElementById('news-list');
+        const filterRow = document.getElementById('news-filter-row');
+        const countBadge = document.getElementById('news-filter-count');
+        if (!allNews || allNews.length === 0) {
+            filterRow.style.display = 'none';
+            return;
+        }
+        filterRow.style.display = 'flex';
+
+        // Filter by title substring (case-insensitive)
+        const q = newsSearchQuery.trim().toLowerCase();
+        let filtered = q
+            ? allNews.filter(n => (n.title || '').toLowerCase().includes(q))
+            : allNews.slice();
+
+        // Sort by published_at / created_at
+        filtered.sort((a, b) => {
+            const da = new Date(a.published_at || a.created_at || 0).getTime();
+            const db = new Date(b.published_at || b.created_at || 0).getTime();
+            return newsSort === 'desc' ? (db - da) : (da - db);
+        });
+
+        // Count badge — show filtered count only when a search is active
+        if (q) {
+            countBadge.textContent = t('industry.count_filtered', { shown: filtered.length, total: allNews.length });
+        } else {
+            countBadge.textContent = '';
+        }
+
+        // Empty state distinction: data exists but search excluded all
+        if (filtered.length === 0 && q) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-outlined empty-state-icon">filter_alt_off</span>
+                    <div class="empty-state-title">${t('industry.news_search_no_match')}</div>
+                    <div class="empty-state-text">${t('industry.news_search_no_match_hint')}</div>
+                </div>
+            `;
+            return;
+        }
+
+        renderReports(filtered, list, { isNews: true });
+    }
+
+    // v3.4.88 — Wire news filter row inputs (search debounce + sort change)
+    function initNewsFilterRow() {
+        const searchInput = document.getElementById('news-search-input');
+        const sortSelect = document.getElementById('news-sort-select');
+        if (searchInput && !searchInput._wired) {
+            searchInput._wired = true;
+            let searchTimer = null;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => {
+                    newsSearchQuery = searchInput.value;
+                    renderNews();
+                }, 200);
+            });
+        }
+        if (sortSelect && !sortSelect._wired) {
+            sortSelect._wired = true;
+            sortSelect.value = newsSort;
+            sortSelect.addEventListener('change', () => {
+                newsSort = sortSelect.value;
+                renderNews();
+            });
+        }
     }
 
     function renderReports(reports, listEl, opts = {}) {
