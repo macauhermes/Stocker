@@ -1553,10 +1553,11 @@
                     `<a href="/stock/${t.symbol}" style="color:var(--text); text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:var(--chip-bg, rgba(255,255,255,0.06)); border:1px solid var(--border, #2a2a3e); border-radius:20px; padding:6px 12px; margin:3px; font-size:0.85rem; transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent,#4fc3f7)'" onmouseout="this.style.borderColor='var(--border,#2a2a3e)'">${t.symbol}</a>`
                 ).join('');
                 return `
-                    <div style="background:var(--card-bg,#1a1a2e); border:1px solid var(--border,#2a2a3e); border-radius:12px; margin-bottom:10px; border-left:3px solid ${g.color};">
+                    <div style="background:var(--card-bg,#1a1a2e); border:1px solid var(--border,#2a2e3e); border-radius:12px; margin-bottom:10px; border-left:3px solid ${g.color};">
                         <div style="padding:12px 16px;">
                             <div style="font-weight:600; font-size:0.95rem;">${escHtml(g.name)} <span style="color:var(--text-muted); font-size:0.8rem;">${t('watchlists.ticker_count', {n: g.ticker_count})}</span></div>
                             ${g.description ? `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:2px;">${escHtml(g.description)}</div>` : ''}
+                            ${g.created_at ? `<div style="color:var(--text-muted); font-size:0.7rem; margin-top:2px;" data-i18n-title="watchlists.created_at_tooltip" title="${t('watchlists.created_at_tooltip')}">${t('watchlists.created_at', {date: formatDate(g.created_at)})}</div>` : ''}
                         </div>
                         <div style="padding:0 16px 12px;">
                             ${tickers || `<span style="color:var(--text-muted); font-size:0.8rem;">${t('index.groups_empty_group')}</span>`}

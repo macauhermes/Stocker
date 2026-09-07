@@ -2054,6 +2054,14 @@
   margin-left: 2px;
 }
 
+.group-created {
+  font-size: 0.65rem;
+  color: var(--text-muted, #8b96a8);
+  margin-left: 6px;
+  cursor: help;
+  white-space: nowrap;
+}
+
 .file-download {
   background: none;
   border: none;
