@@ -1,9 +1,50 @@
 你是陳仔0號的 Hermes Agent。被 cron 每 1 小時叫醒。
 
-## 當前狀態（截至 2026-09-02 cron tick）
+## 當前狀態（截至 2026-09-07 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit e5e9cb2 (v3.4.81)
-**Latest commit**: [P3] feat: surface preview card financial stats (Pattern 9b orphan-field)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit e1ff83d (v3.4.83)
+**Latest commit**: [P3] feat: industry page report-card file_path hint (Pattern 9b parallel-orbit)
+
+**v3.4.83 (2026-09-07 cron tick) — Industry page report-card file_path hint (Pattern 9b parallel-orbit)**:
+- ✅ **Bug class**: `/api/industry/<sector>/news` 同 `/api/sectors/<sector>/reports` 兩個 endpoint 都返 populated `file_path` field (200/200 industry news, 100% coverage 跨 sector)。v3.4.78 wires 咗 report_detail.html、v3.4.79 wires 咗 files.html，但 industry.html 嘅 `renderReports()` 完全冇 surface 呢個 field — 用戶喺 /industry 揀 sector 之後睇到 report/news card 但完全冇 signal 個 file 已經 save 喺 local disk (HTML/TXT/PDF for 完整 SEC 10-Q / industry news article)
+- ✅ **Fix scope** — pure frontend 2-file surgical addition (237 insertions / 0 deletions):
+  - `templates/industry.html` (+1): `renderReports()` 嘅 report-meta div 加新 inline `<span class="file-path-hint">` 喺 date span 同 URL link span 之間。Conditional on `r.file_path` truthy (industry news 唔係個個有 file)。`r.file_path.split('/').slice(-2,-1)[0]` extract parent dir name (`news/` / `earnings/` / `analyst_report/` / `sec_filing/`)。`title="..."` = 完整 absolute path (native browser tooltip)，`data-i18n-title="files.local_file_tooltip"` (v3.4.79 ships 嘅 bilingual key，唔需要新加)。`escHtml()` 防 XSS
+  - `tests/test_industry_file_path.py` (new +220, 16 tests): TestIndustryFilePathMarkup (4) + TestIndustryFilePathCSS (2) + TestIndustryFilePathI18n (3: zh + en + 兩 section 都包，Pattern 5d v3.4.61 lesson) + TestIndustryFilePathApiSurface (2: industry/news 100% populated + sectors/Technology/reports 100% populated) + TestIndustryFilePathRenderedPage (2: /industry 200 OK + served HTML 含 class) + TestJSValidation (2: node --check on extracted industry.html script + i18n.js) + TestGremlinCheck (1: 0 mojibake)
+- ✅ **0 backend / DB / schema changes** — endpoint 早已返 file_path populated
+- ✅ **0 new i18n keys needed** — `files.local_file_tooltip` 早已存在喺 i18n.js 兩 section (v3.4.79 ships)
+- ✅ **0 new CSS rules needed** — `.file-path-hint` class 早已定義 (v3.4.79 ships)
+- ✅ **Pattern 9b parallel-orbit check (file_path across endpoints)**:
+  - consumed v3.4.78: report.file_path (report_detail.html)
+  - consumed v3.4.79: files.file_path (files.html)
+  - consumed v3.4.83: report.file_path (industry.html renderReports) ← 呢個 commit
+  - remaining file_path refs: 0 (3 個 endpoint 全部 surface 咗)
+- ✅ **Verification**:
+  - 16/16 tests PASSED in test_industry_file_path.py
+  - 573/574 全 suite tests passing (+16 new, 1 pre-existing failure `test_old_smoke_news_reach_response` documented v3.4.46 唔關今次事)
+  - node --check OK on extracted industry.html script + i18n.js
+  - gremlin check: 0 hits 跨 industry.html
+  - /industry 200 OK; served HTML 含 'file-path-hint' class reference
+  - Simulated pill render: Technology sector news card 顯示 "📁 news/" pill after date, full path on hover tooltip
+- ✅ Touch: templates/industry.html (+1), tests/test_industry_file_path.py (new +220). Template-only → no restart needed, server 仲係 200 OK
+- Commit: e1ff83d
+
+**v3.4.82 (2026-09-07 cron tick) — Portfolio snapshots log Δ vs 前次 column (salvage sibling WIP)**:
+- ✅ **Bug class**: /portfolio (dashboard widgets) snapshots log table 顯示 date/captured/value/cost/P&L/%/holdings 但冇 day-over-day delta column. User 睇到絕對 P&L 但要 mental arithmetic 先知每個 snapshot 加/減咗幾多 vs 上一次
+- ✅ **Fix scope** — salvage sibling subagent 嘅完整 WIP (4 files: templates/index.html + static/css/components.css + static/js/i18n.js + tests/test_snapshot_log_delta.py)，所有 pieces 都齊全但冇 commit
+  - `templates/index.html` (`loadPortfolioSnapshotsLog()` 用 `meaningful.map((s, idx) => ...)` so each row can compute delta vs `meaningful[idx + 1]`): 新加 delta column header `<th class="num" data-i18n="portfolio.snapshots_log_delta">Δ vs 前次</th>`，delta rendering: `trending_up` / `trending_down` / `trending_flat` Material icon + signed currency (`$+1,234 / $-567`), color-coded via `pnl-positive/pnl-negative` classes (parity with P&L cells). Top row (no prior snapshot) renders muted `—` via `.snapshot-delta-na` class
+  - `static/css/components.css` (+18): `.snapshot-delta` (inline-flex + tabular-nums) + `.snapshot-delta-icon` (font-size 14px) + `.snapshot-delta-na` (muted via `var(--text-muted)`). Scoped under `.portfolio-snapshots-log-table`
+  - `static/js/i18n.js` (+4 keys): zh + en for `portfolio.snapshots_log_delta` (zh 'Δ vs 前次' / en 'Δ vs prev') + `portfolio.snapshots_log_delta_title` (zh '與上一次快照嘅市值變化' / en 'Portfolio value change vs the previous snapshot')
+  - `tests/test_snapshot_log_delta.py` (new +222, 17 tests): TestSnapshotLogDeltaMarkup (3) + TestSnapshotLogDeltaJS (4: idx param + prev snapshot lookup + deltaValue computation + NA fallback) + TestSnapshotLogDeltaCSS (2) + TestSnapshotLogDeltaI18n (3: bilingual coverage guard) + TestSnapshotLogDeltaRenderedPage (3: 200 + served HTML 含 header + class) + TestJSValidation (2: node --check on inline + i18n.js)
+- ✅ **0 backend / DB / schema changes** — pure frontend
+- ✅ **Sibling WIP awareness**: Sibling subagent had implemented v3.4.82 across 3 files + 1 new test file but never committed. Used the salvage check #5 recipe: all 3 CSS classes defined, all 4 i18n keys exist in BOTH zh + en sections, tests pass cleanly. Salvaged as coherent feature
+- ✅ **Verification**:
+  - 17/17 tests PASSED in test_snapshot_log_delta.py
+  - 557/558 全 suite tests passing (+17 from this commit; 1 pre-existing failure `test_old_smoke_news_reach_response` documented v3.4.46)
+  - node --check OK on extracted index.html script + i18n.js
+  - gremlin check: 0 hits 跨 2 modified files
+  - / 200 OK; served HTML 含 4 'snapshot-delta/snapshots_log_delta' references + 12 'deltaValue/deltaHtml/dSign/dIcon' JS references
+- ✅ Touch: static/css/components.css (+18), tests/test_snapshot_log_delta.py (new +222). templates/index.html + static/js/i18n.js 都係 sibling 嘅 staged work (already in HEAD, no diff for me to commit)
+- Commit: a73dad1
 
 **v3.4.81 (2026-09-02 cron tick) — Add-ticker preview card financial stats (Pattern 9b orphan-field)**:
 - ✅ **Bug class**: `/api/tickers/preview` returns 10 fields: `change_pct`, `eps`, `market`, `market_cap`, `name`, `pe_ratio`, `price`, `sector`, `source`, `symbol`。`templates/index.html` `loadPreview()` (autocomplete preview card) 由 v3.2 ships 起只消費 5 個 — `pe_ratio`, `eps`, `market_cap` 三個 financial-stats 永久 silently dropped between API 同 DOM. 用戶要 add ticker 之前完全冇 P/E / EPS / 市值 context (而 `index.html` stock-card 已經 surface `pe_ratio` + `eps` + `market_cap` 喺 `.stock-financials` line, v3.4.65 ships 起)。同伴舊 `' + d.price.toLocaleString()` raw pattern 也 bypass v3.4.45 嘅 `formatCurrency()` helper (Pattern 5e locale-aware rendering 一致性問題)
