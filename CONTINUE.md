@@ -2,8 +2,29 @@
 
 ## 當前狀態（截至 2026-09-08 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.86)
-**Latest commit**: [P3] feat: surface prev_close on stock cards + detail (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.87)
+**Latest commit**: [P3] feat: surface watchlist group description on /watchlists page (Pattern 9b)
+
+**v3.4.87 (2026-09-08 cron tick) — Watchlist group description on /watchlists page (Pattern 9b orphan field)**:
+- ✅ **Bug class**: `/api/watchlist-groups` returns `description` (populated when user opts-in via form's "說明" / "Description" field) — but `templates/watchlists.html renderGroups()` silently dropped the field between API 同 DOM。Dashboard group card (`templates/index.html loadGroupsDashboard()`) already shows description (since v3.3.x)，所以 visual parity 1-template gap。User can input description 但 see 唔到 on `/watchlists`
+- ✅ **Fix scope** — pure frontend 1-template surgical addition (243 insertions / 0 deletions):
+  - `templates/watchlists.html` (+18/-0): new conditional `${g.description ? `<div class="group-description">${esc(g.description)}</div>` : ''}` inside `.group-body` (above ticker chips)。XSS-safe via existing `esc()` helper。Empty/omitted description 唔 render markup。Inline `<style>` 加 `.group-description` class — muted 0.85rem italic + left-border accent (visual parity 同其他 text-muted meta lines like `.group-created` / `.stock-financials`)
+  - `tests/test_watchlists_group_description.py` (new +263, 16 tests): TestWatchlistDescriptionApiSurface (1: endpoint 返 description field populated) + TestWatchlistsDescriptionMarkup (6: renderGroups function exists + reads g.description + renders .group-description div + XSS-safe via esc() + conditional truthy + empty state intact — all via `_extract_function_body` brace-matching helper v3.4.70 lesson) + TestGroupDescriptionCss (4: class defined + var(--text-muted) color + italic + left-border accent — 掃描 inline `<style>` + external stylesheets) + TestE2ESmoke (2: /watchlists 200 + served HTML 含 class) + TestJsSyntax (2: node --check 跨 inline script + i18n.js) + TestGremlinCheck (1: 0 mojibake)
+- ✅ **0 backend / DB / schema changes** — endpoint already returns description
+- ✅ **0 new i18n keys needed** — rendered text is user's own literal (no translation)
+- ✅ **Pattern 9b coverage check (watchlist_groups endpoint orphans)**:
+  - consumed v3.4.84: created_at (watchlists.html renderGroups + index.html loadGroupsDashboard)
+  - consumed v3.4.87: description (watchlists.html renderGroups) ← 呢個 commit
+  - remaining orphans: sort_order (internal — 唔適合 surface)
+- ✅ **Verification**:
+  - 16/16 tests PASSED in test_watchlists_group_description.py
+  - node --check OK on extracted watchlists.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits
+  - /watchlists 200 OK; served HTML 含 2 `group-description` references (CSS class + JS render template)
+  - Live smoke: POST /api/watchlist-groups with description → renderGroups() reads g.description → conditional renders 個 description div with esc() XSS protection
+- ✅ Touch: templates/watchlists.html (+18), tests/test_watchlists_group_description.py (new +263). Template-only → no restart needed, server stays 200 OK
+- Commit: 6aa9ac0
+
 
 **v3.4.86 (2026-09-08 cron tick) — Stock cards + detail prev_close surfacing (Pattern 9b orphan field, salvage sibling WIP)**:
 - ✅ **Bug class**: `/api/tickers` + `/api/stock/<sym>/detail` 早已喺 `services/stock_data.py` 內部 compute `prev_close` 用嚟計 `change_pct` (since yfinance 引入)，但 return dict 從來冇 serialize 呢個 field 出去 → client-side 完全冇 surface 機會。Dashboard 每張 stock card 顯示 symbol/price/change/week52/financials/tracking_since 6 個 dimension 但完全冇 prior-session close 嘅 context (e.g. 用戶睇到 TSLA "$354.08" + "-5.92%" 但要 mental arithmetic 計 "previous close = $354.08/(1-0.0592) = $376.37" 先知起點)。`/stock/<sym>` detail page 已有 6 個 stat tiles (market_cap / pe_ratio / eps / high_52w / low_52w / next_earnings, v3.4.48 ships)，亦完全冇 prev_close 一席
