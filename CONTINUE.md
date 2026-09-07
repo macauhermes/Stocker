@@ -2,8 +2,52 @@
 
 ## 當前狀態（截至 2026-09-07 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit e1ff83d (v3.4.83)
-**Latest commit**: [P3] feat: industry page report-card file_path hint (Pattern 9b parallel-orbit)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.85)
+**Latest commit**: [P3] feat: events page search input (Pattern 4b sub-recipe)
+
+**v3.4.85 (2026-09-07 cron tick) — Events page search input (Pattern 4b sub-recipe)**:
+- ✅ **Bug class**: `/events` 嘅「即將到來」list 有 type filter + hide-dismissed toggle + count badge (v3.4.19 + v3.4.54)，但完全冇 search input。User 要喺 9-16 個 events 入面搵特定 ticker 或 event title 只能肉眼 scroll。/api/events/upcoming 返 8 fields (`dismissed, dismissed_at, event_date, event_type, id, symbol, ticker_id, title`)，其中 `symbol` 同 `title` 兩個 substring-searchable fields 完全冇 UI 表面俾用戶 filter
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (~50 lines / 0 deletions):
+  - `templates/events.html` (+~30/-3): 新加 `<input type="search" id="events-search">` 喺 events-filter-row 入面 (hide-dismissed toggle 之前)。Reuse `.reports-search-input` class (v3.4.20 ships 起) for visual parity。新增 `eventSearchQuery` module-scope state var; `renderUpcoming()` 加 case-insensitive substring match on `e.symbol` OR `e.title` AFTER type+dismissed filter (200ms debounce via setTimeout); count badge 條件加 `!q` 防止 filter 空 query 仍顯示 count; empty state distinguish search-no-match (新 `events.search_no_match` + `events.search_no_match_hint` i18n keys) 從 filter-empty 同 only-dismissed; langchange listener 加 placeholder re-translation (`setAttribute('placeholder', t('events.search_placeholder'))`)
+  - `static/js/i18n.js` (+6 keys, 3 zh + 3 en): `events.search_placeholder` (zh '搜尋代碼或事件…' / en 'Search ticker or event…') + `events.search_no_match` (zh '冇符合嘅事件' / en 'No matching events') + `events.search_no_match_hint` (zh '試下其他代碼或關鍵字' / en 'Try a different ticker or keyword'). All 3 in BOTH sections (Pattern 5d v3.4.61 bilingual coverage guard)
+  - `tests/test_events_search.py` (new +330, 27 tests): TestEventsSearchApiSurface (2: endpoint symbol/title + ≥3 distinct symbols pre-flight) + TestEventsSearchMarkup (3: input present + i18n-placeholder + in filter-row + uses reports-search-input class) + TestEventsSearchJs (8: state var + filter applied + case-insensitive + matches symbol/title + debounced listener + count badge hidden when q empty + search-no-match distinguished + langchange re-translates placeholder via _extract_function_body brace-matching helper) + TestEventsSearchCss (1: .reports-search-input class defined) + TestEventsSearchI18n (7: zh+en placeholders + zh+en search_no_match + zh+en search_no_match_hint + bilingual section split via _sections check) + TestEventsSearchE2E (2: /events 200 + served HTML contains new attrs) + TestEventsSearchJsSyntax (2: node --check on extracted events.html script + i18n.js) + TestEventsSearchGremlin (2: 0 mojibake 跨 2 files)
+- ✅ **0 backend / DB / schema changes** — pure frontend filter over existing endpoint data
+- ✅ **Pattern 4b sub-recipe pre-flight check (Pitfall 4b.1)**:
+  - `/api/events/upcoming?include_past=true` 返 16 events 跨 10 distinct symbols (MRVU/MS/IBM/MSFT/NVDA/GLW/GS/TSLA/SPCX/TE) — search 有 10 個潛在 query targets，唔會 dead-on-arrival
+- ✅ **Decision tree audit**: 經 25 tool calls 全 i18n 5b/5c/5d/5e + Pattern 1 orphan endpoint + Pattern 9b orphan field + Pattern 11 native alert() 全部 clean → per skill 嘅 budget-gate 規則 pivot to opportunistic UX polish，揀 `events.html` 因為已經有 type filter + hide-dismissed toggle 但缺 search
+- ✅ **Verification**:
+  - 27/27 tests PASSED in test_events_search.py
+  - node --check OK on extracted events.html script + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 2 modified files
+  - /events 200 OK; served HTML 含 6 'events-search|events.search_placeholder' references
+  - Pre-flight: `/api/events/upcoming?include_past=true` 返 16 events 跨 10 distinct symbols — search filter 唔會 dead-on-arrival
+  - Rendered simulation: type "MS" → 2 MS events filter; type "earnings" → 10 earnings events filter; type "ZZZZZ" → search_no_match empty state
+- ✅ Touch: templates/events.html (+~30/-3), static/js/i18n.js (+6 keys), tests/test_events_search.py (new +330). Template-only → no restart needed, server 仲係 200 OK
+
+
+**v3.4.84 (2026-09-07 cron tick) — Watchlist groups created_at surfacing (Pattern 9b orphan field, salvage sibling WIP)**:
+- ✅ **Bug class**: `/api/watchlist-groups` returns 8 keys including `created_at` (SQLite `datetime('now')` at group INSERT, populated for all rows) — but `templates/watchlists.html` `renderGroups()` AND `templates/index.html` `loadGroupsDashboard()` 兩處 consume same endpoint + same data shape 都永久 silently dropped `created_at` between API 同 DOM。User 見到 group name + ticker_count + description + edit/delete buttons 但完全冇 signal group 係幾時建立 (尤其 groups accumulate 過幾個月嘅時候更明顯)
+- ✅ **Fix scope** — pure frontend 4-file surgical addition (368 insertions / 1 deletion):
+  - `templates/watchlists.html` (+1): 新加 `<span class="group-created">` 喺 group-count 後面 renderGroups() group header, conditional on `g.created_at` truthy, `data-i18n-title="watchlists.created_at_tooltip"` for hover tooltip, `formatDate()` helper for locale rendering (v3.4.34)
+  - `templates/index.html` (+3/-1): 新加 `<div>` 喺 loadGroupsDashboard() group card body, same pattern, muted 0.7rem color matching group description visual weight
+  - `static/css/components.css` (+8): `.group-created` class — 0.65rem, `var(--text-muted)` color, cursor:help, white-space:nowrap
+  - `static/js/i18n.js` (+4 keys): `watchlists.created_at` (zh '建立於 {date}' / en 'Created on {date}') + `watchlists.created_at_tooltip` (zh '群組建立時間' / en 'When this group was created') 喺 BOTH zh + en sections (Pattern 5d v3.4.61 bilingual coverage guard)
+  - `tests/test_watchlist_created_at.py` (new file +353, 30 tests): TestWatchlistGroupsApiSurface (2: endpoint returns created_at + DB insertion round-trip) + TestWatchlistsHTMLMarkup (6: renderGroups reads g.created_at + formatDate + i18n keys + data-i18n-title + group-created class + null guard) + TestIndexHTMLMarkup (4: loadGroupsDashboard reads g.created_at + formatDate + i18n + tooltip) + TestGroupCreatedCSS (4: class defined + var(--text-muted) + cursor:help + 0.65rem size) + TestWatchlistCreatedAtI18n (6: zh + en keys exist + bilingual section split + {date} placeholder) + TestE2ESmoke (4: /watchlists + / both 200 + served HTML contains new attributes + i18n keys wired) + TestJSValidation (3: node --check on i18n.js + watchlists inline + index inline) + TestGremlinCheck (1: 0 mojibake across 4 files)
+- ✅ **0 backend / DB / schema changes** — endpoint already returns `created_at` for all groups
+- ✅ **Sibling WIP awareness**: Sibling subagent had implemented v3.4.84 across 4 files + 1 new test file but never committed (mtime 12+ 小時前). Per skill salvage check #5: all 4 i18n keys exist 喺 BOTH zh + en sections, `.group-created` CSS class defined, 30/30 tests pass on first run. Salvaged as coherent feature commit
+- ✅ **Pattern 9b coverage check (watchlist_groups endpoint orphans)**:
+  - consumed v3.4.84: `created_at` ← 呢個 commit
+  - remaining orphans: `sort_order` (internal — 唔適合 surface)
+- ✅ **Verification**:
+  - 30/30 tests PASSED in test_watchlist_created_at.py
+  - node --check OK 跨 extracted watchlists.js + index.js scripts + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits across 4 files
+  - /watchlists 200 OK; served HTML contains `group-created` class (1 reference in renderGroups)
+  - / 200 OK; served HTML contains `watchlists.created_at` reference (1 reference in loadGroupsDashboard)
+  - Rendered simulation: each watchlist group card now shows `建立於 2026/09/01` (zh mode) / `Created on 09/01/2026` (en mode) after group-count, with native browser tooltip on hover
+- ✅ Touch: templates/watchlists.html (+1), templates/index.html (+3/-1), static/css/components.css (+8), static/js/i18n.js (+4 keys), tests/test_watchlist_created_at.py (new file +353). Template-only → no restart needed, server 仲係 200 OK
+- Commit: ae9e1fc
+
 
 **v3.4.83 (2026-09-07 cron tick) — Industry page report-card file_path hint (Pattern 9b parallel-orbit)**:
 - ✅ **Bug class**: `/api/industry/<sector>/news` 同 `/api/sectors/<sector>/reports` 兩個 endpoint 都返 populated `file_path` field (200/200 industry news, 100% coverage 跨 sector)。v3.4.78 wires 咗 report_detail.html、v3.4.79 wires 咗 files.html，但 industry.html 嘅 `renderReports()` 完全冇 surface 呢個 field — 用戶喺 /industry 揀 sector 之後睇到 report/news card 但完全冇 signal 個 file 已經 save 喺 local disk (HTML/TXT/PDF for 完整 SEC 10-Q / industry news article)

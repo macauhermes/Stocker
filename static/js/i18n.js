@@ -318,6 +318,9 @@ const I18N = {
     'events.only_dismissed_hint': '撳「顯示已 dismiss」睇返',
     'events.days': ['日', '一', '二', '三', '四', '五', '六'],
     'events.year_month': '{year} 年 {month} 月',
+    'events.search_placeholder': '搜尋代碼或事件…',
+    'events.search_no_match': '冇符合嘅事件',
+    'events.search_no_match_hint': '試下其他代碼或關鍵字',
 
     // Custom Sources
     'sources.title': '自訂數據源',
@@ -941,6 +944,9 @@ const I18N = {
     'events.only_dismissed_hint': 'Click "Show dismissed" to view',
     'events.days': ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     'events.year_month': '{month} {year}',
+    'events.search_placeholder': 'Search ticker or event…',
+    'events.search_no_match': 'No matching events',
+    'events.search_no_match_hint': 'Try a different ticker or keyword',
 
     // Custom Sources
     'sources.title': 'Custom Data Sources',

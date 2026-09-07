@@ -49,7 +49,12 @@
                         📄 <span data-i18n="events.type.sec_filing">SEC</span>
                     </button>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <!-- v3.4.85: search input — filter by ticker symbol or title substring -->
+                    <input type="search" id="events-search" class="reports-search-input"
+                           data-i18n-placeholder="events.search_placeholder"
+                           placeholder="搜尋代碼或事件…"
+                           style="width:160px; padding:4px 10px; font-size:0.8rem;">
                     <!-- v3.4.54: hide-dismissed toggle -->
                     <button id="btn-toggle-dismissed" class="sector-pill" onclick="toggleHideDismissed()">
                         <span class="material-icons-outlined" style="font-size:14px; vertical-align:middle;">visibility_off</span>
@@ -204,6 +209,8 @@ let allUpcomingEvents = [];   // v3.4.19: cached for client-side filter
 let currentEventType = 'all';
 // v3.4.54: dismissed visibility toggle (default: hide dismissed)
 let hideDismissed = true;
+// v3.4.85: search query (matches symbol or title, case-insensitive substring)
+let eventSearchQuery = '';
 // v3.4.38: re-fetched on every langchange so calendar header updates when language switches.
 // Previously hardcoded as `const DAYS = t('events.days') || [...]` — the || fallback
 // masked the real bug: `const` is evaluated once at script load, before langchange
@@ -339,13 +346,23 @@ function renderUpcoming() {
         : allUpcomingEvents;
 
     // Apply type filter
-    const filtered = currentEventType === 'all'
+    const typeFiltered = currentEventType === 'all'
         ? visible
         : visible.filter(e => (e.event_type || 'other') === currentEventType);
 
+    // v3.4.85: apply search filter (case-insensitive substring match on symbol OR title)
+    const q = eventSearchQuery.trim().toLowerCase();
+    const filtered = q
+        ? typeFiltered.filter(e => {
+            const sym = (e.symbol || '').toLowerCase();
+            const ttl = (e.title || '').toLowerCase();
+            return sym.includes(q) || ttl.includes(q);
+        })
+        : typeFiltered;
+
     // Update count badge — show "shown/total" only when filter is active
     if (countEl) {
-        if (currentEventType === 'all' && hideDismissed) {
+        if (currentEventType === 'all' && hideDismissed && !q) {
             countEl.textContent = '';
         } else {
             countEl.textContent = t('events.filter_count', {
@@ -361,8 +378,12 @@ function renderUpcoming() {
         const dismissedCount = allUpcomingEvents.filter(e => e.dismissed).length;
         const icon = hasAllEvents ? 'filter_alt_off' : 'event_busy';
         // v3.4.54: more specific empty hint when only-dismissed-left
+        // v3.4.85: distinguish search-no-match from filtered-empty
         let title, hint;
-        if (hasAllEvents && hideDismissed && dismissedCount > 0) {
+        if (q) {
+            title = t('events.search_no_match');
+            hint = `<br><small>${t('events.search_no_match_hint')}</small>`;
+        } else if (hasAllEvents && hideDismissed && dismissedCount > 0) {
             title = t('events.only_dismissed');
             hint = `<br><small>${t('events.only_dismissed_hint')}</small>`;
         } else if (hasAllEvents) {
@@ -429,10 +450,31 @@ async function syncEvents() {
 
 initCalendar();
 
+// v3.4.85: wire search input — debounced client-side filter
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('events-search');
+    if (searchInput) {
+        let searchTimer = null;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                eventSearchQuery = e.target.value || '';
+                renderUpcoming();
+            }, 200);
+        });
+    }
+});
+
 // v3.4.38: re-render calendar + upcoming list when language switches.
 // Previously, the calendar header (DAYS const) and month title were set once
 // at script load — switching to English after page load left them in Chinese.
 window.addEventListener('langchange', () => {
+    // v3.4.85: re-translate placeholder on search input
+    const searchInput = document.getElementById('events-search');
+    if (searchInput) {
+        const ph = t('events.search_placeholder');
+        if (ph && ph !== 'events.search_placeholder') searchInput.setAttribute('placeholder', ph);
+    }
     loadCalendar();
     renderUpcoming();
 });
