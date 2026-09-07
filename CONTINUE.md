@@ -2,8 +2,28 @@
 
 ## 當前狀態（截至 2026-09-02 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit 5b264dc (v3.4.80)
-**Latest commit**: [P3] feat: portfolio holdings trend icon (UX polish)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit e5e9cb2 (v3.4.81)
+**Latest commit**: [P3] feat: surface preview card financial stats (Pattern 9b orphan-field)
+
+**v3.4.81 (2026-09-02 cron tick) — Add-ticker preview card financial stats (Pattern 9b orphan-field)**:
+- ✅ **Bug class**: `/api/tickers/preview` returns 10 fields: `change_pct`, `eps`, `market`, `market_cap`, `name`, `pe_ratio`, `price`, `sector`, `source`, `symbol`。`templates/index.html` `loadPreview()` (autocomplete preview card) 由 v3.2 ships 起只消費 5 個 — `pe_ratio`, `eps`, `market_cap` 三個 financial-stats 永久 silently dropped between API 同 DOM. 用戶要 add ticker 之前完全冇 P/E / EPS / 市值 context (而 `index.html` stock-card 已經 surface `pe_ratio` + `eps` + `market_cap` 喺 `.stock-financials` line, v3.4.65 ships 起)。同伴舊 `' + d.price.toLocaleString()` raw pattern 也 bypass v3.4.45 嘅 `formatCurrency()` helper (Pattern 5e locale-aware rendering 一致性問題)
+- ✅ **Fix scope** — pure frontend 3-file surgical addition (390 insertions / 2 deletions):
+  - `templates/index.html` (+42/-2): `loadPreview()` body 加 pe_ratio/eps/market_cap 變量 (`isFinite(d.pe_ratio)` defensive guard 防 null/NaN/Infinity; `formatCurrency(d.eps)` + `formatMarketCap(d.market_cap)` helpers), conditional `<div class="preview-row preview-financials">` 第三行 (conditional on `hasFin` truthy, 個別 P/E/EPS/Cap 各自 conditional on populated value — 唔 render "— — —" 噪音); 舊 `' + d.price.toLocaleString()` → `formatCurrency(d.price)` (locale-aware); 新加 `applyTranslations()` re-hook call (Pattern 5d sub-class — preview card 經 innerHTML 注入後 data-i18n attrs 唔會被 applyTranslations() 自動翻譯)
+  - `static/css/variables.css` (+5): `.preview-financials` (gap:10px + flex-wrap) + `.preview-fin` (0.78rem + inline-flex + 4px gap) + `.preview-fin-label` (var(--text-muted) + 0.68rem + uppercase + letter-spacing 0.04em) — visual parity 同其他 stocks/snapshots meta lines
+  - `static/js/i18n.js` (+2 keys): `index.eps_label: 'EPS' / 'EPS'` zh + en。`index.pe_label` / `index.cap_label` 早已存在 (v3.4.65 ships 起), 直接重用
+  - `tests/test_preview_financials.py` (new +340, 33 tests): TestPreviewFinancialFields (4: API surface pe_ratio/eps/market_cap populated + TE negative-EPS null pe_ratio case) + TestPreviewFinancialsMarkup (9: loadPreview body via `_extract_function_body` brace-matching helper — reads d.pe_ratio/eps/market_cap + formatCurrency/formatMarketCap + isFinite + applyTranslations() hook) + TestPreviewFinancialsCSS (4: 3 new classes defined + label uses var(--text-muted)) + TestPreviewFinancialsI18n (6: bilingual coverage guard via `_sections()` brace-matching helper — 警惕 en-only key miss 同 zh-only key miss, v3.4.61 Pattern 5d lesson) + TestPreviewFinancialsE2ESmoke (5: / 200 OK + served HTML 含新 classes + served CSS + served i18n 2 occurrences) + TestPreviewFinancialsJsSyntax (2: node --check) + TestPreviewFinancialsGremlin (3: 0 mojibake 跨 3 modified files)
+- ✅ **0 backend / DB / schema changes** — endpoint already returns pe_ratio (9/10) + eps (9/10) + market_cap (9/10)
+- ✅ **Sibling WIP awareness**: `static/css/components.css` 嘅 `.snapshot-delta` block 係 sibling subagent 嘅 WIP (staged + edited). Per skill rule, 唔好 stage，留俾 sibling commit。`git add` 精確 only my 4 files
+- ✅ **Verification**:
+  - 33/33 tests PASSED in test_preview_financials.py
+  - 540/541 全 suite tests passing (+33 new, 1 pre-existing failure `test_old_smoke_news_reach_response` documented v3.4.47 唔關今次 change 事)
+  - node --check OK on i18n.js + extracted index.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 files
+  - / 200 OK; served HTML 含 `preview-financials` class + `d.pe_ratio/eps/market_cap` JS reads + `formatCurrency(d.price)` + `formatMarketCap(d.market_cap)` + `applyTranslations()` hook
+  - Rendered simulation TSLA: "本益比 321.89 · EPS $1.10 · 市值 $1.40T" 新 row below price+change (zh mode) / "P/E 321.89 · EPS $1.10 · Cap $1.40T" (en mode)
+  - Defensive guard simulation TE (negative EPS): preview 顯示 "EPS $-1.81 · 市值 $1.35B" — pe_ratio 因為 null 唔 render (唔 render "本益比 —" 噪音)
+- ✅ Touch: templates/index.html (+42/-2), static/css/variables.css (+5), static/js/i18n.js (+2 keys), tests/test_preview_financials.py (new +340). Template-only → no restart needed, server stays 200 OK
+- Commit: e5e9cb2
 
 **v3.4.79 (2026-09-02 cron tick) — Files page file_path hint pill (Pattern 9b orphan field, v3.4.78 sibling)**:
 - ✅ **Bug class**: `/api/files` returns `file_path` on 338/338 rows (99%+ coverage across all 3 categories: earnings/analyst_report/sec_filing)。v3.4.78 ships 時 surface 咗 `/api/reports/<id>.file_path` 喺 `templates/report_detail.html`，但完全 miss 咗 parallel endpoint `/api/files.file_path` 喺 `templates/files.html` 嘅 renderFiles()。User 可以 download + view-report 但完全冇 visibility 個 file 喺 disk 邊個目錄 (`earnings/`、`analyst_report/`、`sec_filing/`)
