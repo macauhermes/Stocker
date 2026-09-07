@@ -28,6 +28,30 @@
 - ✅ Touch: templates/industry.html (+1), tests/test_industry_file_path.py (new +220). Template-only → no restart needed, server 仲係 200 OK
 - Commit: e1ff83d
 
+**v3.4.84 (2026-09-07 cron tick) — Watchlist groups created_at surfacing (Pattern 9b orphan field, salvage sibling WIP)**:
+- ✅ **Bug class**: `/api/watchlist-groups` returns 8 keys including `created_at` (SQLite `datetime('now')` at group INSERT, populated for all rows) — but `templates/watchlists.html` `renderGroups()` AND `templates/index.html` `loadGroupsDashboard()` 兩處 consume same endpoint + same data shape 都永久 silently dropped `created_at` between API 同 DOM。User 見到 group name + ticker_count + description + edit/delete buttons 但完全冇 signal group 係幾時建立 (尤其 groups accumulate 過幾個月嘅時候更明顯)
+- ✅ **Fix scope** — pure frontend 4-file surgical addition (368 insertions / 1 deletion):
+  - `templates/watchlists.html` (+1): 新加 `<span class="group-created">` 喺 group-count 後面 renderGroups() group header, conditional on `g.created_at` truthy, `data-i18n-title="watchlists.created_at_tooltip"` for hover tooltip, `formatDate()` helper for locale rendering (v3.4.34)
+  - `templates/index.html` (+3/-1): 新加 `<div>` 喺 loadGroupsDashboard() group card body, same pattern, muted 0.7rem color matching group description visual weight
+  - `static/css/components.css` (+8): `.group-created` class — 0.65rem, `var(--text-muted)` color, cursor:help, white-space:nowrap
+  - `static/js/i18n.js` (+4 keys): `watchlists.created_at` (zh '建立於 {date}' / en 'Created on {date}') + `watchlists.created_at_tooltip` (zh '群組建立時間' / en 'When this group was created') 喺 BOTH zh + en sections (Pattern 5d v3.4.61 bilingual coverage guard)
+  - `tests/test_watchlist_created_at.py` (new file +353, 30 tests): TestWatchlistGroupsApiSurface (2: endpoint returns created_at + DB insertion round-trip) + TestWatchlistsHTMLMarkup (6: renderGroups reads g.created_at + formatDate + i18n keys + data-i18n-title + group-created class + null guard) + TestIndexHTMLMarkup (4: loadGroupsDashboard reads g.created_at + formatDate + i18n + tooltip) + TestGroupCreatedCSS (4: class defined + var(--text-muted) + cursor:help + 0.65rem size) + TestWatchlistCreatedAtI18n (6: zh + en keys exist + bilingual section split + {date} placeholder) + TestE2ESmoke (4: /watchlists + / both 200 + served HTML contains new attributes + i18n keys wired) + TestJSValidation (3: node --check on i18n.js + watchlists inline + index inline) + TestGremlinCheck (1: 0 mojibake across 4 files)
+- ✅ **0 backend / DB / schema changes** — endpoint already returns `created_at` for all groups
+- ✅ **Sibling WIP awareness**: Sibling subagent had implemented v3.4.84 across 4 files + 1 new test file but never committed (mtime 12+ 小時前). Per skill salvage check #5: all 4 i18n keys exist 喺 BOTH zh + en sections, `.group-created` CSS class defined, 30/30 tests pass on first run. Salvaged as coherent feature commit
+- ✅ **Pattern 9b coverage check (watchlist_groups endpoint orphans)**:
+  - consumed v3.4.84: `created_at` ← 呢個 commit
+  - remaining orphans: `sort_order` (internal — 唔適合 surface)
+- ✅ **Verification**:
+  - 30/30 tests PASSED in test_watchlist_created_at.py
+  - node --check OK 跨 extracted watchlists.js + index.js scripts + i18n.js
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits across 4 files
+  - /watchlists 200 OK; served HTML contains `group-created` class (1 reference in renderGroups)
+  - / 200 OK; served HTML contains `watchlists.created_at` reference (1 reference in loadGroupsDashboard)
+  - Rendered simulation: each watchlist group card now shows `建立於 2026/09/01` (zh mode) / `Created on 09/01/2026` (en mode) after group-count, with native browser tooltip on hover
+- ✅ Touch: templates/watchlists.html (+1), templates/index.html (+3/-1), static/css/components.css (+8), static/js/i18n.js (+4 keys), tests/test_watchlist_created_at.py (new file +353). Template-only → no restart needed, server 仲係 200 OK
+- Commit: ae9e1fc
+
+
 **v3.4.82 (2026-09-07 cron tick) — Portfolio snapshots log Δ vs 前次 column (salvage sibling WIP)**:
 - ✅ **Bug class**: /portfolio (dashboard widgets) snapshots log table 顯示 date/captured/value/cost/P&L/%/holdings 但冇 day-over-day delta column. User 睇到絕對 P&L 但要 mental arithmetic 先知每個 snapshot 加/減咗幾多 vs 上一次
 - ✅ **Fix scope** — salvage sibling subagent 嘅完整 WIP (4 files: templates/index.html + static/css/components.css + static/js/i18n.js + tests/test_snapshot_log_delta.py)，所有 pieces 都齊全但冇 commit
