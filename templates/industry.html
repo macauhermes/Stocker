@@ -410,6 +410,7 @@
                             <span class="material-icons-outlined" style="font-size:14px">schedule</span>
                             ${dateStr}
                         </span>
+                        ${r.file_path ? `<span class="file-path-hint" title="${escHtml(r.file_path)}" data-i18n-title="files.local_file_tooltip">📁 ${escHtml(r.file_path.split('/').slice(-2, -1)[0] || '')}/</span>` : ''}
                         ${(r.url && /^https?:\/\//.test(r.url)) ? `
                             <span class="report-source-link"
                                   role="button" tabindex="0"
