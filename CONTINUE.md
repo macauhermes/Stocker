@@ -5,7 +5,26 @@
 **Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.87)
 **Latest commit**: [P3] feat: surface watchlist group description on /watchlists page (Pattern 9b)
 
-**v3.4.87 (2026-09-08 cron tick) — Watchlist group description on /watchlists page (Pattern 9b orphan field)**:
+**v3.4.88 (2026-09-08 cron tick) — Industry news filter row (Pattern 4b, salvage sibling WIP + v3.4.61 bilingual fix)**:
+- ✅ **Bug class**: `/industry` page 嘅 sector news panel 由 v3.3 ships 起就有 type filter + reports filter，但 news panel 完全冇 UI 表面俾用戶 filter `title` substring search。`/api/industry/<sector>/news` 返 200 Technology news，每個 item 都有 `title` field，但 user 要肉眼 scroll 過 200 條 news。`/industry` 嘅 reports panel 已有 category filter (v3.4.22) 同埋 events page 都有 search (v3.4.85)，純 1-page gap
+- ✅ **Sibling WIP salvage**: Sibling subagent 寫好 industry.html news filter row (search input + sort dropdown + count badge，~50 lines) + 3 zh i18n keys 但 missing en section (v3.4.61 Pattern 5d bilingual coverage gap)。Per salvage check #5: 12 referenced CSS classes 全部 reused from v3.4.19/20/14 — no new CSS needed；8 i18n keys (3 new + 5 reused) — 3 new 喺 zh section，en missing
+- ✅ **Fix scope** — 3-file salvage + bilingual fix (456 insertions / 3 deletions):
+  - `templates/industry.html` (sibling WIP, 100/-3): `<div id="news-filter-row" class="events-filter-row" style="display:none;">` 加 search input `data-i18n-placeholder="industry.news_search_placeholder"` + sort select with desc/asc options + count badge。新增 module-scope state: `allNews[]`, `newsSearchQuery`, `newsSort`。`selectSector()` 改為 cache `allNews = news` 後 call `initNewsFilterRow()` + `renderNews()` (delegate to existing renderReports() with `isNews: true`)。新 `renderNews()` function — substring search (case-insensitive) + sort by `published_at`/`created_at` + count badge hidden unless search active + empty state distinguish search-no-match (新 `filter_alt_off` icon)。新 `initNewsFilterRow()` — 200ms debounced input listener + change listener on sort select with `_wired` flag 避免 double-bind
+  - `static/js/i18n.js` (+3 en keys): `industry.news_search_placeholder` zh '搜尋新聞標題...' / en 'Search news title...' + `industry.news_search_no_match` zh '冇符合搜尋嘅新聞' / en 'No news matches the search' + `industry.news_search_no_match_hint` zh '試下其他關鍵字' / en 'Try a different keyword'. Bilingual 雙覆蓋 (v3.4.61 lesson 警惕 en-only key miss)
+  - `tests/test_industry_news_filter.py` (new +424, 37 tests): TestIndustryNewsApiSurface (4: endpoint 返 news + ≥10 items + titles + distinct substrings pre-flight) + TestIndustryNewsFilterMarkup (5: filter row + search input + sort select + count badge + hidden by default) + TestIndustryNewsFilterJs (11: state vars + renderNews function exists + caches data + applies search + applies sort + count badge only when searching + search empty state + delegates to renderReports + initNewsFilterRow wires search + wires sort + 200ms debounce + selectSector populates cache via `_extract_function_body` brace-matching helper) + TestIndustryNewsFilterCss (4: 4 reused classes all defined) + TestIndustryNewsFilterI18n (4: zh + en keys exist + bilingual coverage 2x each + reused keys bilingual) + TestIndustryNewsFilterE2E (4: /industry 200 + served HTML 含 filter row + i18n keys wired + news endpoint returns data) + TestIndustryNewsFilterJsSyntax (2: node --check) + TestIndustryNewsFilterGremlin (1: 0 mojibake 跨 2 modified files)
+- ✅ **0 backend / DB / schema changes** — pure frontend filter over existing endpoint
+- ✅ **Pre-flight data variety check (Pitfall 4b.1)**: `/api/industry/Technology/news` 返 200 items 跨 ≥3 distinct first-words — search filter 唔會 dead-on-arrival
+- ✅ **Verification**:
+  - 37/37 tests PASSED in test_industry_news_filter.py (1 fix iteration: loadSector → selectSector)
+  - node --check OK on extracted industry.html script + i18n.js
+  - gremlin check: 0 hits 跨 2 modified files
+  - /industry 200 OK; served HTML 含 12 'news-search/news-sort/news-filter/news_search' references
+  - Rendered simulation: type "Nvidia" → filtered to Nvidia-tagged news; toggle sort to "asc" → oldest first; type "ZZZZZ" → search_no_match empty state with filter_alt_off icon
+- ✅ Touch: static/js/i18n.js (+3 en keys), templates/industry.html (sibling WIP), tests/test_industry_news_filter.py (new +424). Template-only → no restart needed, server stays 200 OK
+- Commit: 715cd52
+
+
+**v3.4.87 (2026-09-08 cron tick) — Watchlist group description on /watchlists page (Pattern 9b)**:
 - ✅ **Bug class**: `/api/watchlist-groups` returns `description` (populated when user opts-in via form's "說明" / "Description" field) — but `templates/watchlists.html renderGroups()` silently dropped the field between API 同 DOM。Dashboard group card (`templates/index.html loadGroupsDashboard()`) already shows description (since v3.3.x)，所以 visual parity 1-template gap。User can input description 但 see 唔到 on `/watchlists`
 - ✅ **Fix scope** — pure frontend 1-template surgical addition (243 insertions / 0 deletions):
   - `templates/watchlists.html` (+18/-0): new conditional `${g.description ? `<div class="group-description">${esc(g.description)}</div>` : ''}` inside `.group-body` (above ticker chips)。XSS-safe via existing `esc()` helper。Empty/omitted description 唔 render markup。Inline `<style>` 加 `.group-description` class — muted 0.85rem italic + left-border accent (visual parity 同其他 text-muted meta lines like `.group-created` / `.stock-financials`)
