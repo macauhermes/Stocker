@@ -511,6 +511,8 @@ const I18N = {
     'portfolio.snapshots_log_empty': '尚無歷史快照 — 每日 20:00 自動拍攝',
     'portfolio.snapshots_log_count_total': '共 {n} 個快照',
     'portfolio.snapshots_log_backfilled': '補拍：此快照代表較早日期，於 {captured} 補入系統',
+    'portfolio.snapshots_log_delta': 'Δ vs 前次',
+    'portfolio.snapshots_log_delta_title': '與上一次快照嘅市值變化',
 
     // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
     'index.stocks_toolbar': '持股清單',
@@ -533,6 +535,7 @@ const I18N = {
     'index.week52_range': '52周範圍',
     'index.tracking_since': '追蹤自 {date}',
     'index.pe_label': '本益比',
+    'index.eps_label': 'EPS',
     'index.cap_label': '市值',
     'index.financials_title': '本益比 / EPS / 市值',
 
@@ -1128,6 +1131,8 @@ const I18N = {
     'portfolio.snapshots_log_empty': 'No snapshots yet — captured nightly at 20:00',
     'portfolio.snapshots_log_count_total': '{n} snapshots total',
     'portfolio.snapshots_log_backfilled': 'Backfilled: this row was actually captured on {captured}, representing an earlier date',
+    'portfolio.snapshots_log_delta': 'Δ vs prev',
+    'portfolio.snapshots_log_delta_title': 'Portfolio value change vs the previous snapshot',
 
     // Index (v3.4.9) — stocks-tab toolbar with /api/tickers/export.csv button
     'index.stocks_toolbar': 'Holdings',
@@ -1150,6 +1155,7 @@ const I18N = {
     'index.week52_range': '52W Range',
     'index.tracking_since': 'Tracking since {date}',
     'index.pe_label': 'P/E',
+    'index.eps_label': 'EPS',
     'index.cap_label': 'Cap',
     'index.financials_title': 'P/E ratio / EPS / market cap',
 

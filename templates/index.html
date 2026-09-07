@@ -91,6 +91,7 @@
                         <th class="num" data-i18n="portfolio.snapshots_log_pnl">損益</th>
                         <th class="num" data-i18n="portfolio.snapshots_log_pnl_pct">損益%</th>
                         <th class="num" data-i18n="portfolio.snapshots_log_holdings">持倉數</th>
+                        <th class="num" data-i18n="portfolio.snapshots_log_delta">Δ vs 前次</th>
                     </tr>
                 </thead>
                 <tbody id="portfolio-snapshots-log-tbody">
@@ -635,7 +636,7 @@
             // Sort DESC by date (server returns ASC; newest on top is more useful).
             meaningful.sort((a, b) => (b.snapshot_date || '').localeCompare(a.snapshot_date || ''));
 
-            tbody.innerHTML = meaningful.map(s => {
+            tbody.innerHTML = meaningful.map((s, idx) => {
                 const value = Number(s.total_value) || 0;
                 const cost = Number(s.total_cost) || 0;
                 const pnl = Number(s.total_pnl) || 0;
@@ -644,6 +645,26 @@
                 const plSign = pnl >= 0 ? '+' : '−';
                 const pnlAbs = Math.abs(pnl);
                 const pnlPctAbs = Math.abs(pnlPct);
+                // v3.4.81 — Δ vs 前次 (Pattern 4b extension).
+                // meaningful[] is sorted DESC by snapshot_date, so the next index
+                // is the chronologically-older snapshot (i.e. "前一次"). Show
+                // day-over-day value change so user can spot the largest gain/
+                // loss days without scanning the whole table.
+                const prev = meaningful[idx + 1];
+                let deltaHtml = '<span class="snapshot-delta-na">—</span>';
+                if (prev) {
+                    const prevValue = Number(prev.total_value) || 0;
+                    const deltaValue = value - prevValue;
+                    const dClass = deltaValue > 0 ? 'pnl-positive'
+                                 : (deltaValue < 0 ? 'pnl-negative' : '');
+                    const dSign = deltaValue >= 0 ? '+' : '−';
+                    const dIcon = deltaValue > 0 ? 'trending_up'
+                                : (deltaValue < 0 ? 'trending_down' : 'trending_flat');
+                    const dAbs = Math.abs(deltaValue);
+                    deltaHtml = `<span class="snapshot-delta ${dClass}" title="${t('portfolio.snapshots_log_delta_title')}">` +
+                                `<span class="material-icons-outlined snapshot-delta-icon">${dIcon}</span>` +
+                                `${dSign}${formatCurrency(dAbs)}</span>`;
+                }
                 // Captured-at vs snapshot-date — when the cron nightly missed a day,
                 // portfolio_snapshot.py backfills a row with captured_at on the next run.
                 // Surface that as a "backfilled" visual cue so user knows the timestamp
@@ -663,6 +684,7 @@
                     <td class="num ${plClass}">${plSign}${formatCurrency(pnlAbs)}</td>
                     <td class="num ${plClass}">${plSign}${pnlPctAbs.toFixed(2)}%</td>
                     <td class="num">${s.holdings_count || 0}</td>
+                    <td class="num">${deltaHtml}</td>
                 </tr>`;
             }).join('');
 
@@ -1769,6 +1791,13 @@
             const chg = d.change_pct;
             const chgClass = chg >= 0 ? 'text-green' : 'text-red';
             const sign = chg > 0 ? '+' : '';
+            // v3.4.81 — Pattern 9b orphan-field surfacing: preview card now consumes pe_ratio, eps,
+            // market_cap fields returned by /api/tickers/preview but never displayed. Uses
+            // formatMarketCap() (v3.4.65) + formatCurrency() instead of raw '$' + toLocaleString.
+            const pe = (d.pe_ratio != null && isFinite(d.pe_ratio)) ? d.pe_ratio.toFixed(2) : '';
+            const epsStr = (d.eps != null && isFinite(d.eps)) ? formatCurrency(d.eps) : '';
+            const capStr = (d.market_cap != null && d.market_cap > 0) ? formatMarketCap(d.market_cap) : '';
+            const hasFin = pe || epsStr || capStr;
             previewBox.innerHTML = `
                 <div class="preview-card">
                     <div class="preview-row">
@@ -1776,12 +1805,21 @@
                         <div class="preview-market">${d.market || ''}</div>
                     </div>
                     <div class="preview-row">
-                        <div class="preview-price">${d.price != null ? '$' + d.price.toLocaleString() : '—'}</div>
+                        <div class="preview-price">${d.price != null ? formatCurrency(d.price) : '—'}</div>
                         <div class="${chgClass}">${chg != null ? sign + chg + '%' : ''}</div>
                     </div>
+                    ${hasFin ? `
+                    <div class="preview-row preview-financials">
+                        ${pe ? `<span class="preview-fin"><span class="preview-fin-label" data-i18n="index.pe_label">本益比</span> ${pe}</span>` : ''}
+                        ${epsStr ? `<span class="preview-fin"><span class="preview-fin-label" data-i18n="index.eps_label">EPS</span> ${epsStr}</span>` : ''}
+                        ${capStr ? `<span class="preview-fin"><span class="preview-fin-label" data-i18n="index.cap_label">市值</span> ${capStr}</span>` : ''}
+                    </div>` : ''}
                     ${d.sector ? `<div class="preview-sector">${d.sector}</div>` : ''}
                 </div>
             `;
+            // Re-translate data-i18n attributes injected via innerHTML — applyTranslations()
+            // only queries the document at call time, so dynamic inserts need this hook.
+            if (typeof applyTranslations === 'function') applyTranslations();
         } catch (e) { console.debug('preview failed', e); previewBox.style.display = 'none'; }
     }
 

@@ -64,6 +64,11 @@
 .preview-sector { font-size: 0.8rem; color: var(--text-muted); }
 .preview-loading { color: var(--text-muted); font-size: 0.85rem; padding: 8px 0; }
 
+/* v3.4.81 — preview card financial-stats row (Pattern 9b orphan-field surfacing) */
+.preview-financials { gap: 10px; flex-wrap: wrap; }
+.preview-fin { font-size: 0.78rem; color: var(--text); display: inline-flex; align-items: center; gap: 4px; }
+.preview-fin-label { color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
 /* Refresh badge (visible top-right of stock list) */
 .refresh-badge {
   display: inline-flex;
