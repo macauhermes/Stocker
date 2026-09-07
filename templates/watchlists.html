@@ -149,6 +149,14 @@
 .group-body.open {
     display: block;
 }
+.group-description {
+    color: var(--text-muted, #888);
+    font-size: 0.85rem;
+    margin: 8px 0 4px 20px;
+    font-style: italic;
+    border-left: 2px solid var(--border, #2a2a3e);
+    padding-left: 10px;
+}
 .ticker-chip {
     display: inline-flex;
     align-items: center;
@@ -279,6 +287,7 @@ function renderGroups() {
                 </div>
             </div>
             <div class="group-body" id="group-body-${g.id}">
+                ${g.description ? `<div class="group-description">${esc(g.description)}</div>` : ''}
                 <div class="group-tickers">
                     ${(g.tickers || []).map(t => `
                         <span class="ticker-chip">
