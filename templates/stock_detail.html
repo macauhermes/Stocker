@@ -1367,6 +1367,11 @@
 
             const date = r.published_at || r.created_at;
             const dateStr = date ? formatDate(date) : '—';
+            // v3.4.89: parallel-orbit fix — surface r.created_at as addedRaw pill.
+            // Mirrors index.html renderReports() v3.4.72 pattern. Dashboard already
+            // shows "Added to system: {date}"; stock_detail's renderRelatedReports()
+            // silently dropped this field even though both consume /api/reports.
+            const addedRaw = r.created_at ? formatDate(r.created_at) : '';
             const summary = r.summary ? r.summary.substring(0, 80) + (r.summary.length > 80 ? '...' : '') : '';
 
             const card = document.createElement('a');
@@ -1402,6 +1407,12 @@
                         <span class="material-icons-outlined" style="font-size:14px">schedule</span>
                         ${dateStr}
                     </span>
+                    ${addedRaw ? `
+                    <span class="report-added" title="${escapeHtml(t('report.added_at', { date: addedRaw }))}">
+                        <span class="material-icons-outlined" style="font-size:12px">bookmark_added</span>
+                        ${escapeHtml(t('report.added_at', { date: addedRaw }))}
+                    </span>
+                    ` : ''}
                     ${sourceLink}
                 </div>
             `;
