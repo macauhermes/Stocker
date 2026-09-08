@@ -2,8 +2,35 @@
 
 ## 當前狀態（截至 2026-09-08 cron tick）
 
-**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.87)
-**Latest commit**: [P3] feat: surface watchlist group description on /watchlists page (Pattern 9b)
+**Stocker repo**: ~/repos/Stocker/，git 已 push commit pending (v3.4.89)
+**Latest commit**: [P3] feat: stock card holding badge — surface shares_held + cost_basis (Pattern 9b orphan field)
+
+**v3.4.89 (2026-09-08 cron tick) — Stock card holding badge (Pattern 9b orphan field, salvage sibling WIP)**:
+- ✅ **Bug class**: `/api/tickers` returns `shares_held` + `cost_basis` (populated 3/10 active tickers: MSFT 8@$350 / NVDA 5@$300 / TSLA 30@$200) — but `templates/index.html renderStocks()` 永久 silently dropped 兩個 field. User 見到 dashboard cards 有 symbol/price/change/prev_close/week52/financials/tracking_since 7 個 dimension 但完全冇 visible signal 邊張卡係 OWNED position vs watchlist-only. Portfolio breakdown page (v3.4.7) 早已顯示 MV/P&L 但 user 要 navigate 走先 confirm「呢張卡係我買咗」
+- ✅ **Sibling WIP salvage**: Sibling subagent (Cron job) 寫好完整 v3.4.89 跨 4 files 但冇 commit (mtime 數小時前). Per skill salvage check #5: 2 i18n keys 全部 BOTH zh + en sections 出現 (Pattern 5d v3.4.61 bilingual coverage guard); `.stock-holding` + `.stock-holding .material-icons-outlined` CSS classes 早已定義; JS render block uses `formatNumber()` + `formatCurrency()` Pattern 5e locale-aware helpers (v3.4.34/45); 27/27 tests pass first run
+- ✅ **Fix scope** — 4-file surgical addition (326 insertions / 0 deletions):
+  - `templates/index.html` (+15): 新加 `holdingHtml` block 喺 `renderStocks()` 嘅 info column (NOT price column — 保持 price/change/prev_close 視覺聚類), conditional on `holdingShares > 0 && holdingCost > 0` (7/10 watchlist-only tickers 唔 render 噪音 markup). Uses `formatNumber(holdingShares, { maximumFractionDigits: 4 })` (fractional shares) + `formatCurrency(holdingCost)` (locale-aware USD)
+  - `static/css/components.css` (+21): `.stock-holding` class — 0.65rem font + `var(--orange)` color (visually heavier than `.stock-tracking` v3.4.61 嘅 `--text-muted` — held positions 立即彈出) + font-weight 500 + cursor:help for hover tooltip. Inner `.material-icons-outlined` 11px vertical-aligned -1px baseline
+  - `static/js/i18n.js` (+4 keys, 2 zh + 2 en): `index.holding_shares_cost` (zh '💼 {shares}股 · 成本 {cost}' / en '💼 {shares} shares · cost {cost}') + `index.holding_title` (zh '持倉 {shares} 股 · 成本 ${cost}' / en 'Holding {shares} shares at ${cost} avg cost'). Bilingual 雙覆蓋 (v3.4.61 lesson 警惕 en-only key miss)
+  - `tests/test_holding_badge.py` (new +278, 27 tests): TestHoldingBadgeApiSurface (3: `/api/tickers` 返 shares_held+cost_basis + ≥1 held populated + watchlist-only tickers have 0) + TestHoldingBadgeMarkup (8: `renderStocks` reads shares_held/cost_basis via `_extract_function_body` brace-matching helper v3.4.70 lesson + conditional + stock-holding class + t() i18n keys + wallet icon + data-holding attribute) + TestHoldingBadgeCSS (5: class defined + margin-top + inner icon + font-weight 500 + orange color) + TestHoldingBadgeI18n (4: bilingual coverage guard) + TestHoldingBadgeE2E (2: / 200 + served HTML 含 wiring) + TestJsSyntax (2: node --check 跨 i18n.js + extracted index.html script) + TestGremlinCheck (1: 0 mojibake)
+- ✅ **0 backend / DB / schema changes** — `/api/tickers` endpoint 早已返 shares_held + cost_basis (populated 3/10)
+- ✅ **Sibling WIP awareness**: Sibling subagent wrote complete 4-file feature but uncommitted. Per skill rule, salvaged as coherent feature commit
+- ✅ **Verification**:
+  - 27/27 tests PASSED in test_holding_badge.py (1st run, 0 failures)
+  - node --check OK on i18n.js + extracted index.html script
+  - gremlin check (U+FFFD/U+00AD/U+200B/U+FEFF/U+200E/U+200F): 0 hits 跨 3 modified files
+  - / 200 OK; served HTML contains 5 `stock-holding/holdingHtml/holding_*` references
+  - `/api/tickers` live: 3/10 held positions (MSFT 8@$350 / NVDA 5@$300 / TSLA 30@$200), 7/10 watchlist-only
+  - Rendered simulation: TSLA card 而家顯示 "💼 30 股 · 成本 $200.00" 喺 "加入追蹤：2026/01/15" 下面 (zh mode) / "💼 30 shares · cost $200.00" 喺 "Tracking since: 01/15/2026" 下面 (en mode). Watchlist cards 唔 render badge (conditional ternary)
+- ✅ **Pattern 9b coverage check (`/api/tickers` orphans)**:
+  - consumed v3.4.65: pe_ratio + eps + market_cap
+  - consumed v3.4.50: week52_high + week52_low (composite range)
+  - consumed v3.4.86: prev_close
+  - consumed v3.4.89: shares_held + cost_basis ← 呢個 commit
+  - remaining orphans: 0 top-level fields used by stock cards
+- ✅ Touch: templates/index.html (+15), static/css/components.css (+21), static/js/i18n.js (+4 keys), tests/test_holding_badge.py (new +278). Template-only → no restart needed, server stays 200 OK
+- Commit: 2c72de1
+
 
 **v3.4.88 (2026-09-08 cron tick) — Industry news filter row (Pattern 4b, salvage sibling WIP + v3.4.61 bilingual fix)**:
 - ✅ **Bug class**: `/industry` page 嘅 sector news panel 由 v3.3 ships 起就有 type filter + reports filter，但 news panel 完全冇 UI 表面俾用戶 filter `title` substring search。`/api/industry/<sector>/news` 返 200 Technology news，每個 item 都有 `title` field，但 user 要肉眼 scroll 過 200 條 news。`/industry` 嘅 reports panel 已有 category filter (v3.4.22) 同埋 events page 都有 search (v3.4.85)，純 1-page gap
