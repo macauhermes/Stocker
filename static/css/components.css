@@ -530,6 +530,27 @@
   opacity: 0.85;
 }
 
+/* v3.4.89 — holding badge on stock card (Pattern 9b orphan field).
+   Surfaced shares_held + cost_basis from /api/tickers for held positions.
+   Visually heavier than .stock-tracking (orange accent on icon) so the
+   user can immediately spot which cards represent owned positions vs.
+   watchlist-only. Renders below tracking_since in the info column. */
+.stock-holding {
+  font-size: 0.65rem;
+  color: var(--orange);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+  font-weight: 500;
+}
+.stock-holding .material-icons-outlined {
+  font-size: 11px;
+  vertical-align: -1px;
+  margin-right: 2px;
+}
+
 .text-green { color: var(--green); }
 .text-red { color: var(--red); }
 

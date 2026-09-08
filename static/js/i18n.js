@@ -88,6 +88,13 @@ const I18N = {
     'index.refresh_badge_title': '市場狀態 / NY 時間',
     'index.preview_loading': '載入中…',
 
+    // v3.4.89 — holding badge on stock card (Pattern 9b orphan field)
+    // /api/tickers returns shares_held + cost_basis (populated for held positions)
+    // but renderStocks() never surfaced them — invisible on dashboard cards.
+    // Held positions get a small "💼 N股 · 成本 $X" line below tracking_since.
+    'index.holding_shares_cost': '💼 {shares}股 · 成本 {cost}',
+    'index.holding_title': '持倉 {shares} 股 · 成本 ${cost}',
+
     // Stock table
     'stock.ticker': '代碼',
     'stock.name': '名稱',
@@ -718,6 +725,11 @@ const I18N = {
     'index.refresh_reason_weekend': 'Weekend',
     'index.refresh_badge_title': 'Market status / NY time',
     'index.preview_loading': 'Loading…',
+
+    // v3.4.89 — holding badge on stock card (Pattern 9b orphan field)
+    // Mirror of zh entries above; bilingual coverage guard per v3.4.61 lesson.
+    'index.holding_shares_cost': '💼 {shares} shares · cost {cost}',
+    'index.holding_title': 'Holding {shares} shares at ${cost} avg cost',
 
     // Stock table
     'stock.ticker': 'Ticker',

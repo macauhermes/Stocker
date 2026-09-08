@@ -1013,6 +1013,20 @@
             const trackingSinceHtml = (ticker.added_at && addedDate !== '—')
                 ? `<div class="stock-tracking" title="${t('index.tracking_since', { date: addedDate })}">${t('index.tracking_since', { date: addedDate })}</div>`
                 : '';
+            // v3.4.89 — surface shares_held + cost_basis (Pattern 9b orphan field)
+            // Held positions (3/10 active tickers) get a small orange "💼 N股 · 成本 $X"
+            // line below tracking_since. Conditional on shares_held > 0 so watchlist-only
+            // tickers don't render empty markup. Renders on top of info column, not the
+            // price column — keeps price/change/prev_close visually clustered.
+            const holdingShares = Number(ticker.shares_held) || 0;
+            const holdingCost = Number(ticker.cost_basis) || 0;
+            const holdingHtml = (holdingShares > 0 && holdingCost > 0)
+                ? `<div class="stock-holding" data-holding="${ticker.symbol}" ` +
+                  `title="${t('index.holding_title', { shares: formatNumber(holdingShares, { maximumFractionDigits: 4 }), cost: formatCurrency(holdingCost) })}">` +
+                  `<span class="material-icons-outlined" aria-hidden="true">account_balance_wallet</span>` +
+                  `${t('index.holding_shares_cost', { shares: formatNumber(holdingShares, { maximumFractionDigits: 4 }), cost: formatCurrency(holdingCost) })}` +
+                  `</div>`
+                : '';
             // v3.4.65 Pattern 9b — surface eps / pe_ratio / market_cap (8-9/10 populated)
             // Compact cap: 1.5T / 128B / 12M
             const finParts = [];
@@ -1041,6 +1055,7 @@
                     <div class="stock-week52" data-week52="${ticker.symbol}" title="${t('index.week52_range')}">${week52Range}</div>
                     ${financialsHtml}
                     ${trackingSinceHtml}
+                    ${holdingHtml}
                 </div>
                 <div class="stock-mini-chart">
                     <canvas id="mini-${ticker.symbol}" width="80" height="32"></canvas>
